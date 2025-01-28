@@ -3,9 +3,8 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Controls.Primitives;
 using System.Windows.Media.Imaging;
-using TargaNet;
+using TargaSharp;
 
 namespace TestWpfApp
 {
@@ -14,7 +13,7 @@ namespace TestWpfApp
     /// </summary>
     public partial class MainWindow : Window
     {
-        string[] Files = Directory.GetFiles(@"..\..\..\..\TGA File Examples\", "*.tga", SearchOption.AllDirectories);
+        string[] Files = Directory.GetFiles(@"Examples\", "*.tga", SearchOption.AllDirectories);
         Targa T;
 
 
