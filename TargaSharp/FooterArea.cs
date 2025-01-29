@@ -143,9 +143,9 @@ namespace TargaSharp
                 hash = hash * 23 + ExtensionAreaOffset.GetHashCode();
                 hash = hash * 23 + DeveloperDirectoryOffset.GetHashCode();
 
-                if (Signature != null) hash = hash * 23 + Signature.GetHashCode();
-                if (ReservedCharacter != null) hash = hash * 23 + ReservedCharacter.GetHashCode();
-                if (BinaryZeroStringTerminator != null) hash = hash * 23 + BinaryZeroStringTerminator.GetHashCode();
+                if (Signature is not null) hash = hash * 23 + Signature.GetHashCode();
+                if (ReservedCharacter is not null) hash = hash * 23 + ReservedCharacter.GetHashCode();
+                if (BinaryZeroStringTerminator is not null) hash = hash * 23 + BinaryZeroStringTerminator.GetHashCode();
 
                 return hash;
             }

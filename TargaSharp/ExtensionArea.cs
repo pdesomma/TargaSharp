@@ -6,7 +6,7 @@ namespace TargaSharp
     /// <summary>
     /// Extension Area
     /// </summary>
-    public class ExtensionArea : ICloneable, IEquatable<ExtensionArea>, IByteConvert
+    public sealed class ExtensionArea : ICloneable, IEquatable<ExtensionArea>, IByteConvert
     {
         public const int MinSize = 495; //bytes
 
@@ -113,7 +113,7 @@ namespace TargaSharp
         /// A, R, G, B) is 65535, and the minimum value is zero.Therefore, BLACK maps to
         /// 0, 0, 0, 0 and WHITE maps to 65535, 65535, 65535, 65535.
         /// </summary>
-        public ushort[] ColorCorrectionTable { get; set; }
+        public ushort[]? ColorCorrectionTable { get; set; }
 
         /// <summary>
         /// Color Correction Offset - Field 21 (4 Bytes):
@@ -207,7 +207,7 @@ namespace TargaSharp
         /// <summary>
         /// Other Data In Extension Area (if <see cref="ExtensionSize"/> > 495).
         /// </summary>
-        public byte[] OtherDataInExtensionArea { get; set; }
+        public byte[]? OtherDataInExtensionArea { get; set; }
 
         /// <summary>
         /// Pixel Aspect Ratio - Field 19 (4 Bytes):
@@ -236,7 +236,7 @@ namespace TargaSharp
         /// the assumption that if you can read the image, then you can read the postage stamp. If the original
         /// image is color mapped, DO NOT average the postage stamp, as you will create new colors not in your map.
         /// </summary>
-        public PostageStampImage PostageStampImage { get; set; }
+        public PostageStampImage? PostageStampImage { get; set; }
 
         /// <summary>
         /// Postage Stamp Offset - Field 22 (4 Bytes):
@@ -369,18 +369,17 @@ namespace TargaSharp
                 hash = (13 * hash) + SoftwareID.GetHashCode();
                 hash = (13 * hash) + SoftwareVersion.GetHashCode();
 
-                if (ScanLineTable != null)
+                if (ScanLineTable is not null)
                     for (int i = 0; i < ScanLineTable.Length; i++)
                         hash = (13 * hash) + ScanLineTable[i].GetHashCode();
 
-                if (PostageStampImage != null)
-                    hash = (13 * hash) + PostageStampImage.GetHashCode();
+                if (PostageStampImage is not null) hash = (13 * hash) + PostageStampImage.GetHashCode();
 
-                if (ColorCorrectionTable != null)
+                if (ColorCorrectionTable is not null)
                     for (int i = 0; i < ColorCorrectionTable.Length; i++)
                         hash = (13 * hash) + ColorCorrectionTable[i].GetHashCode();
 
-                if (OtherDataInExtensionArea != null)
+                if (OtherDataInExtensionArea is not null)
                     for (int i = 0; i < OtherDataInExtensionArea.Length; i++)
                         hash = (13 * hash) + OtherDataInExtensionArea[i].GetHashCode();
 

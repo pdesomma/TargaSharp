@@ -11,7 +11,7 @@ namespace TargaSharp
     /// four lines easy.Each line must be terminated by a null. If you do not use all 80 available characters in the line, place the null after the last character and blank or
     /// null fill the rest of the line.The 81st byte of each of the four lines must be null.
     /// </summary>
-    public class AuthorComments : FileField, ICloneable, IEquatable<AuthorComments>
+    public sealed class AuthorComments : FileField, ICloneable, IEquatable<AuthorComments>
     {
         const int StrNLen = 80; //80 ASCII chars + 1 '\0' = 81 per SrtN!
 
@@ -28,7 +28,7 @@ namespace TargaSharp
 #if NET8_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(str);
 #else 
-            if(str is null) throw new ArgumentNullException("str");
+            if(str is null) throw new ArgumentNullException(nameof(str));
 #endif
             OriginalString = str;
             BlankSpaceChar = blankChar;
@@ -37,6 +37,7 @@ namespace TargaSharp
         /// <summary>
         /// Create a new instance of the <see cref="AuthorComments"/> class.
         /// </summary>
+        /// <param name="bytes"></param>
         public AuthorComments(byte[] bytes) : base(324, 43, 12, bytes)
         {
             string s = Encoding.ASCII.GetString(bytes, 0, StrNLen);
@@ -47,12 +48,11 @@ namespace TargaSharp
             {
                 case '\0':
                 case ' ':
-#if NET8_0_OR_GREATER
                     BlankSpaceChar = s[^1];
+#if NET8_0_OR_GREATER
                     OriginalString = s.TrimEnd([s[^1]]);
 #else
-                    BlankSpaceChar = s[s.Length - 1];
-                    OriginalString = s.TrimEnd(new char[] {s[s.Length - 1]});
+                    OriginalString = s.TrimEnd(new char[] {s[^1]});
 #endif
                     break;
                 default:
@@ -64,8 +64,14 @@ namespace TargaSharp
         public static bool operator ==(AuthorComments item1, AuthorComments item2) => EqualityHelper.Operator(item1, item2);
         public static bool operator !=(AuthorComments item1, AuthorComments item2) => !(item1 == item2);
 
-
+        /// <summary>
+        /// Blank space character to use to fill lines.
+        /// </summary>
         public char BlankSpaceChar { get; private set; } = TgaString.DefaultBlankSpaceChar;
+
+        /// <summary>
+        /// Original string value.
+        /// </summary>
         public string OriginalString { get; private set; } = string.Empty;
 
         /// <summary>
@@ -102,7 +108,7 @@ namespace TargaSharp
         /// Convert <see cref="AuthorComments"/> to byte array.
         /// </summary>
         /// <returns>Byte array, every byte is ASCII symbol.</returns>        
-        public override byte[]? ToBytes() => ToBytes(OriginalString, BlankSpaceChar);
+        public override byte[] ToBytes() => ToBytes(OriginalString, BlankSpaceChar);
 
         /// <summary>
         /// Convert <see cref="AuthorComments"/> to byte array.
