@@ -70,11 +70,12 @@ namespace TargaSharp
         /// Make full independent copy of <see cref="ColorMapSpec"/>.
         /// </summary>
         /// <returns>Copy of <see cref="ColorMapSpec"/></returns>
-        public ColorMapSpec? Clone() => new ColorMapSpec(ToBytes());
+        public ColorMapSpec Clone() => new(ToBytes()!);
         object ICloneable.Clone() => Clone();
 
         public override bool Equals(object? obj) => obj is ColorMapSpec spec ? Equals(spec) : false;
-        public bool Equals(ColorMapSpec item) =>
+        public bool Equals(ColorMapSpec? item) =>
+            item is not null && 
             FirstEntryIndex == item.FirstEntryIndex &&
             ColorMapLength == item.ColorMapLength &&
             EntrySize == item.EntrySize;

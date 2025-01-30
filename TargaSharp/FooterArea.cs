@@ -25,15 +25,15 @@ namespace TargaSharp
         /// <param name="extOff">Extension Area Offset, offset from the beginning of the file.</param>
         /// <param name="devDirOff">Developer Directory Offset, offset from the beginning of the file.</param>
         /// <param name="sign">New TGA format signature.</param>
-        /// <param name="reservChr">Reserved Character - ASCII character “.” (period).</param>
-        /// <param name="termin">Binary Zero Terminator, a binary zero which acts as a final terminator.</param>
-        public FooterArea(uint extOff, uint devDirOff, TgaString sign, TgaString reservChr, TgaString termin)
+        /// <param name="reservedChar">Reserved Character - ASCII character “.” (period).</param>
+        /// <param name="terminator">Binary Zero Terminator, a binary zero which acts as a final terminator.</param>
+        public FooterArea(uint extOff, uint devDirOff, TgaString sign, TgaString reservedChar, TgaString terminator)
         {
             ExtensionAreaOffset = extOff;
             DeveloperDirectoryOffset = devDirOff;
             Signature = sign;
-            ReservedCharacter = reservChr;
-            BinaryZeroStringTerminator = termin;
+            ReservedCharacter = reservedChar;
+            BinaryZeroStringTerminator = terminator;
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace TargaSharp
 #if NET8_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(bytes);
 #else
-            if (bytes is null) throw new ArgumentNullException("bytes");
+            if (bytes is null) throw new ArgumentNullException(nameof(bytes));
 #endif
             if (bytes.Length != Size) throw new ArgumentOutOfRangeException(nameof(bytes.Length) + " must be equal " + Size + "!");
 
@@ -123,7 +123,7 @@ namespace TargaSharp
         /// Make full copy of <see cref="FooterArea"/>.
         /// </summary>
         /// <returns></returns>
-        public FooterArea Clone() => new FooterArea(ExtensionAreaOffset, DeveloperDirectoryOffset, Signature.Clone(), ReservedCharacter.Clone(), BinaryZeroStringTerminator.Clone());
+        public FooterArea Clone() => new(ExtensionAreaOffset, DeveloperDirectoryOffset, Signature.Clone(), ReservedCharacter.Clone(), BinaryZeroStringTerminator.Clone());
         object ICloneable.Clone() => Clone();
 
         public override bool Equals(object? obj) => obj is FooterArea footer && Equals(footer);
