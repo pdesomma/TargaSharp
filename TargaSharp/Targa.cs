@@ -5,7 +5,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using System.Text;
 using TargaSharp.Helpers;
 
 namespace TargaSharp
@@ -76,9 +75,9 @@ namespace TargaSharp
         {
             HeaderArea = tga.HeaderArea.Clone();
             ImageOrColorMapArea = tga.ImageOrColorMapArea.Clone();
-            DeveloperArea = tga.DeveloperArea.Clone();
-            ExtensionArea = tga.ExtensionArea.Clone();
-            FooterArea = tga.FooterArea.Clone();
+            DeveloperArea = tga.DeveloperArea?.Clone();
+            ExtensionArea = tga.ExtensionArea?.Clone();
+            FooterArea = tga.FooterArea?.Clone();
         }
 
         /// <summary>
@@ -130,14 +129,14 @@ namespace TargaSharp
         public Targa(Stream stream) => CreateFromStream(stream);
 
         /// <summary>
-        /// Make <see cref="Targa"/> from <see cref="Bitmap"/>.
+        /// Make a <see cref="Targa"/> from a <see cref="Bitmap"/>.
         /// </summary>
         /// <param name="bmp">Input Bitmap, supported a lot of bitmaps types: 8/15/16/24/32 bits per pixel.</param>
         /// <param name="useRle">Use RLE Compression?</param>
-        /// <param name="NewFormat">Use new 2.0 TGA XFile format?</param>
-        /// <param name="ColorMap2BytesEntry">Is Color Map Entry size equal 15 or 16 bits per pixel, else - 24 or 32.</param>
+        /// <param name="newFormat">Use new 2.0 TGA XFile format?</param>
+        /// <param name="colorMapToBytesEntry">Is Color Map Entry size equal 15 or 16 bits per pixel, else - 24 or 32.</param>
         [SupportedOSPlatform("windows")]
-        public Targa(Bitmap bmp, bool useRle = false, bool NewFormat = true, bool ColorMap2BytesEntry = false)
+        public Targa(Bitmap bmp, bool useRle = false, bool newFormat = true, bool colorMapToBytesEntry = false)
         {
 #if NET8_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(bmp);
@@ -177,35 +176,33 @@ namespace TargaSharp
                     if (isAlpha)
                     {
                         HeaderArea.ImageSpec.ImageDescriptor.AlphaChannelBits = (byte)(bytesPerPixel * 2);
-
-                        if (bmp.PixelFormat == PixelFormat.Format16bppArgb1555)
-                            HeaderArea.ImageSpec.ImageDescriptor.AlphaChannelBits = 1;
+                        if (bmp.PixelFormat == PixelFormat.Format16bppArgb1555) HeaderArea.ImageSpec.ImageDescriptor.AlphaChannelBits = 1;
                     }
 
                     // color map
-                    bool IsGrayImage = (bmp.PixelFormat == PixelFormat.Format16bppGrayScale | isColorMapped);
+                    bool isGrayImage = (bmp.PixelFormat == PixelFormat.Format16bppGrayScale | isColorMapped);
                     if (isColorMapped && bmp.Palette is not null)
                     {
                         Color[] Colors = bmp.Palette.Entries;
 
                         // color map type
-                        int AlphaSum = 0;
-                        bool ColorMapUseAlpha = false;
+                        int alphaSum = 0;
+                        bool colorMapUseAlpha = false;
                         for (int i = 0; i < Colors.Length; i++)
                         {
-                            IsGrayImage &= (Colors[i].R == Colors[i].G && Colors[i].G == Colors[i].B);
-                            ColorMapUseAlpha |= (Colors[i].A < 248);
-                            AlphaSum |= Colors[i].A;
+                            isGrayImage &= (Colors[i].R == Colors[i].G && Colors[i].G == Colors[i].B);
+                            colorMapUseAlpha |= (Colors[i].A < 248);
+                            alphaSum |= Colors[i].A;
                         }
-                        ColorMapUseAlpha &= (AlphaSum > 0);
-                        int CMapBpp = (ColorMap2BytesEntry ? 15 : 24) + (ColorMapUseAlpha ? (ColorMap2BytesEntry ? 1 : 8) : 0);
-                        int CMBytesPP = (int)Math.Ceiling(CMapBpp / 8.0);
+                        colorMapUseAlpha &= (alphaSum > 0);
+                        int cmpaBpp = (colorMapToBytesEntry ? 15 : 24) + (colorMapUseAlpha ? (colorMapToBytesEntry ? 1 : 8) : 0);
+                        int cmBpp = (int)Math.Ceiling(cmpaBpp / 8.0);
 
                         HeaderArea.ColorMapSpec.ColorMapLength = Math.Min((ushort)Colors.Length, ushort.MaxValue);
-                        HeaderArea.ColorMapSpec.EntrySize = (ColorMapEntrySize)CMapBpp;
-                        ImageOrColorMapArea.ColorMapData = new byte[HeaderArea.ColorMapSpec.ColorMapLength * CMBytesPP];
+                        HeaderArea.ColorMapSpec.EntrySize = (ColorMapEntrySize)cmpaBpp;
+                        ImageOrColorMapArea.ColorMapData = new byte[HeaderArea.ColorMapSpec.ColorMapLength * cmBpp];
 
-                        var CMapEntry = new byte[CMBytesPP];
+                        var colorMapEntry = new byte[cmBpp];
 
                         const float To5Bit = 32f / 256f; // Scale value from 8 to 5 bits.
                         for (int i = 0; i < Colors.Length; i++)
@@ -219,38 +216,36 @@ namespace TargaSharp
                                     int B = (int)(Colors[i].B * To5Bit) << 10;
                                     int A = 0;
 
-                                    if (HeaderArea.ColorMapSpec.EntrySize == ColorMapEntrySize.A1R5G5B5)
-                                        A = ((Colors[i].A & 0x80) << 15);
+                                    if (HeaderArea.ColorMapSpec.EntrySize == ColorMapEntrySize.A1R5G5B5) A = (Colors[i].A & 0x80) << 15;
 
-                                    CMapEntry = BitConverter.GetBytes(A | R | G | B);
+                                    colorMapEntry = BitConverter.GetBytes(A | R | G | B);
                                     break;
 
                                 case ColorMapEntrySize.R8G8B8:
-                                    CMapEntry[0] = Colors[i].B;
-                                    CMapEntry[1] = Colors[i].G;
-                                    CMapEntry[2] = Colors[i].R;
+                                    colorMapEntry[0] = Colors[i].B;
+                                    colorMapEntry[1] = Colors[i].G;
+                                    colorMapEntry[2] = Colors[i].R;
                                     break;
 
                                 case ColorMapEntrySize.A8R8G8B8:
-                                    CMapEntry[0] = Colors[i].B;
-                                    CMapEntry[1] = Colors[i].G;
-                                    CMapEntry[2] = Colors[i].R;
-                                    CMapEntry[3] = Colors[i].A;
+                                    colorMapEntry[0] = Colors[i].B;
+                                    colorMapEntry[1] = Colors[i].G;
+                                    colorMapEntry[2] = Colors[i].R;
+                                    colorMapEntry[3] = Colors[i].A;
                                     break;
 
                                 case ColorMapEntrySize.Other:
                                 default:
                                     break;
                             }
-
-                            Buffer.BlockCopy(CMapEntry, 0, ImageOrColorMapArea.ColorMapData, i * CMBytesPP, CMBytesPP);
+                            Buffer.BlockCopy(colorMapEntry, 0, ImageOrColorMapArea.ColorMapData, i * cmBpp, cmBpp);
                         }
                     }
 
                     // image type
                     if (useRle)
                     {
-                        if (IsGrayImage)
+                        if (isGrayImage)
                             HeaderArea.ImageType = ImageType.RLE_BlackWhite;
                         else if (isColorMapped)
                             HeaderArea.ImageType = ImageType.RLE_ColorMapped;
@@ -259,7 +254,7 @@ namespace TargaSharp
                     }
                     else
                     {
-                        if (IsGrayImage)
+                        if (isGrayImage)
                             HeaderArea.ImageType = ImageType.Uncompressed_BlackWhite;
                         else if (isColorMapped)
                             HeaderArea.ImageType = ImageType.Uncompressed_ColorMapped;
@@ -270,7 +265,7 @@ namespace TargaSharp
                     HeaderArea.ColorMapType = (isColorMapped ? ColorMapType.ColorMap : ColorMapType.NoColorMap);
 
                     // new format
-                    if (NewFormat)
+                    if (newFormat)
                     {
                         FooterArea = new FooterArea();
                         ExtensionArea = new ExtensionArea();
@@ -279,42 +274,38 @@ namespace TargaSharp
                         if (isAlpha)
                         {
                             ExtensionArea.AttributesType = AttributeType.UsefulAlpha;
-
-                            if (isPreAlpha)
-                                ExtensionArea.AttributesType = AttributeType.PreMultipliedAlpha;
+                            if (isPreAlpha) ExtensionArea.AttributesType = AttributeType.PreMultipliedAlpha;
                         }
                         else
                         {
                             ExtensionArea.AttributesType = AttributeType.NoAlpha;
-
-                            if (HeaderArea.ImageSpec.ImageDescriptor.AlphaChannelBits > 0)
-                                ExtensionArea.AttributesType = AttributeType.UndefinedAlphaButShouldBeRetained;
+                            if (HeaderArea.ImageSpec.ImageDescriptor.AlphaChannelBits > 0) ExtensionArea.AttributesType = AttributeType.UndefinedAlphaButShouldBeRetained;
                         }
                     }
 
                     // Bitmap width is aligned by 32 bits = 4 bytes! Delete it.
-                    int StrideBytes = bmp.Width * bytesPerPixel;
-                    int PaddingBytes = (int)Math.Ceiling(StrideBytes / 4.0) * 4 - StrideBytes;
+                    int strideBytes = bmp.Width * bytesPerPixel;
+                    int paddingBytes = (int)Math.Ceiling(strideBytes / 4.0) * 4 - strideBytes;
 
-                    byte[] ImageData = new byte[(StrideBytes + PaddingBytes) * bmp.Height];
+                    var imageData = new byte[(strideBytes + paddingBytes) * bmp.Height];
 
                     Rectangle Re = new Rectangle(0, 0, bmp.Width, bmp.Height);
-                    BitmapData BmpData = bmp.LockBits(Re, ImageLockMode.ReadOnly, bmp.PixelFormat);
-                    Marshal.Copy(BmpData.Scan0, ImageData, 0, ImageData.Length);
-                    bmp.UnlockBits(BmpData);
-                    BmpData = null;
+                    var bitmaptData = bmp.LockBits(Re, ImageLockMode.ReadOnly, bmp.PixelFormat);
+                    Marshal.Copy(bitmaptData.Scan0, imageData, 0, imageData.Length);
+                    bmp.UnlockBits(bitmaptData);
+                    bitmaptData = null;
 
-                    if (PaddingBytes > 0) //Need delete bytes align
+                    if (paddingBytes > 0) //Need delete bytes align
                     {
-                        ImageOrColorMapArea.ImageData = new byte[StrideBytes * bmp.Height];
+                        ImageOrColorMapArea.ImageData = new byte[strideBytes * bmp.Height];
                         for (int i = 0; i < bmp.Height; i++)
-                            Buffer.BlockCopy(ImageData, i * (StrideBytes + PaddingBytes),
-                                ImageOrColorMapArea.ImageData, i * StrideBytes, StrideBytes);
+                            Buffer.BlockCopy(imageData, i * (strideBytes + paddingBytes),
+                                ImageOrColorMapArea.ImageData, i * strideBytes, strideBytes);
                     }
                     else
-                        ImageOrColorMapArea.ImageData = ImageData;
+                        ImageOrColorMapArea.ImageData = imageData;
 
-                    ImageData = null;
+                    imageData = null;
 
                     // Not official supported, but works (tested on 16bpp GrayScale test images)!
                     if (bmp.PixelFormat == PixelFormat.Format16bppGrayScale)
@@ -329,40 +320,11 @@ namespace TargaSharp
             }
         }
 
-        /// <summary>
-        /// Save <see cref="Targa"/> to file.
-        /// </summary>
-        /// <param name="filename">Full path to file.</param>
-        /// <returns>Return "true", if all done or "false", if failed.</returns>
-        public bool Save(string filename)
-        {
-            try
-            {
-                bool Result = false;
-                using (FileStream Fs = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None))
-                using (MemoryStream Ms = new MemoryStream())
-                {
-                    Result = SaveFunc(Ms);
-                    Ms.WriteTo(Fs);
-                    Fs.Flush();
-                }
-                return Result;
-            }
-            catch { return false; }
-        }
-
-        /// <summary>
-        /// Save <see cref="Targa"/> to <see cref="Stream"/>.
-        /// </summary>
-        /// <param name="stream">Some stream, it must support: <see cref="Stream.CanWrite"/>.</param>
-        /// <returns>Return "true", if all done or "false", if failed.</returns>
-        public bool Save(Stream stream) => SaveFunc(stream);
-
 
         public DeveloperArea? DeveloperArea { get; set; }
         public ExtensionArea? ExtensionArea { get; set; }
         public FooterArea? FooterArea { get; set; }
-        public HeaderArea? HeaderArea { get; set; } = new HeaderArea();
+        public HeaderArea HeaderArea { get; set; } = new HeaderArea();
 
         /// <summary>
         /// Gets or Sets Image Height (see <see cref="Header.ImageSpec.ImageHeight"/>).
@@ -404,6 +366,18 @@ namespace TargaSharp
         object ICloneable.Clone() => Clone();
 
         /// <summary>
+        /// Convert TGA Image to new XFile format (v2.0).
+        /// </summary>
+        public void ConvertToNewFormat()
+        {
+            FooterArea ??= new();
+            ExtensionArea ??= new() {
+                    DateTimeStamp = new TimeStamp(DateTime.UtcNow),
+                    AttributesType = HeaderArea.ImageSpec.ImageDescriptor.AlphaChannelBits > 0 ? AttributeType.UsefulAlpha : AttributeType.NoAlpha
+                };
+        }
+
+        /// <summary>
         /// Remove the postage stamp image.
         /// </summary>
         public void DeletePostageStampImage()
@@ -424,106 +398,64 @@ namespace TargaSharp
         }
 
         /// <summary>
-        /// Get information from TGA image.
+        /// Save <see cref="Targa"/> to file.
         /// </summary>
-        /// <returns>MultiLine string with info fields (one per line).</returns>
-        public string GetInfo()
+        /// <param name="filename">Full path to file.</param>
+        /// <returns>Return "true", if all done or "false", if failed.</returns>
+        public bool Save(string filename)
         {
-            StringBuilder SB = new StringBuilder();
-
-            SB.AppendLine("Header:");
-            SB.AppendLine("\tID Length = " + HeaderArea.IdLength);
-            SB.AppendLine("\tImage Type = " + HeaderArea.ImageType);
-            SB.AppendLine("\tHeader -> ImageSpec:");
-            SB.AppendLine("\t\tImage Width = " + HeaderArea.ImageSpec.ImageWidth);
-            SB.AppendLine("\t\tImage Height = " + HeaderArea.ImageSpec.ImageHeight);
-            SB.AppendLine("\t\tPixel Depth = " + HeaderArea.ImageSpec.PixelDepth);
-            SB.AppendLine("\t\tImage Descriptor (AsByte) = " + HeaderArea.ImageSpec.ImageDescriptor.ToByte());
-            SB.AppendLine("\t\tImage Descriptor -> AttributeBits = " + HeaderArea.ImageSpec.ImageDescriptor.AlphaChannelBits);
-            SB.AppendLine("\t\tImage Descriptor -> ImageOrigin = " + HeaderArea.ImageSpec.ImageDescriptor.ImageOrigin);
-            SB.AppendLine("\t\tX_Origin = " + HeaderArea.ImageSpec.XOrigin);
-            SB.AppendLine("\t\tY_Origin = " + HeaderArea.ImageSpec.YOrigin);
-            SB.AppendLine("\tColorMap Type = " + HeaderArea.ColorMapType);
-            SB.AppendLine("\tHeader -> ColorMapSpec:");
-            SB.AppendLine("\t\tColorMap Entry Size = " + HeaderArea.ColorMapSpec.EntrySize);
-            SB.AppendLine("\t\tColorMap Length = " + HeaderArea.ColorMapSpec.ColorMapLength);
-            SB.AppendLine("\t\tFirstEntry Index = " + HeaderArea.ColorMapSpec.FirstEntryIndex);
-
-            SB.AppendLine("\nImage / Color Map Area:");
-            if (HeaderArea.IdLength > 0 && ImageOrColorMapArea.ImageId is not null)
-                SB.AppendLine("\tImage ID = \"" + ImageOrColorMapArea.ImageId.GetString() + "\"");
-            else
-                SB.AppendLine("\tImage ID = null");
-
-            if (ImageOrColorMapArea.ImageData is not null)
-                SB.AppendLine("\tImage Data Length = " + ImageOrColorMapArea.ImageData.Length);
-            else
-                SB.AppendLine("\tImage Data = null");
-
-            if (ImageOrColorMapArea.ColorMapData is not null)
-                SB.AppendLine("\tColorMap Data Length = " + ImageOrColorMapArea.ColorMapData.Length);
-            else
-                SB.AppendLine("\tColorMap Data = null");
-
-            SB.AppendLine("\nDevelopers Area:");
-            if (DeveloperArea is not null)
-                SB.AppendLine("\tCount = " + DeveloperArea.Count);
-            else
-                SB.AppendLine("\tDevArea = null");
-
-            SB.AppendLine("\nExtension Area:");
-            if (ExtensionArea is not null)
+            try
             {
-                SB.AppendLine("\tExtension Size = " + ExtensionArea.ExtensionSize);
-                SB.AppendLine("\tAuthor Name = \"" + ExtensionArea.AuthorName.GetString() + "\"");
-                SB.AppendLine("\tAuthor Comments = \"" + ExtensionArea.AuthorComments.GetString() + "\"");
-                SB.AppendLine("\tDate / Time Stamp = " + ExtensionArea.DateTimeStamp);
-                SB.AppendLine("\tJob Name / ID = \"" + ExtensionArea.JobNameOrID.GetString() + "\"");
-                SB.AppendLine("\tJob Time = " + ExtensionArea.JobTime);
-                SB.AppendLine("\tSoftware ID = \"" + ExtensionArea.SoftwareID.GetString() + "\"");
-                SB.AppendLine("\tSoftware Version = \"" + ExtensionArea.SoftwareVersion + "\"");
-                SB.AppendLine("\tKey Color = " + ExtensionArea.KeyColor);
-                SB.AppendLine("\tPixel Aspect Ratio = " + ExtensionArea.PixelAspectRatio);
-                SB.AppendLine("\tGamma Value = " + ExtensionArea.GammaValue);
-                SB.AppendLine("\tColor Correction Table Offset = " + ExtensionArea.ColorCorrectionTableOffset);
-                SB.AppendLine("\tPostage Stamp Offset = " + ExtensionArea.PostageStampOffset);
-                SB.AppendLine("\tScan Line Offset = " + ExtensionArea.ScanLineOffset);
-                SB.AppendLine("\tAttributes Type = " + ExtensionArea.AttributesType);
-
-                if (ExtensionArea.ScanLineTable is not null)
-                    SB.AppendLine("\tScan Line Table = " + ExtensionArea.ScanLineTable.Length);
-                else
-                    SB.AppendLine("\tScan Line Table = null");
-
-                if (ExtensionArea.PostageStampImage is not null)
-                    SB.AppendLine("\tPostage Stamp Image: " + ExtensionArea.PostageStampImage.ToString());
-                else
-                    SB.AppendLine("\tPostage Stamp Image = null");
-
-                SB.AppendLine("\tColor Correction Table = " + (ExtensionArea.ColorCorrectionTable is not null));
+                using var fileStream = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None);
+                using var memoryStream = new MemoryStream();
+                var result = SaveFunc(memoryStream);
+                memoryStream.WriteTo(fileStream);
+                fileStream.Flush();
+                return result;
             }
-            else
-                SB.AppendLine("\tExtArea = null");
-
-            SB.AppendLine("\nFooter:");
-            if (FooterArea is not null)
-            {
-                SB.AppendLine("\tExtension Area Offset = " + FooterArea.ExtensionAreaOffset);
-                SB.AppendLine("\tDeveloper Directory Offset = " + FooterArea.DeveloperDirectoryOffset);
-                SB.AppendLine("\tSignature (Full) = \"" + FooterArea.Signature.ToString() +
-                    FooterArea.ReservedCharacter.ToString() + FooterArea.BinaryZeroStringTerminator.ToString() + "\"");
-            }
-            else
-                SB.AppendLine("\tFooter = null");
-
-            return SB.ToString();
+            catch { return false; }
         }
+
+        /// <summary>
+        /// Save <see cref="Targa"/> to <see cref="Stream"/>.
+        /// </summary>
+        /// <param name="stream">Some stream, it must support: <see cref="Stream.CanWrite"/>.</param>
+        /// <returns>Return "true", if all done or "false", if failed.</returns>
+        public bool Save(Stream stream) => SaveFunc(stream);
+
+        /// <summary>
+        /// Convert <see cref="Targa"/> to <see cref="Bitmap"/>.
+        /// </summary>
+        /// <param name="forceUseAlpha">Force use alpha channel.</param>
+        /// <returns>Bitmap or null, on error.</returns>
+        [SupportedOSPlatform("windows")]
+        public Bitmap? ToBitmap(bool forceUseAlpha = false) => ToBitmapFunc(forceUseAlpha, false);
+
+        /// <summary>
+        /// Convert <see cref="Targa"/> to bytes array.
+        /// </summary>
+        /// <returns>Bytes array, (equal to saved file, but in memory) or null (on error).</returns>
+        public byte[]? ToBytes()
+        {
+            try
+            {
+                using var ms = new MemoryStream();
+                Save(ms);
+                var bytes = ms.ToArray();
+                ms.Flush();
+                return bytes;
+            }
+            catch { return null; }
+        }
+
+
+
 
         /// <summary>
         /// Check and update all fields with data length and offsets.
         /// </summary>
         /// <returns>Return "true", if all OK or "false", if checking failed.</returns>
-        public bool CheckAndUpdateOffsets()
+        private bool CheckAndUpdateOffsets()
         {
             if (HeaderArea is null || ImageOrColorMapArea is null) return false;
 
@@ -557,7 +489,7 @@ namespace TargaSharp
 
                 offsets += (uint)ImageOrColorMapArea.ColorMapData.Length;
             }
-            
+
             // image data
             int bytesPerPixel = 0;
             if (HeaderArea.ImageType != ImageType.NoImageData)
@@ -668,51 +600,6 @@ namespace TargaSharp
             return true;
         }
 
-
-        /// <summary>
-        /// Convert <see cref="Targa"/> to <see cref="Bitmap"/>.
-        /// </summary>
-        /// <param name="forceUseAlpha">Force use alpha channel.</param>
-        /// <returns>Bitmap or null, on error.</returns>
-        [SupportedOSPlatform("windows")]
-        public Bitmap? ToBitmap(bool forceUseAlpha = false) => ToBitmapFunc(forceUseAlpha, false);
-
-        /// <summary>
-        /// Convert <see cref="Targa"/> to bytes array.
-        /// </summary>
-        /// <returns>Bytes array, (equal to saved file, but in memory) or null (on error).</returns>
-        public byte[]? ToBytes()
-        {
-            try
-            {
-                using var ms = new MemoryStream();
-                Save(ms);
-                var bytes = ms.ToArray();
-                ms.Flush();
-                return bytes;
-            }
-            catch { return null; }
-        }
-
-        /// <summary>
-        /// Convert TGA Image to new XFile format (v2.0).
-        /// </summary>
-        public void ToNewFormat()
-        {
-            FooterArea ??= new FooterArea();
-            if (ExtensionArea is null)
-            {
-                ExtensionArea = new ExtensionArea();
-                ExtensionArea.DateTimeStamp = new TimeStamp(DateTime.UtcNow);
-                ExtensionArea.AttributesType = HeaderArea.ImageSpec.ImageDescriptor.AlphaChannelBits > 0 ? AttributeType.UsefulAlpha : AttributeType.NoAlpha;
-            }
-        }
-
-        
-
-
-
-
         /// <summary>
         /// Create from a stream.
         /// </summary>
@@ -800,30 +687,25 @@ namespace TargaSharp
                 if (DevDirOffset != 0)
                 {
                     stream.Seek(DevDirOffset, SeekOrigin.Begin);
-                    DeveloperArea = new DeveloperArea();
-                    uint NumberOfTags = binaryReader.ReadUInt16();
+                    DeveloperArea = new();
+                    uint numberOfTags = binaryReader.ReadUInt16();
 
-                    ushort[] Tags = new ushort[NumberOfTags];
-                    uint[] TagOffsets = new uint[NumberOfTags];
-                    uint[] TagSizes = new uint[NumberOfTags];
+                    ushort[] tags = new ushort[numberOfTags];
+                    uint[] tagOffsets = new uint[numberOfTags];
+                    uint[] tagSizes = new uint[numberOfTags];
 
-                    for (int i = 0; i < NumberOfTags; i++)
+                    for (int i = 0; i < numberOfTags; i++)
                     {
-                        Tags[i] = binaryReader.ReadUInt16();
-                        TagOffsets[i] = binaryReader.ReadUInt32();
-                        TagSizes[i] = binaryReader.ReadUInt32();
+                        tags[i] = binaryReader.ReadUInt16();
+                        tagOffsets[i] = binaryReader.ReadUInt32();
+                        tagSizes[i] = binaryReader.ReadUInt32();
                     }
 
-                    for (int i = 0; i < NumberOfTags; i++)
+                    for (int i = 0; i < numberOfTags; i++)
                     {
-                        stream.Seek(TagOffsets[i], SeekOrigin.Begin);
-                        var Ent = new DeveloperTag(Tags[i], TagOffsets[i], binaryReader.ReadBytes((int)TagSizes[i]));
-                        DeveloperArea.Entries.Add(Ent);
+                        stream.Seek(tagOffsets[i], SeekOrigin.Begin);
+                        DeveloperArea.Entries.Add(new DeveloperTag(tags[i], tagOffsets[i], binaryReader.ReadBytes((int)tagSizes[i])));
                     }
-
-                    Tags = null;
-                    TagOffsets = null;
-                    TagSizes = null;
                 }
 
                 // if extension area exists, read it.
@@ -861,7 +743,6 @@ namespace TargaSharp
                     }
                 }
             }
-
             binaryReader.Close();
         }
 
@@ -875,7 +756,7 @@ namespace TargaSharp
                 if (!CheckAndUpdateOffsets()) return false;
 
                 var binaryWriter = new BinaryWriter(stream);
-                binaryWriter.Write(HeaderArea.ToBytes());
+                binaryWriter.Write(HeaderArea.ToBytes()!);
 
                 if (ImageOrColorMapArea.ImageId is not null) binaryWriter.Write(ImageOrColorMapArea.ImageId.ToBytes());
 
@@ -940,59 +821,52 @@ namespace TargaSharp
         byte[]? RleEncode(byte[] imageData, int width, int height)
         {
             if (imageData is null) throw new ArgumentNullException(nameof(imageData));
-
             if (width <= 0 || height <= 0) throw new ArgumentOutOfRangeException(nameof(width) + " and " + nameof(height) + " must be > 0!");
 
             int bpp = imageData.Length / width / height; // Bytes per pixel
             int scanLineSize = width * bpp;
-
             if (scanLineSize * height != imageData.Length) throw new ArgumentOutOfRangeException("ImageData has wrong Length!");
 
+            int count, pos;
+            bool isRle = false;
+            List<byte> encoded = new();
+            byte[] rowData = new byte[scanLineSize];
             try
             {
-                int Count = 0;
-                int Pos = 0;
-                bool IsRLE = false;
-                List<byte> Encoded = new List<byte>();
-                byte[] RowData = new byte[scanLineSize];
-
                 for (int y = 0; y < height; y++)
                 {
-                    Pos = 0;
-                    Buffer.BlockCopy(imageData, y * scanLineSize, RowData, 0, scanLineSize);
+                    pos = 0;
+                    Buffer.BlockCopy(imageData, y * scanLineSize, rowData, 0, scanLineSize);
 
-                    while (Pos < scanLineSize)
+                    while (pos < scanLineSize)
                     {
-                        if (Pos >= scanLineSize - bpp)
+                        if (pos >= scanLineSize - bpp)
                         {
-                            Encoded.Add(0);
-                            Encoded.AddRange(EnumerableHelper.GetElements(RowData, (uint)Pos, (uint)bpp));
-                            Pos += bpp;
+                            encoded.Add(0);
+                            encoded.AddRange(EnumerableHelper.GetElements(rowData, (uint)pos, (uint)bpp));
+                            pos += bpp;
                             break;
                         }
 
-                        Count = 0; //1
-                        IsRLE = EnumerableHelper.AreElementsEqual(RowData, Pos, Pos + bpp, bpp);
+                        count = 0; //1
+                        isRle = EnumerableHelper.AreElementsEqual(rowData, pos, pos + bpp, bpp);
 
-                        for (int i = Pos + bpp; i < Math.Min(Pos + 128 * bpp, scanLineSize) - bpp; i += bpp)
+                        for (int i = pos + bpp; i < Math.Min(pos + 128 * bpp, scanLineSize) - bpp; i += bpp)
                         {
-                            if (IsRLE ^ EnumerableHelper.AreElementsEqual(RowData, (IsRLE ? Pos : i), i + bpp, bpp))
+                            if (isRle ^ EnumerableHelper.AreElementsEqual(rowData, (isRle ? pos : i), i + bpp, bpp))
                             {
-                                //Count--;
                                 break;
                             }
-                            else
-                                Count++;
+                            else count++;
                         }
 
-                        int CountBpp = (Count + 1) * bpp;
-                        Encoded.Add((byte)(IsRLE ? Count | 128 : Count));
-                        Encoded.AddRange(EnumerableHelper.GetElements(RowData, (uint)Pos, (uint)(IsRLE ? bpp : CountBpp)));
-                        Pos += CountBpp;
+                        int countBpp = (count + 1) * bpp;
+                        encoded.Add((byte)(isRle ? count | 128 : count));
+                        encoded.AddRange(EnumerableHelper.GetElements(rowData, (uint)pos, (uint)(isRle ? bpp : countBpp)));
+                        pos += countBpp;
                     }
                 }
-
-                return Encoded.ToArray();
+                return encoded.ToArray();
             }
             catch
             {
@@ -1021,9 +895,7 @@ namespace TargaSharp
                     };
                 }
                 useAlpha = (HeaderArea.ImageSpec.ImageDescriptor.AlphaChannelBits > 0 && useAlpha) | forceUseAlpha;
-
                 bool isGrayImage = HeaderArea.ImageType == ImageType.RLE_BlackWhite || HeaderArea.ImageType == ImageType.Uncompressed_BlackWhite;
-
 
                 // pixel format
                 var pixelFormat = PixelFormat.Format24bppRgb;
@@ -1032,18 +904,15 @@ namespace TargaSharp
                     case PixelDepth.Bpp8:
                         pixelFormat = PixelFormat.Format8bppIndexed;
                         break;
-
                     case PixelDepth.Bpp16:
                         if (isGrayImage)
                             pixelFormat = PixelFormat.Format16bppGrayScale;
                         else
                             pixelFormat = (useAlpha ? PixelFormat.Format16bppArgb1555 : PixelFormat.Format16bppRgb555);
                         break;
-
                     case PixelDepth.Bpp24:
                         pixelFormat = PixelFormat.Format24bppRgb;
                         break;
-
                     case PixelDepth.Bpp32:
                         if (useAlpha)
                         {
@@ -1056,7 +925,6 @@ namespace TargaSharp
                         else
                             pixelFormat = PixelFormat.Format32bppRgb;
                         break;
-
                     default:
                         pixelFormat = PixelFormat.Undefined;
                         break;
@@ -1067,11 +935,8 @@ namespace TargaSharp
                 var bitmap = new Bitmap(bmpWidth, bmpHeight, pixelFormat);
 
                 // ColorMap and GrayPalette
-                if (HeaderArea.ColorMapType == ColorMapType.ColorMap &&
-                   (HeaderArea.ImageType == ImageType.RLE_ColorMapped ||
-                    HeaderArea.ImageType == ImageType.Uncompressed_ColorMapped))
+                if (HeaderArea.ColorMapType == ColorMapType.ColorMap && (HeaderArea.ImageType == ImageType.RLE_ColorMapped || HeaderArea.ImageType == ImageType.Uncompressed_ColorMapped))
                 {
-
                     var colorMap = bitmap.Palette;
                     var colorMapColors = colorMap.Entries;
 
@@ -1090,7 +955,6 @@ namespace TargaSharp
                                 colorMapColors[i] = Color.FromArgb(A, R, G, B);
                             }
                             break;
-
                         case ColorMapEntrySize.R8G8B8:
                             for (int i = 0; i < Math.Min(colorMapColors.Length, HeaderArea.ColorMapSpec.ColorMapLength); i++)
                             {
@@ -1101,7 +965,6 @@ namespace TargaSharp
                                 colorMapColors[i] = Color.FromArgb(R, G, B);
                             }
                             break;
-
                         case ColorMapEntrySize.A8R8G8B8:
                             for (int i = 0; i < Math.Min(colorMapColors.Length, HeaderArea.ColorMapSpec.ColorMapLength); i++)
                             {
@@ -1109,14 +972,12 @@ namespace TargaSharp
                                 colorMapColors[i] = Color.FromArgb(useAlpha ? ARGB | (0xFF << 24) : ARGB);
                             }
                             break;
-
                         default:
                             colorMap = null;
                             break;
                     }
 
-                    if (colorMap is not null)
-                        bitmap.Palette = colorMap;
+                    if (colorMap is not null) bitmap.Palette = colorMap;
                 }
 
                 if (pixelFormat == PixelFormat.Format8bppIndexed && isGrayImage)
@@ -1128,10 +989,8 @@ namespace TargaSharp
                     bitmap.Palette = GrayPalette;
                 }
 
-
-
                 // Bitmap width must by aligned (align value = 32 bits = 4 bytes)!
-                byte[] imgData;
+                byte[]? imgData;
                 int bytesPerPixel = (int)Math.Ceiling((double)HeaderArea.ImageSpec.PixelDepth / 8.0);
                 int strideBytes = bitmap.Width * bytesPerPixel;
                 int paddingBytes = (int)Math.Ceiling(strideBytes / 4.0) * 4 - strideBytes;
@@ -1146,14 +1005,12 @@ namespace TargaSharp
                             i * (strideBytes + paddingBytes), strideBytes);
                     }
                 }
-                else
-                    imgData = ByteHelper.ToBytes(postageStampImage ? ExtensionArea.PostageStampImage.Data : ImageOrColorMapArea.ImageData);
+                else imgData = ByteHelper.ToBytes(postageStampImage ? ExtensionArea.PostageStampImage.Data : ImageOrColorMapArea.ImageData);
 
                 // Not official supported, but works (tested on 2 test images)!
                 if (pixelFormat == PixelFormat.Format16bppGrayScale)
                 {
-                    for (long i = 0; i < imgData.Length; i++)
-                        imgData[i] ^= byte.MaxValue;
+                    for (long i = 0; i < imgData.Length; i++) imgData[i] ^= byte.MaxValue;
                 }
 
                 Rectangle Re = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
@@ -1181,7 +1038,6 @@ namespace TargaSharp
                         bitmap.RotateFlip(RotateFlipType.RotateNoneFlipX);
                         break;
                 }
-
                 return bitmap;
             }
             catch
@@ -1194,7 +1050,6 @@ namespace TargaSharp
         public static explicit operator Bitmap?(Targa tga) => tga.ToBitmap();
         [SupportedOSPlatform("windows")]
         public static explicit operator Targa(Bitmap bmp) => new(bmp);
-
 
         // PostageStamp Image
         /// <summary>
@@ -1219,36 +1074,36 @@ namespace TargaSharp
                 return;
             }
 
-            ToNewFormat();
+            ConvertToNewFormat();
             if (ExtensionArea is not null && ExtensionArea.PostageStampImage is null) ExtensionArea.PostageStampImage = new PostageStampImage();
 
-            int PS_Width = HeaderArea.ImageSpec.ImageWidth;
-            int PS_Height = HeaderArea.ImageSpec.ImageHeight;
+            int psHeight = HeaderArea.ImageSpec.ImageHeight;
+            int psWidth = HeaderArea.ImageSpec.ImageWidth;
 
             if (Width > 64 || Height > 64)
             {
                 float AspectRatio = Width / (float)Height;
-                PS_Width = (byte)(64f * (AspectRatio < 1f ? AspectRatio : 1f));
-                PS_Height = (byte)(64f / (AspectRatio > 1f ? AspectRatio : 1f));
+                psWidth = (byte)(64f * (AspectRatio < 1f ? AspectRatio : 1f));
+                psHeight = (byte)(64f / (AspectRatio > 1f ? AspectRatio : 1f));
             }
-            PS_Width = Math.Max(PS_Width, 4);
-            PS_Height = Math.Max(PS_Height, 4);
+            psWidth = Math.Max(psWidth, 4);
+            psHeight = Math.Max(psHeight, 4);
 
-            ExtensionArea.PostageStampImage.Width = (byte)PS_Width;
-            ExtensionArea.PostageStampImage.Height = (byte)PS_Height;
+            ExtensionArea.PostageStampImage.Width = (byte)psWidth;
+            ExtensionArea.PostageStampImage.Height = (byte)psHeight;
 
             int BytesPerPixel = (int)Math.Ceiling((double)HeaderArea.ImageSpec.PixelDepth / 8.0);
-            ExtensionArea.PostageStampImage.Data = new byte[PS_Width * PS_Height * BytesPerPixel];
+            ExtensionArea.PostageStampImage.Data = new byte[psWidth * psHeight * BytesPerPixel];
 
-            float WidthCoefficient = Width / (float)PS_Width;
-            float HeightCoefficient = Height / (float)PS_Height;
+            float WidthCoefficient = Width / (float)psWidth;
+            float HeightCoefficient = Height / (float)psHeight;
 
-            for (int y = 0; y < PS_Height; y++)
+            for (int y = 0; y < psHeight; y++)
             {
                 int Y_Offset = (int)(y * HeightCoefficient) * Width * BytesPerPixel;
-                int y_Offset = y * PS_Width * BytesPerPixel;
+                int y_Offset = y * psWidth * BytesPerPixel;
 
-                for (int x = 0; x < PS_Width; x++)
+                for (int x = 0; x < psWidth; x++)
                 {
                     Buffer.BlockCopy(ImageOrColorMapArea.ImageData, Y_Offset + (int)(x * WidthCoefficient) * BytesPerPixel,
                         ExtensionArea.PostageStampImage.Data, y_Offset + x * BytesPerPixel, BytesPerPixel);
