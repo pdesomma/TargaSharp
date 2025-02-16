@@ -15,7 +15,7 @@
         }
 
         /// <summary>
-        /// The size of the field in bytes.
+        /// The size of the object in bytes.
         /// </summary>
         public uint ByteSize { get; private set; } = 0;
     }

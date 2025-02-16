@@ -73,7 +73,7 @@ namespace TargaSharp
         public ColorMapSpec Clone() => new(ToBytes()!);
         object ICloneable.Clone() => Clone();
 
-        public override bool Equals(object? obj) => obj is ColorMapSpec spec ? Equals(spec) : false;
+        public override bool Equals(object? obj) => obj is ColorMapSpec spec && Equals(spec);
         public bool Equals(ColorMapSpec? item) =>
             item is not null && 
             FirstEntryIndex == item.FirstEntryIndex &&
