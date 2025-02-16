@@ -78,7 +78,7 @@ namespace TargaSharp
         /// Make full independent copy of <see cref="AuthorComments"/>.
         /// </summary>
         /// <returns>Copy of <see cref="AuthorComments"/></returns>
-        public AuthorComments Clone() => new AuthorComments(OriginalString, BlankSpaceChar);
+        public AuthorComments Clone() => new(OriginalString, BlankSpaceChar);
         object ICloneable.Clone() => Clone();
 
         public override bool Equals(object? obj) => obj is AuthorComments comments && Equals(comments);
@@ -108,29 +108,20 @@ namespace TargaSharp
         /// Convert <see cref="AuthorComments"/> to byte array.
         /// </summary>
         /// <returns>Byte array, every byte is ASCII symbol.</returns>        
-        public override byte[] ToBytes() => ToBytes(OriginalString, BlankSpaceChar);
-
-        /// <summary>
-        /// Convert <see cref="AuthorComments"/> to byte array.
-        /// </summary>
-        /// <param name="Str">Input string.</param>
-        /// <param name="BlankSpaceChar">Char for filling blank space in string.</param>
-        /// <returns>Byte array, every byte is ASCII symbol.</returns>
-        public static byte[] ToBytes(string Str, char BlankSpaceChar = '\0')
+        public override byte[] ToBytes()
         {
-            char[] C = new char[81 * 4];
-
-            for (int i = 0; i < C.Length; i++)
+            char[] characters = new char[81 * 4];
+            for (int i = 0; i < characters.Length; i++)
             {
                 if ((i + 82) % 81 == 0)
-                    C[i] = TgaString.DefaultEndingChar;
+                    characters[i] = TgaString.DefaultEndingChar;
                 else
                 {
                     int Index = i - i / 81;
-                    C[i] = (Index < Str.Length ? Str[Index] : BlankSpaceChar);
+                    characters[i] = (Index < OriginalString.Length ? OriginalString[Index] : BlankSpaceChar);
                 }
             }
-            return Encoding.ASCII.GetBytes(C);
+            return Encoding.ASCII.GetBytes(characters);
         }
 
         /// <summary>
@@ -155,12 +146,18 @@ namespace TargaSharp
             s += Encoding.ASCII.GetString(bytes, 162, StrNLen);
             s += Encoding.ASCII.GetString(bytes, 243, StrNLen);
 
-            switch (s[s.Length - 1])
+            switch (s[^1])
             {
                 case '\0':
                 case ' ':
-                    BlankSpaceChar = s[s.Length - 1];
-                    OriginalString = s.TrimEnd(new char[] { s[s.Length - 1] });
+                    BlankSpaceChar = s[^1];
+                    OriginalString = s.TrimEnd(
+#if NET8_0_OR_GREATER
+                        [ s[^1] ]
+#else
+                        new char[] { s[^1] }
+#endif
+                    );
                     break;
                 default:
                     OriginalString = s;

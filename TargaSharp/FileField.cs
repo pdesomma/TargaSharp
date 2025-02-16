@@ -39,7 +39,7 @@ namespace TargaSharp
 #if NET8_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(bytes);
 #else
-            if (bytes is null) throw new ArgumentNullException("bytes");
+            if (bytes is null) throw new ArgumentNullException(nameof(bytes));
 #endif
             if (!ValidateByteLength(bytes)) throw new ArgumentException("Invalid byte array length"); 
             FromBytes(bytes);
