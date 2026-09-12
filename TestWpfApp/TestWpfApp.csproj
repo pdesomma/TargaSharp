@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TargaSharp\TargaSharp.csproj" />
+    <ProjectReference Include="..\TargaSharp.Drawing\TargaSharp.Drawing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

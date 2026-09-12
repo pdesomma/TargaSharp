@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using TargaSharp;
+using TargaSharp.Drawing;
 
 namespace TestWpfApp
 {
@@ -32,7 +33,7 @@ namespace TestWpfApp
         {
             if (T is null) return;
 
-            T = new TgaFile(T.ToBitmap());
+            T = TgaDrawing.FromBitmap(T.ToBitmap());
             ShowTga();
         }
 
@@ -75,7 +76,7 @@ namespace TestWpfApp
             if (T is null) return;
 
             Bitmap bitmap = T.ToBitmap();
-            Bitmap? thumb = T.GetPostageStampImage();
+            Bitmap? thumb = T.GetPostageStampBitmap();
 
             // Convert image if Format16bppGrayScale
             if (bitmap.PixelFormat == System.Drawing.Imaging.PixelFormat.Format16bppGrayScale)
