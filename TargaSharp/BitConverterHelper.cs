@@ -8,10 +8,13 @@ namespace TargaSharp
     public static class BitConverterHelper
     {
         /// <summary>
-        /// Combine byte, byte[], (u)short, (u)int, (u)long values to byte[] array.
+        /// Combine byte, byte[], (u)short, (u)int, (u)long values to byte[] array. Null elements
+        /// are skipped (not written), so optional trailing fields can be passed through as-is.
         /// </summary>
-        /// <param name="obj">Array of byte, byte[], (u)short, (u)int, (u)long values.</param>
-        /// <returns>Array of bytes, null when some object is null.</returns>        
+        /// <param name="obj">Array of byte, byte[], (u)short, (u)int, (u)long values. Null elements are skipped.</param>
+        /// <returns>Array of bytes, null when <paramref name="obj"/> itself is null.</returns>
+        /// <exception cref="ArgumentException">An element of <paramref name="obj"/> is a non-null value
+        /// of a type that is not one of byte, <see cref="IEnumerable{T}"/> of byte, short, ushort, int, uint, long or ulong.</exception>
         [return: NotNullIfNotNull(nameof(obj))]
         public static byte[]? ToBytes(params object[] obj)
         {
@@ -47,8 +50,11 @@ namespace TargaSharp
                         bytesList.AddRange(BitConverter.GetBytes(ul));
                         break;
                     case null:
-                    default:
+                        // Null elements are intentionally skipped (e.g. optional trailing
+                        // fields such as TgaExtArea.OtherDataInExtensionArea rely on this).
                         break;
+                    default:
+                        throw new ArgumentException($"Unsupported type {obj[index].GetType()} at index {index}.", nameof(obj));
                 }
             }
             return bytesList.ToArray();

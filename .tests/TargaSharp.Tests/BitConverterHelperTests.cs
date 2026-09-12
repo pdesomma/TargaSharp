@@ -205,4 +205,26 @@ public class BitConverterHelperTests
 
         Assert.IsFalse(BitConverterHelper.IsArraysEqual<int>(null!, array2));
     }
+
+    [TestMethod]
+    public void ToBytes_UnsupportedType_ThrowsArgumentException()
+    {
+        Assert.ThrowsExactly<ArgumentException>(() => BitConverterHelper.ToBytes(new TgaString()));
+    }
+
+    [TestMethod]
+    public void ToBytes_SupportedType_StillWorks()
+    {
+        byte[] result = BitConverterHelper.ToBytes(1);
+
+        CollectionAssert.AreEqual(BitConverter.GetBytes(1), result);
+    }
+
+    [TestMethod]
+    public void ToBytes_NullElement_IsSkipped()
+    {
+        byte[] result = BitConverterHelper.ToBytes(1, null!);
+
+        CollectionAssert.AreEqual(BitConverter.GetBytes(1), result);
+    }
 }
