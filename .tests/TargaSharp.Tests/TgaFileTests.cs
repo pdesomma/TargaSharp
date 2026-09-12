@@ -97,43 +97,43 @@ public class TgaFileTests
     }
 
     [TestMethod]
-    public void Header_Property_HasPrivateSetter()
+    public void Header_Property_HasInternalSetter()
     {
         PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.Header))!;
 
-        Assert.IsTrue(property.SetMethod!.IsPrivate);
+        Assert.IsTrue(property.SetMethod!.IsAssembly);
     }
 
     [TestMethod]
-    public void ImageOrColorMapArea_Property_HasPrivateSetter()
+    public void ImageOrColorMapArea_Property_HasInternalSetter()
     {
         PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.ImageOrColorMapArea))!;
 
-        Assert.IsTrue(property.SetMethod!.IsPrivate);
+        Assert.IsTrue(property.SetMethod!.IsAssembly);
     }
 
     [TestMethod]
-    public void DevArea_Property_HasPrivateSetter()
+    public void DevArea_Property_HasInternalSetter()
     {
         PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.DevArea))!;
 
-        Assert.IsTrue(property.SetMethod!.IsPrivate);
+        Assert.IsTrue(property.SetMethod!.IsAssembly);
     }
 
     [TestMethod]
-    public void ExtArea_Property_HasPrivateSetter()
+    public void ExtArea_Property_HasInternalSetter()
     {
         PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.ExtArea))!;
 
-        Assert.IsTrue(property.SetMethod!.IsPrivate);
+        Assert.IsTrue(property.SetMethod!.IsAssembly);
     }
 
     [TestMethod]
-    public void Footer_Property_HasPrivateSetter()
+    public void Footer_Property_HasInternalSetter()
     {
         PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.Footer))!;
 
-        Assert.IsTrue(property.SetMethod!.IsPrivate);
+        Assert.IsTrue(property.SetMethod!.IsAssembly);
     }
 
     [TestMethod]
@@ -187,10 +187,10 @@ public class TgaFileTests
     }
 
     /// <summary>
-    /// <see cref="TgaFile.DevArea"/> has a private setter with no public constructor parameter to seed
+    /// <see cref="TgaFile.DevArea"/> has an internal setter with no public constructor parameter to seed
     /// it directly, so the only public way to obtain a <see cref="TgaFile"/> with populated
     /// <see cref="TgaFile.DevArea"/> entries is to load bytes containing a hand-built Developer Area
-    /// directory (mirroring what <see cref="TgaFile"/>'s own LoadFunc(Stream) parses). This builds a
+    /// directory (mirroring what <c>TargaSharp.IO.TgaReader.Read(Stream)</c> parses). This builds a
     /// minimal, otherwise-valid TGA (no image data, no dev area) via the public API, then splices in a
     /// Developer Directory with the given tags (each entry gets a 1-byte field, so it survives the
     /// "delete empty entries" step) between the ext area and the footer, patching only the footer's
