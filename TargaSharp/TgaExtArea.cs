@@ -3,7 +3,7 @@
     /// <summary>
     /// Extension Area
     /// </summary>
-    public class TgaExtArea : ICloneable
+    public sealed record TgaExtArea : ICloneable
     {
         public const int MinSize = 495; //bytes
 
@@ -47,14 +47,6 @@
         public TgaExtArea() { }
 
 
-
-        public static bool operator ==(TgaExtArea item1, TgaExtArea item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaExtArea item1, TgaExtArea item2) => !(item1 == item2);
 
         #region Properties
         /// <summary>
@@ -302,61 +294,56 @@
         #endregion
 
         /// <summary>
-        /// Make full copy of <see cref="TgaExtArea"/>.
+        /// Make full copy of <see cref="TgaExtArea"/>. Named <c>Copy</c> rather than <c>Clone</c>
+        /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Full independent copy of <see cref="TgaExtArea"/>.</returns>
-        public TgaExtArea Clone()
+        public TgaExtArea Copy() => this with
         {
-            TgaExtArea NewExtArea = new TgaExtArea();
-            NewExtArea.ExtensionSize = ExtensionSize;
-            NewExtArea.AuthorName = AuthorName.Clone();
-            NewExtArea.AuthorComments = AuthorComments.Clone();
-            NewExtArea.DateTimeStamp = DateTimeStamp.Clone();
-            NewExtArea.JobNameOrID = JobNameOrID.Clone();
-            NewExtArea.JobTime = JobTime.Clone();
-            NewExtArea.SoftwareID = SoftwareID.Clone();
-            NewExtArea.SoftVersion = SoftVersion.Clone();
-            NewExtArea.KeyColor = KeyColor.Clone();
-            NewExtArea.PixelAspectRatio = PixelAspectRatio.Clone();
-            NewExtArea.GammaValue = GammaValue.Clone();
-            NewExtArea.ColorCorrectionTableOffset = ColorCorrectionTableOffset;
-            NewExtArea.PostageStampOffset = PostageStampOffset;
-            NewExtArea.ScanLineOffset = ScanLineOffset;
-            NewExtArea.AttributesType = AttributesType;
+            AuthorName = AuthorName.Copy(),
+            AuthorComments = AuthorComments.Copy(),
+            DateTimeStamp = DateTimeStamp.Copy(),
+            JobNameOrID = JobNameOrID.Copy(),
+            JobTime = JobTime.Copy(),
+            SoftwareID = SoftwareID.Copy(),
+            SoftVersion = SoftVersion.Copy(),
+            KeyColor = KeyColor.Copy(),
+            PixelAspectRatio = PixelAspectRatio.Copy(),
+            GammaValue = GammaValue.Copy(),
+            ScanLineTable = (uint[]?)ScanLineTable?.Clone(),
+            PostageStampImage = PostageStampImage?.Copy(),
+            ColorCorrectionTable = (ushort[]?)ColorCorrectionTable?.Clone(),
+            OtherDataInExtensionArea = (byte[]?)OtherDataInExtensionArea?.Clone(),
+        };
 
-            if (ScanLineTable is not null) NewExtArea.ScanLineTable = (uint[])ScanLineTable.Clone();
-            if (PostageStampImage is not null) NewExtArea.PostageStampImage = new TgaPostageStampImage(PostageStampImage.ToBytes());
-            if (ColorCorrectionTable is not null) NewExtArea.ColorCorrectionTable = (ushort[])ColorCorrectionTable.Clone();
-            if (OtherDataInExtensionArea is not null) NewExtArea.OtherDataInExtensionArea = (byte[])OtherDataInExtensionArea.Clone();
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
 
-            return NewExtArea;
-        }
-        object ICloneable.Clone() => Clone();
-
-        public override bool Equals(object? obj) => obj is TgaExtArea ? Equals((TgaExtArea)obj) : false;
-        public bool Equals(TgaExtArea item)
+        /// <inheritdoc />
+        public bool Equals(TgaExtArea? other)
         {
-            return (ExtensionSize == item.ExtensionSize &&
-                AuthorName == item.AuthorName &&
-                AuthorComments == item.AuthorComments &&
-                DateTimeStamp == item.DateTimeStamp &&
-                JobNameOrID == item.JobNameOrID &&
-                JobTime == item.JobTime &&
-                SoftwareID == item.SoftwareID &&
-                SoftVersion == item.SoftVersion &&
-                KeyColor == item.KeyColor &&
-                PixelAspectRatio == item.PixelAspectRatio &&
-                GammaValue == item.GammaValue &&
-                ColorCorrectionTableOffset == item.ColorCorrectionTableOffset &&
-                PostageStampOffset == item.PostageStampOffset &&
-                ScanLineOffset == item.ScanLineOffset &&
-                AttributesType == item.AttributesType &&
+            if (other is null) return false;
+            return ExtensionSize == other.ExtensionSize &&
+                AuthorName == other.AuthorName &&
+                AuthorComments == other.AuthorComments &&
+                DateTimeStamp == other.DateTimeStamp &&
+                JobNameOrID == other.JobNameOrID &&
+                JobTime == other.JobTime &&
+                SoftwareID == other.SoftwareID &&
+                SoftVersion == other.SoftVersion &&
+                KeyColor == other.KeyColor &&
+                PixelAspectRatio == other.PixelAspectRatio &&
+                GammaValue == other.GammaValue &&
+                ColorCorrectionTableOffset == other.ColorCorrectionTableOffset &&
+                PostageStampOffset == other.PostageStampOffset &&
+                ScanLineOffset == other.ScanLineOffset &&
+                AttributesType == other.AttributesType &&
 
-                (ScanLineTable is null && item.ScanLineTable is null || ScanLineTable is not null && item.ScanLineTable is not null && BitConverterHelper.IsArraysEqual(ScanLineTable, item.ScanLineTable)) &&
-                PostageStampImage == item.PostageStampImage &&
-                (ColorCorrectionTable is null && item.ColorCorrectionTable is null || ColorCorrectionTable is not null && item.ColorCorrectionTable is not null && BitConverterHelper.IsArraysEqual(ColorCorrectionTable, item.ColorCorrectionTable)) &&
+                (ReferenceEquals(ScanLineTable, other.ScanLineTable) || (ScanLineTable is not null && other.ScanLineTable is not null && ScanLineTable.AsSpan().SequenceEqual(other.ScanLineTable))) &&
+                PostageStampImage == other.PostageStampImage &&
+                (ReferenceEquals(ColorCorrectionTable, other.ColorCorrectionTable) || (ColorCorrectionTable is not null && other.ColorCorrectionTable is not null && ColorCorrectionTable.AsSpan().SequenceEqual(other.ColorCorrectionTable))) &&
 
-                BitConverterHelper.IsArraysEqual(OtherDataInExtensionArea, item.OtherDataInExtensionArea));
+                (ReferenceEquals(OtherDataInExtensionArea, other.OtherDataInExtensionArea) || (OtherDataInExtensionArea is not null && other.OtherDataInExtensionArea is not null && OtherDataInExtensionArea.AsSpan().SequenceEqual(other.OtherDataInExtensionArea)));
         }
 
 

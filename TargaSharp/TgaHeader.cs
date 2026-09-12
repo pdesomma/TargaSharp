@@ -3,13 +3,12 @@
     /// <summary>
     /// File Header Area (18 bytes)
     /// </summary>
-    public class TgaHeader : ICloneable
+    public sealed record TgaHeader : ICloneable
     {
         /// <summary>
         /// Gets TGA Header Section size in bytes.
         /// </summary>
         public const int Size = 18;
-
 
         /// <summary>
         /// Make empty <see cref="TgaHeader"/>.
@@ -32,18 +31,6 @@
             ColorMapSpec = new TgaColorMapSpec(BitConverterHelper.GetElements(bytes, 3, TgaColorMapSpec.Size));
             ImageSpec = new TgaImageSpec(BitConverterHelper.GetElements(bytes, 8, TgaImageSpec.Size));
         }
-
-
-
-        public static bool operator ==(TgaHeader item1, TgaHeader item2)
-        {
-            if (item1 is null) return item2 is null;
-            if(item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaHeader item1, TgaHeader item2) => !(item1 == item2);
-
-
 
         /// <summary>
         /// Color Map Specification - Field 4 (5 bytes):
@@ -82,49 +69,30 @@
         /// <para>The TGA File Format can be used to store Pseudo-Color, True-Color and Direct-Color images
         /// of various pixel depths.</para>
         /// </summary>
-        /// 
+        ///
         public TgaImageType ImageType { get; set; }
-        
-
 
         /// <summary>
-        /// Make full copy of <see cref="TgaHeader"/>.
+        /// Make full copy of <see cref="TgaHeader"/>. Named <c>Copy</c> rather than
+        /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Full independent copy of <see cref="TgaHeader"/>.</returns>
-        public TgaHeader Clone() => new TgaHeader(ToBytes());
-        object ICloneable.Clone() => Clone();
-
-        public override bool Equals(object? obj) => obj is TgaHeader ? Equals((TgaHeader)obj) : false;
-        public bool Equals(TgaHeader item) => 
-            IdLength == item.IdLength &&
-            ColorMapType == item.ColorMapType &&
-            ImageType == item.ImageType &&
-            ColorMapSpec == item.ColorMapSpec &&
-            ImageSpec == item.ImageSpec;
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 23 + (IdLength << 24 | (byte)ColorMapType << 8 | (byte)ImageType).GetHashCode();
-                if (ColorMapSpec is not null) hash = hash * 23 + ColorMapSpec.GetHashCode();
-                if (ImageSpec is not null) hash = hash * 23 + ImageSpec.GetHashCode();
-                return hash;
-            }
-        }
+        public TgaHeader Copy() => this with { ImageSpec = ImageSpec.Copy(), ColorMapSpec = ColorMapSpec.Copy() };
 
         public override string ToString() => string.Format("{0}={1}, {2}={3}, {4}={5}, {6}={7}, {8}={9}",
                 nameof(IdLength), IdLength,
                 nameof(ColorMapType), ColorMapType,
                 nameof(ImageType), ImageType,
                 nameof(ColorMapSpec), ColorMapSpec,
-                nameof(ImageSpec), ImageSpec);        
+                nameof(ImageSpec), ImageSpec);
 
         /// <summary>
         /// Convert <see cref="TgaHeader"/> to byte array.
         /// </summary>
         /// <returns>Byte array with size equal <see cref="Size"/>.</returns>
         public byte[] ToBytes() => BitConverterHelper.ToBytes(IdLength, (byte)ColorMapType, (byte)ImageType, ColorMapSpec?.ToBytes() ?? new byte[TgaColorMapSpec.Size], ImageSpec?.ToBytes() ?? new byte[TgaImageSpec.Size])!;
+
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
     }
 }

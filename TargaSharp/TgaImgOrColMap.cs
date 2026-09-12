@@ -3,7 +3,7 @@
     /// <summary>
     /// Image Or ColorMap Area
     /// </summary>
-    public class TgaImgOrColMap : ICloneable
+    public sealed record TgaImgOrColMap : ICloneable
     {
         /// <summary>
         /// Make empty <see cref="TgaImgOrColMap"/>.
@@ -25,15 +25,6 @@
             ColorMapData = colorMapData;
             ImageData = imageData;
         }
-
-
-        public static bool operator ==(TgaImgOrColMap item1, TgaImgOrColMap item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaImgOrColMap item1, TgaImgOrColMap item2) => !(item1 == item2);
 
 
         /// <summary>
@@ -84,14 +75,23 @@
         public byte[]? ImageData { get; set; }
 
         /// <summary>
-        /// Make full copy of <see cref="TgaImgOrColMap"/>.
+        /// Make full copy of <see cref="TgaImgOrColMap"/>. Named <c>Copy</c> rather than <c>Clone</c>
+        /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Full independed copy of <see cref="TgaImgOrColMap"/>.</returns>
-        public TgaImgOrColMap Clone() => new TgaImgOrColMap(ImageID?.Clone(), (byte[]?)ColorMapData?.Clone(), (byte[]?)ImageData?.Clone());
-        object ICloneable.Clone() => Clone();
+        public TgaImgOrColMap Copy() => this with { ImageID = ImageID?.Copy(), ColorMapData = (byte[]?)ColorMapData?.Clone(), ImageData = (byte[]?)ImageData?.Clone() };
 
-        public override bool Equals(object? obj) => obj is TgaImgOrColMap ? Equals((TgaImgOrColMap)obj) : false;
-        public bool Equals(TgaImgOrColMap item) => ImageID == item.ImageID && BitConverterHelper.IsArraysEqual(ColorMapData, item.ColorMapData) && BitConverterHelper.IsArraysEqual(ImageData, item.ImageData);
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
+
+        /// <inheritdoc />
+        public bool Equals(TgaImgOrColMap? other)
+        {
+            if (other is null) return false;
+            return ImageID == other.ImageID &&
+                (ReferenceEquals(ColorMapData, other.ColorMapData) || (ColorMapData is not null && other.ColorMapData is not null && ColorMapData.AsSpan().SequenceEqual(other.ColorMapData))) &&
+                (ReferenceEquals(ImageData, other.ImageData) || (ImageData is not null && other.ImageData is not null && ImageData.AsSpan().SequenceEqual(other.ImageData)));
+        }
 
         public override int GetHashCode()
         {

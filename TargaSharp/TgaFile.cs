@@ -80,11 +80,11 @@ namespace TargaSharp
         /// <param name="tga">Original <see cref="TgaFile"/> instance.</param>
         public TgaFile(TgaFile tga)
         {
-            Header = tga.Header.Clone();
-            ImageOrColorMapArea = tga.ImageOrColorMapArea.Clone();
-            DevArea = tga.DevArea?.Clone();
-            ExtArea = tga.ExtArea?.Clone();
-            Footer = tga.Footer?.Clone();
+            Header = tga.Header.Copy();
+            ImageOrColorMapArea = tga.ImageOrColorMapArea.Copy();
+            DevArea = tga.DevArea?.Copy();
+            ExtArea = tga.ExtArea?.Copy();
+            Footer = tga.Footer?.Copy();
         }
         /// <summary>
         /// Load <see cref="TgaFile"/> from file.

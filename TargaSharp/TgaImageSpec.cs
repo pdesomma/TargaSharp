@@ -5,19 +5,18 @@
     /// <para>This field and its sub-fields describe the image screen location, size and pixel depth.
     /// These information is always written to the file.</para>
     /// </summary>
-    public class TgaImageSpec : ICloneable
+    public sealed record TgaImageSpec : ICloneable
     {
         /// <summary>
         /// Gets TGA Field size in bytes.
         /// </summary>
         public const int Size = 10;
 
-
         /// <summary>
         /// Create a new instance of the <see cref="TgaImageSpec"/> class.
         /// </summary>
         public TgaImageSpec() { }
-        
+
         /// <summary>
         /// Make ImageSpec from values.
         /// </summary>
@@ -61,16 +60,6 @@
             ImageDescriptor = new TgaImageDescriptor(Bytes[9]);
         }
 
-        public static bool operator ==(TgaImageSpec item1, TgaImageSpec item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaImageSpec item1, TgaImageSpec item2) => !(item1 == item2);
-
-
-
         /// <summary>
         /// Contains image origin bits and alpha channel bits(or number of overlay bits).
         /// </summary>
@@ -97,7 +86,7 @@
         /// as it is positioned on a display device having an origin at the lower left of the
         /// screen(e.g., the TARGA series).
         /// </summary>
-        public ushort XOrigin { get;set;}
+        public ushort XOrigin { get; set; }
 
         /// <summary>
         /// These specify the absolute vertical coordinate for the lower left corner of the image
@@ -105,39 +94,13 @@
         /// screen(e.g., the TARGA series).
         /// </summary>
         public ushort YOrigin { get; set; }
-        
-
 
         /// <summary>
-        /// Make full copy of <see cref="TgaImageDescriptor"/>.
+        /// Make full copy of <see cref="TgaImageDescriptor"/>. Named <c>Copy</c> rather than
+        /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns></returns>
-        public TgaImageSpec Clone() => new TgaImageSpec(ToBytes());
-        object ICloneable.Clone() => Clone();
-
-        public override bool Equals(object? obj) => (obj is TgaImageSpec) ? Equals((TgaImageSpec)obj) : false;
-        public bool Equals(TgaImageSpec item) => 
-                XOrigin == item.XOrigin &&
-                YOrigin == item.YOrigin &&
-                ImageWidth == item.ImageWidth &&
-                ImageHeight == item.ImageHeight &&
-                PixelDepth == item.PixelDepth &&
-                ImageDescriptor == item.ImageDescriptor;
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 23 + XOrigin.GetHashCode();
-                hash = hash * 23 + YOrigin.GetHashCode();
-                hash = hash * 23 + ImageWidth.GetHashCode();
-                hash = hash * 23 + ImageHeight.GetHashCode();
-                hash = hash * 23 + PixelDepth.GetHashCode();
-                if (ImageDescriptor != null) hash = hash * 23 + ImageDescriptor.GetHashCode();
-                return hash;
-            }
-        }
+        public TgaImageSpec Copy() => this with { ImageDescriptor = ImageDescriptor.Copy() };
 
         public override string ToString()
         {
@@ -155,5 +118,8 @@
         /// </summary>
         /// <returns>Byte array with length = 10.</returns>
         public byte[] ToBytes() => BitConverterHelper.ToBytes(XOrigin, YOrigin, ImageWidth, ImageHeight, (byte)PixelDepth, ImageDescriptor == null ? byte.MinValue : ImageDescriptor.ToByte());
+
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
     }
 }

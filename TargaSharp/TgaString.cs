@@ -5,12 +5,38 @@ namespace TargaSharp
     /// <summary>
     /// Use it for working with ASCII strings in TGA files.
     /// </summary>
-    public class TgaString : ICloneable
+    public sealed record TgaString : ICloneable
     {
         public const string XFileSignatuteConst = "TRUEVISION-XFILE";
         public const string DotSymbolConst = ".";
         public const char DefaultEndingChar = '\0';
         public const char DefaultBlankSpaceChar = '\0';
+
+        /// <summary>
+        /// Gets a new Empty <see cref="TgaString"/>. A new instance is returned on every access
+        /// so callers cannot mutate a shared default.
+        /// </summary>
+        public static TgaString Empty => new TgaString();
+
+        /// <summary>
+        /// Gets a new <see cref="TgaString"/> with <see cref="DefaultEndingChar"/> = '\0' and
+        /// <see cref="UseEndingChar"/> = true. A new instance is returned on every access so
+        /// callers cannot mutate a shared default.
+        /// </summary>
+        public static TgaString ZeroTerminator => new TgaString(true);
+
+        /// <summary>
+        /// Gets a new "." <see cref="TgaString"/> with dot (period) symbol. A new instance is
+        /// returned on every access so callers cannot mutate a shared default.
+        /// </summary>
+        public static TgaString DotSymbol => new TgaString(DotSymbolConst, DotSymbolConst.Length);
+
+        /// <summary>
+        /// Gets a new "TRUEVISION-XFILE" <see cref="TgaString"/> (TGA File Format Version 2.0
+        /// signatute). A new instance is returned on every access so callers cannot mutate a
+        /// shared default.
+        /// </summary>
+        public static TgaString XFileSignatute => new TgaString(XFileSignatuteConst, XFileSignatuteConst.Length);
 
         /// <summary>
         /// Create a new instance of the <see cref="TgaString"/> class.
@@ -72,24 +98,11 @@ namespace TargaSharp
             BlankSpaceChar = blankSpaceChar;
         }
 
-
-
-        public static bool operator ==(TgaString item1, TgaString item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-
-        public static bool operator !=(TgaString item1, TgaString item2) => !(item1 == item2);
-
         public static TgaString operator +(TgaString item1, TgaString item2)
         {
             if (item1 is null || item2 is null) throw new ArgumentNullException();
             return new TgaString(BitConverterHelper.ToBytes(item1.ToBytes(), item2.ToBytes())!);
         }
-
-
 
         public string OriginalString { get; set; } = string.Empty;
 
@@ -100,59 +113,11 @@ namespace TargaSharp
         public bool UseEndingChar { get; set; }
 
         /// <summary>
-        /// Gets a new Empty <see cref="TgaString"/>. A new instance is returned on every access
-        /// so callers cannot mutate a shared default.
-        /// </summary>
-        public static TgaString Empty => new TgaString();
-
-        /// <summary>
-        /// Gets a new <see cref="TgaString"/> with <see cref="DefaultEndingChar"/> = '\0' and
-        /// <see cref="UseEndingChar"/> = true. A new instance is returned on every access so
-        /// callers cannot mutate a shared default.
-        /// </summary>
-        public static TgaString ZeroTerminator => new TgaString(true);
-
-        /// <summary>
-        /// Gets a new "." <see cref="TgaString"/> with dot (period) symbol. A new instance is
-        /// returned on every access so callers cannot mutate a shared default.
-        /// </summary>
-        public static TgaString DotSymbol => new TgaString(DotSymbolConst, DotSymbolConst.Length);
-
-        /// <summary>
-        /// Gets a new "TRUEVISION-XFILE" <see cref="TgaString"/> (TGA File Format Version 2.0
-        /// signatute). A new instance is returned on every access so callers cannot mutate a
-        /// shared default.
-        /// </summary>
-        public static TgaString XFileSignatute => new TgaString(XFileSignatuteConst, XFileSignatuteConst.Length);
-
-        /// <summary>
-        /// Make full independed copy of <see cref="TgaString"/>.
+        /// Make full independed copy of <see cref="TgaString"/>. Named <c>Copy</c> rather than
+        /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaString"/></returns>
-        public TgaString Clone() => new TgaString(OriginalString, Length, UseEndingChar, BlankSpaceChar);
-
-        /// <summary>
-        /// Make full independed copy of <see cref="TgaString"/>.
-        /// </summary>
-        /// <returns>Copy of <see cref="TgaString"/></returns>
-        object ICloneable.Clone() => Clone();
-
-        public override bool Equals(object? obj) => (obj is not null && obj is TgaString) ? Equals((TgaString)obj) : false;
-
-        public bool Equals(TgaString item) => OriginalString == item.OriginalString && Length == item.Length && BlankSpaceChar == item.BlankSpaceChar && UseEndingChar == item.UseEndingChar;
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 23 + OriginalString.GetHashCode();
-                hash = hash * 23 + Length.GetHashCode();
-                hash = hash * 23 + BlankSpaceChar.GetHashCode();
-                hash = hash * 23 + UseEndingChar.GetHashCode();
-                return hash;
-            }
-        }
+        public TgaString Copy() => this with { };
 
         /// <summary>
         /// Get ASCII-Like string to first string-terminator, example:
@@ -202,5 +167,8 @@ namespace TargaSharp
 
             return Encoding.ASCII.GetBytes(C);
         }
+
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
     }
 }

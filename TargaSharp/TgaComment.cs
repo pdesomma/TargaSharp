@@ -2,8 +2,13 @@
 
 namespace TargaSharp
 {
-    public class TgaComment : ICloneable
+    public sealed record TgaComment : ICloneable
     {
+        /// <summary>
+        /// Gets TGA Field size in bytes.
+        /// </summary>
+        public const int Size = 81 * 4;
+
         const int StrNLen = 80; //80 ASCII chars + 1 '\0' = 81 per SrtN!
         string origString = String.Empty;
         char blankSpaceChar = TgaString.DefaultBlankSpaceChar;
@@ -43,11 +48,6 @@ namespace TargaSharp
             }
         }
 
-        /// <summary>
-        /// Gets TGA Field size in bytes.
-        /// </summary>
-        public const int Size = 81 * 4;
-
         public string OriginalString
         {
             get { return origString; }
@@ -61,52 +61,13 @@ namespace TargaSharp
         }
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaComment"/>.
+        /// Make full independed copy of <see cref="TgaComment"/>. Named <c>Copy</c> rather than
+        /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaComment"/></returns>
-        public TgaComment Clone()
+        public TgaComment Copy()
         {
-            return new TgaComment(origString, blankSpaceChar);
-        }
-
-        /// <summary>
-        /// Make full independed copy of <see cref="TgaComment"/>.
-        /// </summary>
-        /// <returns>Copy of <see cref="TgaComment"/></returns>
-        object ICloneable.Clone()
-        {
-            return Clone();
-        }
-
-        public override bool Equals(object obj)
-        {
-            return ((obj is TgaComment) ? Equals((TgaComment)obj) : false);
-        }
-
-        public bool Equals(TgaComment item)
-        {
-            return (origString == item.origString && blankSpaceChar == item.blankSpaceChar);
-        }
-
-        public static bool operator ==(TgaComment item1, TgaComment item2)
-        {
-            if (ReferenceEquals(item1, null))
-                return ReferenceEquals(item2, null);
-
-            if (ReferenceEquals(item2, null))
-                return ReferenceEquals(item1, null);
-
-            return item1.Equals(item2);
-        }
-
-        public static bool operator !=(TgaComment item1, TgaComment item2)
-        {
-            return !(item1 == item2);
-        }
-
-        public override int GetHashCode()
-        {
-            return origString.GetHashCode() ^ blankSpaceChar.GetHashCode();
+            return this with { };
         }
 
         /// <summary>
@@ -161,6 +122,12 @@ namespace TargaSharp
                 }
             }
             return Encoding.ASCII.GetBytes(C);
+        }
+
+        /// <inheritdoc />
+        object ICloneable.Clone()
+        {
+            return Copy();
         }
     }
 

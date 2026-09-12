@@ -3,7 +3,7 @@
     /// <summary>
     /// File Footer Area
     /// </summary>
-    public class TgaFooter : ICloneable
+    public sealed record TgaFooter : ICloneable
     {
         /// <summary>
         /// Gets TGA Footer Section size in bytes.
@@ -49,17 +49,6 @@
             ReservedCharacter = new TgaString(new byte[] { bytes[24] });
             BinaryZeroStringTerminator = new TgaString(new byte[] { bytes[25] });
         }
-
-
-        public static bool operator ==(TgaFooter item1, TgaFooter item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaFooter item1, TgaFooter item2) => !(item1 == item2);
-
-
 
         /// <summary>
         /// Byte 25 - Binary Zero String Terminator - Field 32
@@ -113,36 +102,12 @@
         /// </summary>
         public TgaString Signature { get; set; } = TgaString.XFileSignatute;
 
-
-
         /// <summary>
-        /// Make full copy of <see cref="TgaFooter"/>.
+        /// Make full copy of <see cref="TgaFooter"/>. Named <c>Copy</c> rather than
+        /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns></returns>
-        public TgaFooter Clone() => new TgaFooter(ExtensionAreaOffset, DeveloperDirectoryOffset, Signature.Clone(), ReservedCharacter.Clone(), BinaryZeroStringTerminator.Clone());
-        object ICloneable.Clone() => Clone();
-
-        public override bool Equals(object? obj) => obj is TgaFooter ? Equals((TgaFooter)obj) : false;
-        public bool Equals(TgaFooter item) => 
-                ExtensionAreaOffset == item.ExtensionAreaOffset &&
-                DeveloperDirectoryOffset == item.DeveloperDirectoryOffset &&
-                Signature == item.Signature &&
-                ReservedCharacter == item.ReservedCharacter &&
-                BinaryZeroStringTerminator == item.BinaryZeroStringTerminator;
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 23 + ExtensionAreaOffset.GetHashCode();
-                hash = hash * 23 + DeveloperDirectoryOffset.GetHashCode();
-                if (Signature is not null) hash = hash * 23 + Signature.GetHashCode();
-                if (ReservedCharacter is not null) hash = hash * 23 + ReservedCharacter.GetHashCode();
-                if (BinaryZeroStringTerminator is not null) hash = hash * 23 + BinaryZeroStringTerminator.GetHashCode();
-                return hash;
-            }
-        }
+        public TgaFooter Copy() => this with { Signature = Signature.Copy(), ReservedCharacter = ReservedCharacter.Copy(), BinaryZeroStringTerminator = BinaryZeroStringTerminator.Copy() };
 
         /// <summary>
         /// Convert <see cref="TgaFooter"/> to byte array.
@@ -151,5 +116,8 @@
         public byte[] ToBytes() => BitConverterHelper.ToBytes(ExtensionAreaOffset, DeveloperDirectoryOffset, Signature.ToBytes(), ReservedCharacter.ToBytes(), BinaryZeroStringTerminator.ToBytes());
 
         public override string ToString() => string.Format("{0}={1}, {2}={3}, FullSignature={4}", nameof(ExtensionAreaOffset), ExtensionAreaOffset, nameof(DeveloperDirectoryOffset), DeveloperDirectoryOffset, (Signature + ReservedCharacter + BinaryZeroStringTerminator).ToString());
+
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
     }
 }
