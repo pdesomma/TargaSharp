@@ -32,4 +32,22 @@ public class TgaFractionTests
 
         Assert.IsTrue(roundTripped.Equals(original));
     }
+
+    [TestMethod]
+    public void Empty_CalledTwice_ReturnsDistinctReferences()
+    {
+        TgaFraction first = TgaFraction.Empty;
+        TgaFraction second = TgaFraction.Empty;
+
+        Assert.AreNotSame(first, second);
+    }
+
+    [TestMethod]
+    public void One_CalledTwice_ReturnsDistinctReferences()
+    {
+        TgaFraction first = TgaFraction.One;
+        TgaFraction second = TgaFraction.One;
+
+        Assert.AreNotSame(first, second);
+    }
 }

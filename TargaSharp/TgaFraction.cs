@@ -59,14 +59,16 @@
 
 
         /// <summary>
-        /// Gets Empty <see cref="TgaFraction"/>, all values are 0.
+        /// Gets a new Empty <see cref="TgaFraction"/>, all values are 0. A new instance is
+        /// returned on every access so callers cannot mutate a shared default.
         /// </summary>
-        public static readonly TgaFraction Empty = new TgaFraction();
+        public static TgaFraction Empty => new TgaFraction();
 
         /// <summary>
-        /// Gets One <see cref="TgaFraction"/>, all values are 1 (ones, 1 / 1 = 1).
+        /// Gets a new One <see cref="TgaFraction"/>, all values are 1 (ones, 1 / 1 = 1). A new
+        /// instance is returned on every access so callers cannot mutate a shared default.
         /// </summary>
-        public static readonly TgaFraction One = new TgaFraction(1, 1);
+        public static TgaFraction One => new TgaFraction(1, 1);
 
         /// <summary>
         /// Make full independed copy of <see cref="TgaFraction"/>.

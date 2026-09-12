@@ -69,4 +69,14 @@ public class TgaFooterTests
 
         Assert.IsFalse(footer.IsFooterCorrect);
     }
+
+    [TestMethod]
+    public void IsFooterCorrect_SignatureMutatedOnOneInstance_NewInstanceStillCorrect()
+    {
+        var footer = new TgaFooter();
+
+        footer.Signature.OriginalString = "corrupted";
+
+        Assert.IsTrue(new TgaFooter().IsFooterCorrect);
+    }
 }

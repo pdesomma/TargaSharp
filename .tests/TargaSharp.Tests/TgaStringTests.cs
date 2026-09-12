@@ -34,4 +34,23 @@ public class TgaStringTests
 
         Assert.IsTrue(roundTripped.Equals(original));
     }
+
+    [TestMethod]
+    public void Empty_CalledTwice_ReturnsDistinctReferences()
+    {
+        TgaString first = TgaString.Empty;
+        TgaString second = TgaString.Empty;
+
+        Assert.AreNotSame(first, second);
+    }
+
+    [TestMethod]
+    public void Empty_MutatedOnOneReference_DoesNotAffectNextAccess()
+    {
+        TgaString first = TgaString.Empty;
+
+        first.OriginalString = "mutated";
+
+        Assert.AreEqual(string.Empty, TgaString.Empty.OriginalString);
+    }
 }

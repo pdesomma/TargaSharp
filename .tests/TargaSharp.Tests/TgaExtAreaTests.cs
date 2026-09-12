@@ -85,4 +85,24 @@ public class TgaExtAreaTests
 
         Assert.IsTrue(roundTripped.Equals(original));
     }
+
+    [TestMethod]
+    public void PixelAspectRatio_MutatedOnOneInstance_DoesNotAffectNewInstance()
+    {
+        var ext1 = new TgaExtArea();
+
+        ext1.PixelAspectRatio.Numerator = 42;
+
+        Assert.AreEqual((ushort)0, new TgaExtArea().PixelAspectRatio.Numerator);
+    }
+
+    [TestMethod]
+    public void GammaValue_MutatedOnOneInstance_DoesNotAffectNewInstance()
+    {
+        var ext1 = new TgaExtArea();
+
+        ext1.GammaValue.Numerator = 42;
+
+        Assert.AreEqual((ushort)0, new TgaExtArea().GammaValue.Numerator);
+    }
 }
