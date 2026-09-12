@@ -1,12 +1,14 @@
-﻿namespace TargaSharp
+﻿using TargaSharp.IO;
+
+namespace TargaSharp
 {
     public class TgaFile : ICloneable
     {
-        public TgaHeader Header { get; private set; } = new TgaHeader();
-        public TgaImgOrColMap ImageOrColorMapArea { get; private set; } = new TgaImgOrColMap();
-        public TgaDevArea? DevArea { get; private set; } = null;
-        public TgaExtArea? ExtArea { get; private set; } = null;
-        public TgaFooter? Footer { get; private set; } = null;
+        public TgaHeader Header { get; internal set; } = new TgaHeader();
+        public TgaImgOrColMap ImageOrColorMapArea { get; internal set; } = new TgaImgOrColMap();
+        public TgaDevArea? DevArea { get; internal set; } = null;
+        public TgaExtArea? ExtArea { get; internal set; } = null;
+        public TgaFooter? Footer { get; internal set; } = null;
 
         /// <summary>
         /// Create new empty <see cref="TgaFile"/> istance.
@@ -86,19 +88,19 @@
         /// </summary>
         /// <param name="filename">Full path to TGA file.</param>
         /// <returns>Loaded <see cref="TgaFile"/> file.</returns>
-        public TgaFile(string filename) => LoadFunc(filename);
+        public TgaFile(string filename) => CopyAreasFrom(new TgaReader().Read(filename));
         /// <summary>
         /// Make <see cref="TgaFile"/> from bytes array.
         /// </summary>
         /// <param name="bytes">Bytes array (same like TGA File).</param>
-        public TgaFile(byte[] bytes) => LoadFunc(bytes);
+        public TgaFile(byte[] bytes) => CopyAreasFrom(new TgaReader().Read(bytes));
         /// <summary>
         /// Make <see cref="TgaFile"/> from <see cref="Stream"/>.
         /// For file opening better use <see cref="TgaFile(string)"/>.
         /// </summary>
         /// <param name="stream">Some stream. You can use a lot of Stream types, but Stream must support:
         /// <see cref="Stream.CanSeek"/> and <see cref="Stream.CanRead"/>.</param>
-        public TgaFile(Stream stream) => LoadFunc(stream);
+        public TgaFile(Stream stream) => CopyAreasFrom(new TgaReader().Read(stream));
 
 
         /// <summary>
@@ -124,6 +126,7 @@
         /// </summary>
         /// <returns>Full independed copy of <see cref="TgaFile"/>.</returns>
         public TgaFile Clone() => new TgaFile(this);
+        /// <inheritdoc />
         object ICloneable.Clone() => Clone();
 
         /// <summary>
@@ -141,245 +144,9 @@
         /// <summary>
         /// Check and update all fields with data length and offsets.
         /// </summary>
+        /// <param name="ErrorStr">Description of the failure, or <see cref="string.Empty"/> on success.</param>
         /// <returns>Return "true", if all OK or "false", if checking failed.</returns>
-        public bool CheckAndUpdateOffsets(out string ErrorStr)
-        {
-            ErrorStr = string.Empty;
-            if (Header is null)
-            {
-                ErrorStr = "Header = null";
-                return false;
-            }
-
-            if (ImageOrColorMapArea is null)
-            {
-                ErrorStr = "ImageOrColorMapArea = null";
-                return false;
-            }
-
-            uint Offset = TgaHeader.Size; // Virtual Offset
-
-            if (ImageOrColorMapArea?.ImageID is not null)
-            {
-                int StrMaxLen = 255;
-                if (ImageOrColorMapArea.ImageID.UseEndingChar)
-                    StrMaxLen--;
-
-                Header.IdLength = (byte)Math.Min(ImageOrColorMapArea.ImageID.OriginalString.Length, StrMaxLen);
-                ImageOrColorMapArea.ImageID.Length = Header.IdLength;
-                Offset += Header.IdLength;
-            }
-            else
-                Header.IdLength = 0;
-            
-
-            
-            if (Header.ColorMapType != TgaColorMapType.NoColorMap)
-            {
-                if (Header.ColorMapSpec is null)
-                {
-                    ErrorStr = "Header.ColorMapSpec = null";
-                    return false;
-                }
-
-                if (Header.ColorMapSpec.ColorMapLength == 0)
-                {
-                    ErrorStr = "Header.ColorMapSpec.ColorMapLength = 0";
-                    return false;
-                }
-
-                if (ImageOrColorMapArea?.ColorMapData == null)
-                {
-                    ErrorStr = "ImageOrColorMapArea.ColorMapData = null";
-                    return false;
-                }
-
-                int CmBytesPerPixel = (int)Math.Ceiling((double)Header.ColorMapSpec.ColorMapEntrySize / 8.0);
-                int LenBytes = Header.ColorMapSpec.ColorMapLength * CmBytesPerPixel;
-
-                if (LenBytes != ImageOrColorMapArea.ColorMapData.Length)
-                {
-                    ErrorStr = "ImageOrColorMapArea.ColorMapData.Length has wrong size!";
-                    return false;
-                }
-
-                Offset += (uint)ImageOrColorMapArea.ColorMapData.Length;
-            }
-            
-            int BytesPerPixel = 0;
-            if (Header.ImageType != TgaImageType.NoImageData)
-            {
-                if (Header.ImageSpec is null)
-                {
-                    ErrorStr = "Header.ImageSpec = null";
-                    return false;
-                }
-
-                if (Header.ImageSpec.ImageWidth == 0 || Header.ImageSpec.ImageHeight == 0)
-                {
-                    ErrorStr = "Header.ImageSpec.ImageWidth = 0 or Header.ImageSpec.ImageHeight = 0";
-                    return false;
-                }
-
-                if (ImageOrColorMapArea?.ImageData == null)
-                {
-                    ErrorStr = "ImageOrColorMapArea.ImageData = null";
-                    return false;
-                }
-
-                BytesPerPixel = (int)Math.Ceiling((double)Header.ImageSpec.PixelDepth / 8.0);
-                if (Width * Height * BytesPerPixel != ImageOrColorMapArea.ImageData.Length)
-                {
-                    ErrorStr = "ImageOrColorMapArea.ImageData.Length has wrong size!";
-                    return false;
-                }
-
-                if (Header.ImageType >= TgaImageType.RLE_ColorMapped &&
-                    Header.ImageType <= TgaImageType.RLE_BlackWhite)
-                {
-                    byte[]? RLE = RLE_Encode(ImageOrColorMapArea.ImageData, Width, Height);
-                    if (RLE == null)
-                    {
-                        ErrorStr = "RLE Compressing error! Check Image Data size.";
-                        return false;
-                    }
-
-                    Offset += (uint)RLE.Length;
-                    RLE = null;
-                }
-                else
-                    Offset += (uint)ImageOrColorMapArea.ImageData.Length;
-            }
-            
-            
-            if (Footer is not null)
-            {
-                if (DevArea is not null)
-                {
-                    int DevAreaCount = DevArea.Count;
-                    for (int i = 0; i < DevAreaCount; i++)
-                        if (DevArea[i] is null || DevArea[i].FieldSize <= 0) //Del Empty Entries
-                        {
-                            DevArea.Entries.RemoveAt(i);
-                            DevAreaCount--;
-                            i--;
-                        }
-
-                    if (DevArea.Count <= 0) Footer.DeveloperDirectoryOffset = 0;
-
-                    // Need at least 2 entries for a duplicate Tag to even be possible; the loop below compares
-                    // each adjacent (sorted) pair, so it also correctly catches a duplicate in a 2-entry directory.
-                    if (DevArea.Count > 1)
-                    {
-                        DevArea.Entries.Sort((a, b) => { return a.Tag.CompareTo(b.Tag); });
-                        for (int i = 0; i < DevArea.Count - 1; i++)
-                            if (DevArea[i].Tag == DevArea[i + 1].Tag)
-                            {
-                                ErrorStr = "DevArea Enties has same Tags!";
-                                return false;
-                            }
-                    }
-
-                    for (int i = 0; i < DevArea.Count; i++)
-                    {
-                        DevArea[i].Offset = Offset;
-                        Offset += (uint)DevArea[i].FieldSize;
-                    }
-
-                    Footer.DeveloperDirectoryOffset = Offset;
-                    Offset += (uint)(DevArea.Count * 10 + 2);
-                }
-                else
-                    Footer.DeveloperDirectoryOffset = 0;
-
-
-
-                if (ExtArea is not null)
-                {
-                    ExtArea.ExtensionSize = TgaExtArea.MinSize;
-                    if (ExtArea.OtherDataInExtensionArea != null)
-                        ExtArea.ExtensionSize += (ushort)ExtArea.OtherDataInExtensionArea.Length;
-
-                    ExtArea.DateTimeStamp = new TgaDateTime(DateTime.UtcNow);
-
-                    Footer.ExtensionAreaOffset = Offset;
-                    Offset += ExtArea.ExtensionSize;
-
-                    #region ScanLineTable
-                    if (ExtArea.ScanLineTable == null)
-                        ExtArea.ScanLineOffset = 0;
-                    else
-                    {
-                        if (ExtArea.ScanLineTable.Length != Height)
-                        {
-                            ErrorStr = "ExtArea.ScanLineTable.Length != Height";
-                            return false;
-                        }
-
-                        ExtArea.ScanLineOffset = Offset;
-                        Offset += (uint)(ExtArea.ScanLineTable.Length * 4);
-                    }
-                    #endregion
-
-
-                    if (ExtArea.PostageStampImage is null)
-                        ExtArea.PostageStampOffset = 0;
-                    else
-                    {
-                        if (ExtArea.PostageStampImage.Width == 0 || ExtArea.PostageStampImage.Height == 0)
-                        {
-                            ErrorStr = "ExtArea.PostageStampImage Width or Height is equal 0!";
-                            return false;
-                        }
-
-                        if (ExtArea.PostageStampImage.Data == null)
-                        {
-                            ErrorStr = "ExtArea.PostageStampImage.Data == null";
-                            return false;
-                        }
-
-                        int PImgSB = ExtArea.PostageStampImage.Width * ExtArea.PostageStampImage.Height * BytesPerPixel;
-                        if (Header.ImageType != TgaImageType.NoImageData &&
-                            ExtArea.PostageStampImage.Data.Length != PImgSB)
-                        {
-                            ErrorStr = "ExtArea.PostageStampImage.Data.Length is wrong!";
-                            return false;
-                        }
-
-
-                        ExtArea.PostageStampOffset = Offset;
-                        Offset += (uint)(ExtArea.PostageStampImage.Data.Length);
-                    }
-
-
-                    if (ExtArea.ColorCorrectionTable == null)
-                        ExtArea.ColorCorrectionTableOffset = 0;
-                    else
-                    {
-                        if (ExtArea.ColorCorrectionTable.Length != 1024)
-                        {
-                            ErrorStr = "ExtArea.ColorCorrectionTable.Length != 256 * 4";
-                            return false;
-                        }
-
-                        ExtArea.ColorCorrectionTableOffset = Offset;
-                        Offset += (uint)(ExtArea.ColorCorrectionTable.Length * 2);
-                    }
-                }
-                else
-                    Footer.ExtensionAreaOffset = 0;
-                
-                
-                
-                if (Footer.ToBytes().Length != TgaFooter.Size)
-                {
-                    ErrorStr = "Footer.Length is wrong!";
-                    return false;
-                }
-                Offset += TgaFooter.Size;                
-            }
-            return true;
-        }
+        public bool CheckAndUpdateOffsets(out string ErrorStr) => new TgaWriter().TryComputeLayout(this, out ErrorStr);
 
         /// <summary>
         /// Save the <see cref="TgaFile"/> to disk.
@@ -390,12 +157,8 @@
         {
             try
             {
-                using var Fs = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None);
-                using var Ms = new MemoryStream();
-                var result = SaveFunc(Ms);
-                Ms.WriteTo(Fs);
-                Fs.Flush();
-                return result;
+                new TgaWriter().Write(this, filename);
+                return true;
             }
             catch
             {
@@ -408,7 +171,18 @@
         /// </summary>
         /// <param name="stream">Some stream, it must support: <see cref="Stream.CanWrite"/>.</param>
         /// <returns>Return "true", if all done or "false", if failed.</returns>
-        public bool Save(Stream stream) => SaveFunc(stream);
+        public bool Save(Stream stream)
+        {
+            try
+            {
+                new TgaWriter().Write(this, stream);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
         /// <summary>
         /// Convert <see cref="TgaFile"/> to bytes array.
@@ -418,11 +192,7 @@
         {
             try
             {
-                using var ms = new MemoryStream();
-                Save(ms);
-                var bytes = ms.ToArray();
-                ms.Flush();
-                return bytes;
+                return new TgaWriter().Write(this);
             }
             catch
             {
@@ -446,340 +216,6 @@
                     ExtArea.AttributesType = TgaAttributeType.UsefulAlpha;
                 else
                     ExtArea.AttributesType = TgaAttributeType.NoAlpha;
-            }
-        }
-        
-        
-        bool LoadFunc(string filename)
-        {
-            if (!File.Exists(filename)) throw new FileNotFoundException("File: \"" + filename + "\" not found!");
-
-            using (FileStream FS = new FileStream(filename, FileMode.Open))
-                return LoadFunc(FS);
-        }
-
-        bool LoadFunc(byte[] bytes)
-        {
-            if (bytes == null) throw new ArgumentNullException();
-
-            using (MemoryStream FS = new MemoryStream(bytes, false))
-                return LoadFunc(FS);
-        }
-
-        bool LoadFunc(Stream stream)
-        {
-            if (stream == null) throw new ArgumentNullException();
-            if (!(stream.CanRead && stream.CanSeek)) throw new FileLoadException("Stream reading or seeking is not avaiable!");
-
-            stream.Seek(0, SeekOrigin.Begin);
-            var binaryReader = new BinaryReader(stream);
-
-            Header = new TgaHeader(binaryReader.ReadBytes(TgaHeader.Size));
-
-            if (Header.IdLength > 0)
-                ImageOrColorMapArea.ImageID = new TgaString(binaryReader.ReadBytes(Header.IdLength));
-
-            if (Header.ColorMapSpec.ColorMapLength > 0)
-            {
-                int CmBytesPerPixel = (int)Math.Ceiling((double)Header.ColorMapSpec.ColorMapEntrySize / 8.0);
-                int LenBytes = Header.ColorMapSpec.ColorMapLength * CmBytesPerPixel;
-                ImageOrColorMapArea.ColorMapData = binaryReader.ReadBytes(LenBytes);
-            }
-
-            #region Read Image Data
-            int BytesPerPixel = (int)Math.Ceiling((double)Header.ImageSpec.PixelDepth / 8.0);
-            if (Header.ImageType != TgaImageType.NoImageData)
-            {
-                int ImageDataSize = Width * Height * BytesPerPixel;
-                switch (Header.ImageType)
-                {
-                    case TgaImageType.RLE_ColorMapped:
-                    case TgaImageType.RLE_TrueColor:
-                    case TgaImageType.RLE_BlackWhite:
-
-                        int DataOffset = 0;
-                        byte PacketInfo;
-                        int PacketCount;
-                        byte[] RLE_Bytes, RLE_Part;
-                        ImageOrColorMapArea.ImageData = new byte[ImageDataSize];
-
-                        do
-                        {
-                            PacketInfo = binaryReader.ReadByte(); //1 type bit and 7 count bits. Len = Count + 1.
-                            PacketCount = (PacketInfo & 127) + 1;
-
-                            if (PacketInfo >= 128) // bit7 = 1, RLE
-                            {
-                                RLE_Bytes = new byte[PacketCount * BytesPerPixel];
-                                RLE_Part = binaryReader.ReadBytes(BytesPerPixel);
-                                for (int i = 0; i < RLE_Bytes.Length; i++)
-                                    RLE_Bytes[i] = RLE_Part[i % BytesPerPixel];
-                            }
-                            else // RAW format
-                                RLE_Bytes = binaryReader.ReadBytes(PacketCount * BytesPerPixel);
-
-                            Buffer.BlockCopy(RLE_Bytes, 0, ImageOrColorMapArea.ImageData, DataOffset, RLE_Bytes.Length);
-                            DataOffset += RLE_Bytes.Length;
-                        }
-                        while (DataOffset < ImageDataSize);
-                        RLE_Bytes = null;
-                        break;
-
-                    case TgaImageType.Uncompressed_ColorMapped:
-                    case TgaImageType.Uncompressed_TrueColor:
-                    case TgaImageType.Uncompressed_BlackWhite:
-                        ImageOrColorMapArea.ImageData = binaryReader.ReadBytes(ImageDataSize);
-                        break;
-                }
-            }
-            #endregion
-
-            #region Try parse Footer
-            stream.Seek(-TgaFooter.Size, SeekOrigin.End);
-            uint FooterOffset = (uint)stream.Position;
-            TgaFooter MbFooter = new TgaFooter(binaryReader.ReadBytes(TgaFooter.Size));
-            if (MbFooter.IsFooterCorrect)
-            {
-                Footer = MbFooter;
-                uint DevDirOffset = Footer.DeveloperDirectoryOffset;
-                uint ExtAreaOffset = Footer.ExtensionAreaOffset;
-
-                #region If Dev Area exist, read it.
-                if (DevDirOffset != 0)
-                {
-                    stream.Seek(DevDirOffset, SeekOrigin.Begin);
-                    DevArea = new TgaDevArea();
-                    uint NumberOfTags = binaryReader.ReadUInt16();
-
-                    ushort[] Tags = new ushort[NumberOfTags];
-                    uint[] TagOffsets = new uint[NumberOfTags];
-                    uint[] TagSizes = new uint[NumberOfTags];
-
-                    for (int i = 0; i < NumberOfTags; i++)
-                    {
-                        Tags[i] = binaryReader.ReadUInt16();
-                        TagOffsets[i] = binaryReader.ReadUInt32();
-                        TagSizes[i] = binaryReader.ReadUInt32();
-                    }
-
-                    for (int i = 0; i < NumberOfTags; i++)
-                    {
-                        stream.Seek(TagOffsets[i], SeekOrigin.Begin);
-                        var Ent = new TgaDevEntry(Tags[i], TagOffsets[i], binaryReader.ReadBytes((int)TagSizes[i]));
-                        DevArea.Entries.Add(Ent);
-                    }
-
-                    Tags = null;
-                    TagOffsets = null;
-                    TagSizes = null;
-                }
-                #endregion
-
-                #region If Ext Area exist, read it.
-                if (ExtAreaOffset != 0)
-                {
-                    stream.Seek(ExtAreaOffset, SeekOrigin.Begin);
-                    ushort ExtAreaSize = binaryReader.ReadUInt16();
-
-                    // Per spec the Extension Area Size field must be 495 for a TGA 2.0 extension area.
-                    // A reader should only parse what it understands: a declared size smaller than
-                    // TgaExtArea.MinSize is not a (valid or forward-compatible) v2.0 ext area, so skip
-                    // parsing it instead of forcing a read past what was actually declared/written.
-                    if (ExtAreaSize >= TgaExtArea.MinSize)
-                    {
-                        stream.Seek(ExtAreaOffset, SeekOrigin.Begin);
-                        ExtArea = new TgaExtArea(binaryReader.ReadBytes(ExtAreaSize));
-
-                        if (ExtArea.ScanLineOffset > 0)
-                        {
-                            stream.Seek(ExtArea.ScanLineOffset, SeekOrigin.Begin);
-                            ExtArea.ScanLineTable = new uint[Height];
-                            for (int i = 0; i < ExtArea.ScanLineTable.Length; i++)
-                                ExtArea.ScanLineTable[i] = binaryReader.ReadUInt32();
-                        }
-
-                        if (ExtArea.PostageStampOffset > 0)
-                        {
-                            stream.Seek(ExtArea.PostageStampOffset, SeekOrigin.Begin);
-                            byte W = binaryReader.ReadByte();
-                            byte H = binaryReader.ReadByte();
-                            int ImgDataSize = W * H * BytesPerPixel;
-                            if (ImgDataSize > 0)
-                                ExtArea.PostageStampImage = new TgaPostageStampImage(W, H, binaryReader.ReadBytes(ImgDataSize));
-                        }
-
-                        if (ExtArea.ColorCorrectionTableOffset > 0)
-                        {
-                            stream.Seek(ExtArea.ColorCorrectionTableOffset, SeekOrigin.Begin);
-                            ExtArea.ColorCorrectionTable = new ushort[256 * 4];
-                            for (int i = 0; i < ExtArea.ColorCorrectionTable.Length; i++)
-                                ExtArea.ColorCorrectionTable[i] = binaryReader.ReadUInt16();
-                        }
-                    }
-                }
-                #endregion
-            }
-            #endregion
-
-            binaryReader.Close();
-            return true;
-        }
-
-        bool SaveFunc(Stream stream)
-        {
-            try
-            {
-                if (stream == null)
-                    throw new ArgumentNullException();
-                if (!(stream.CanWrite && stream.CanSeek))
-                    throw new FileLoadException("Stream writing or seeking is not avaiable!");
-
-                string CheckResult;
-                if (!CheckAndUpdateOffsets(out CheckResult))
-                    return false;
-
-                BinaryWriter Bw = new BinaryWriter(stream);
-                Bw.Write(Header.ToBytes());
-
-                if (ImageOrColorMapArea.ImageID != null)
-                    Bw.Write(ImageOrColorMapArea.ImageID.ToBytes());
-
-                if (Header.ColorMapType != TgaColorMapType.NoColorMap)
-                    Bw.Write(ImageOrColorMapArea.ColorMapData);
-
-                #region ImageData
-                if (Header.ImageType != TgaImageType.NoImageData)
-                {
-                    if (Header.ImageType >= TgaImageType.RLE_ColorMapped &&
-                        Header.ImageType <= TgaImageType.RLE_BlackWhite)
-                        Bw.Write(RLE_Encode(ImageOrColorMapArea.ImageData, Width, Height));
-                    else
-                        Bw.Write(ImageOrColorMapArea.ImageData);
-                }
-                #endregion
-
-                #region Footer
-                if (Footer != null)
-                {
-                    #region DevArea
-                    if (DevArea != null)
-                    {
-                        for (int i = 0; i < DevArea.Count; i++)
-                            Bw.Write(DevArea[i].Data);
-
-                        Bw.Write((ushort)DevArea.Count);
-
-                        for (int i = 0; i < DevArea.Count; i++)
-                        {
-                            Bw.Write(DevArea[i].Tag);
-                            Bw.Write(DevArea[i].Offset);
-                            Bw.Write(DevArea[i].FieldSize);
-                        }
-                    }
-                    #endregion
-
-                    #region ExtArea
-                    if (ExtArea != null)
-                    {
-                        Bw.Write(ExtArea.ToBytes());
-
-                        if (ExtArea.ScanLineTable != null)
-                            for (int i = 0; i < ExtArea.ScanLineTable.Length; i++)
-                                Bw.Write(ExtArea.ScanLineTable[i]);
-
-                        if (ExtArea.PostageStampImage != null)
-                            Bw.Write(ExtArea.PostageStampImage.ToBytes());
-
-                        if (ExtArea.ColorCorrectionTable != null)
-                            for (int i = 0; i < ExtArea.ColorCorrectionTable.Length; i++)
-                                Bw.Write(ExtArea.ColorCorrectionTable[i]);
-                    }
-                    #endregion
-
-                    Bw.Write(Footer.ToBytes());
-                }
-                #endregion
-
-                Bw.Flush();
-                stream.Flush();
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Encode image with RLE compression (used RLE per line)!
-        /// </summary>
-        /// <param name="ImageData">Image data, bytes array with size = Width * Height * BytesPerPixel.</param>
-        /// <param name="Width">Image Width, must be > 0.</param>
-        /// <param name="Height">Image Height, must be > 0.</param>
-        /// <returns>Bytes array with RLE compressed image data.</returns>
-        byte[] RLE_Encode(byte[] ImageData, int Width, int Height)
-        {
-            if (ImageData == null)
-                throw new ArgumentNullException(nameof(ImageData) + "in null!");
-
-            if (Width <= 0 || Height <= 0)
-                throw new ArgumentOutOfRangeException(nameof(Width) + " and " + nameof(Height) + " must be > 0!");
-
-            int Bpp = ImageData.Length / Width / Height; // Bytes per pixel
-            int ScanLineSize = Width * Bpp;
-
-            if (ScanLineSize * Height != ImageData.Length)
-                throw new ArgumentOutOfRangeException("ImageData has wrong Length!");
-
-            try
-            {
-                int Count = 0;
-                int Pos = 0;
-                bool IsRLE = false;
-                List<byte> Encoded = new List<byte>();
-                byte[] RowData = new byte[ScanLineSize];
-
-                for (int y = 0; y < Height; y++)
-                {
-                    Pos = 0;
-                    Buffer.BlockCopy(ImageData, y * ScanLineSize, RowData, 0, ScanLineSize);
-
-                    while (Pos < ScanLineSize)
-                    {
-                        if (Pos >= ScanLineSize - Bpp)
-                        {
-                            Encoded.Add(0);
-                            Encoded.AddRange(BitConverterHelper.GetElements(RowData, Pos, Bpp));
-                            Pos += Bpp;
-                            break;
-                        }
-
-                        Count = 0; //1
-                        IsRLE = BitConverterHelper.IsElementsEqual(RowData, Pos, Pos + Bpp, Bpp);
-
-                        for (int i = Pos + Bpp; i < Math.Min(Pos + 128 * Bpp, ScanLineSize) - Bpp; i += Bpp)
-                        {
-                            if (IsRLE ^ BitConverterHelper.IsElementsEqual(RowData, (IsRLE ? Pos : i), i + Bpp, Bpp))
-                            {
-                                //Count--;
-                                break;
-                            }
-                            else
-                                Count++;
-                        }
-
-                        int CountBpp = (Count + 1) * Bpp;
-                        Encoded.Add((byte)(IsRLE ? Count | 128 : Count));
-                        Encoded.AddRange(BitConverterHelper.GetElements(RowData, Pos, (IsRLE ? Bpp : CountBpp)));
-                        Pos += CountBpp;
-                    }
-                }
-
-                return Encoded.ToArray();
-            }
-            catch
-            {
-                return null;
             }
         }
 
@@ -838,5 +274,21 @@
         {
             if (ExtArea is not null) ExtArea.PostageStampImage = null;
         }
+
+        /// <summary>
+        /// Copies the 5 parsed areas from a <see cref="TgaFile"/> produced by <see cref="TgaReader"/>
+        /// into this instance. Used by the <see cref="string"/>/<see cref="byte"/>[]/<see cref="Stream"/>
+        /// loading constructors, which read into a throwaway instance via <see cref="ITgaReader"/> and
+        /// then adopt its areas here.
+        /// </summary>
+        /// <param name="source"><see cref="TgaFile"/> instance freshly populated by <see cref="TgaReader"/>.</param>
+        private void CopyAreasFrom(TgaFile source)
+        {
+            Header = source.Header;
+            ImageOrColorMapArea = source.ImageOrColorMapArea;
+            DevArea = source.DevArea;
+            ExtArea = source.ExtArea;
+            Footer = source.Footer;
+        }
     }
-}
+}
