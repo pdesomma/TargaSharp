@@ -53,9 +53,16 @@
         public ushort Denominator { get; set; }
 
         /// <summary>
-        /// Get aspect ratio = <see cref="Numerator"/> / <see cref="Denominator"/>.
+        /// Gets whether this <see cref="TgaFraction"/> represents an unspecified ratio. Per the
+        /// TGA spec, a zero <see cref="Denominator"/> indicates no ratio is specified.
         /// </summary>
-        public float AspectRatio => Numerator == Denominator ? 1f : Numerator / (float)Denominator;
+        public bool IsUnspecified => Denominator == 0;
+
+        /// <summary>
+        /// Get aspect ratio = <see cref="Numerator"/> / <see cref="Denominator"/>, or null when
+        /// <see cref="IsUnspecified"/> is true (<see cref="Denominator"/> is 0).
+        /// </summary>
+        public float? AspectRatio => IsUnspecified ? null : Numerator == Denominator ? 1f : Numerator / (float)Denominator;
 
 
         /// <summary>
