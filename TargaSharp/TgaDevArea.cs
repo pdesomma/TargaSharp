@@ -77,11 +77,15 @@
         /// </summary>
         /// <returns>Byte array, Len = (NUMBER_OF_TAGS_IN_THE_DIRECTORY * 10) + 2 bytes in size.
         /// The "+ 2" includes the 2 bytes for the number of tags in the directory.</returns>
+        /// <exception cref="InvalidOperationException"><see cref="Entries"/> has more than <see cref="ushort.MaxValue"/>
+        /// items, which is more than the TGA spec's Number of Tags field (a USHORT) can represent.</exception>
         public byte[] ToBytes()
         {
             if (Entries == null) throw new Exception(nameof(Entries) + " = null!");
+            if (Entries.Count > ushort.MaxValue)
+                throw new InvalidOperationException($"{nameof(Entries)}.Count ({Entries.Count}) exceeds the TGA spec limit of {ushort.MaxValue} tags in the Developer Directory.");
 
-            ushort numEntries = (ushort)Math.Min(ushort.MaxValue, Entries.Count);
+            ushort numEntries = (ushort)Entries.Count;
             var devDir = new List<byte>(BitConverter.GetBytes(numEntries));
             for (int i = 0; i < Entries.Count; i++)
             {
