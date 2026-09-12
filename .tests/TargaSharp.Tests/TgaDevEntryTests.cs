@@ -77,4 +77,14 @@ public class TgaDevEntryTests
         Assert.AreEqual(original.Offset, roundTripped.Offset);
         Assert.AreEqual(7, roundTripped.FieldSize);
     }
+
+    [TestMethod]
+    public void ToString_KnownValues_ReturnsExpectedFormat()
+    {
+        var entry = new TgaDevEntry(7, 123, [10, 20, 30, 40]);
+
+        string result = entry.ToString();
+
+        Assert.AreEqual("Tag=7, Offset=123, FieldSize=4", result);
+    }
 }

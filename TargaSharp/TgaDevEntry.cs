@@ -135,6 +135,6 @@
         /// Gets <see cref="TgaDevEntry"/> like string.
         /// </summary>
         /// <returns>String in "Tag={0}, Offset={1}, FieldSize={2}" format.</returns>
-        public override string ToString() => string.Format("{0}={1}, {1}={2}, {3}={4}", nameof(Tag), Tag, nameof(Offset), Offset, nameof(FieldSize), FieldSize);
+        public override string ToString() => $"{nameof(Tag)}={Tag}, {nameof(Offset)}={Offset}, {nameof(FieldSize)}={FieldSize}";
     } 
 }
