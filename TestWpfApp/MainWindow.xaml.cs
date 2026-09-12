@@ -86,7 +86,7 @@ namespace TestWpfApp
             }
 
             richTextBox1.Document.Blocks.Clear();
-            richTextBox1.AppendText(T.GetInfo());
+            richTextBox1.AppendText(TgaJson.Serialize(T));
 
             using (MemoryStream memory = new MemoryStream())
             {
