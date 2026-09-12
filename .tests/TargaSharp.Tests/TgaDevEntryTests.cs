@@ -25,17 +25,25 @@ public class TgaDevEntryTests
     }
 
     [TestMethod]
-    public void Ctor_BytesShorterThanMinimum_ThrowsArgumentOutOfRangeException()
+    public void Ctor_BytesShorterThanSize_ThrowsArgumentOutOfRangeException()
     {
-        byte[] bytes = new byte[5];
+        byte[] bytes = new byte[TgaDevEntry.Size - 1];
 
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaDevEntry(bytes));
     }
 
     [TestMethod]
-    public void Ctor_MinimumLength_ConstructsWithEmptyData()
+    public void Ctor_BytesLongerThanSize_ThrowsArgumentOutOfRangeException()
     {
-        byte[] bytes = new byte[6];
+        byte[] bytes = new byte[TgaDevEntry.Size + 1];
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaDevEntry(bytes));
+    }
+
+    [TestMethod]
+    public void Ctor_ExactSize_ConstructsWithEmptyData()
+    {
+        byte[] bytes = new byte[TgaDevEntry.Size];
 
         var entry = new TgaDevEntry(bytes);
 
@@ -53,5 +61,20 @@ public class TgaDevEntryTests
         var roundTripped = new TgaDevEntry(tag, offset, (byte[])original.Data.Clone());
 
         Assert.IsTrue(roundTripped.Equals(original));
+    }
+
+    [TestMethod]
+    public void Ctor_FromToBytesOfEntryWithData_RoundTripsTagOffsetAndFieldSize()
+    {
+        ushort tag = 5;
+        uint offset = 99;
+        byte[] data = new byte[7];
+
+        var original = new TgaDevEntry(tag, offset, data);
+        var roundTripped = new TgaDevEntry(original.ToBytes());
+
+        Assert.AreEqual(original.Tag, roundTripped.Tag);
+        Assert.AreEqual(original.Offset, roundTripped.Offset);
+        Assert.AreEqual(7, roundTripped.FieldSize);
     }
 }
