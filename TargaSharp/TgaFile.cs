@@ -1,7 +1,6 @@
 ﻿using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace TargaSharp
 {
@@ -161,88 +160,6 @@ namespace TargaSharp
             int NewOrigin = (int)Header.ImageSpec.ImageDescriptor.ImageOrigin;
             NewOrigin = NewOrigin ^ ((Vertical ? 0x20 : 0) | (Horizontal ? 0x10 : 0));
             Header.ImageSpec.ImageDescriptor.ImageOrigin = (TgaImageOrigin)NewOrigin;
-        }
-
-        /// <summary>
-        /// Get information from TGA image.
-        /// </summary>
-        /// <returns>MultiLine string with info fields (one per line).</returns>
-        public string GetInfo()
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("Header:");
-            sb.AppendLine("\tID Length = " + Header.IdLength);
-            sb.AppendLine("\tImage Type = " + Header.ImageType);
-            sb.AppendLine("\tHeader -> ImageSpec:");
-            sb.AppendLine("\t\tImage Width = " + Header.ImageSpec.ImageWidth);
-            sb.AppendLine("\t\tImage Height = " + Header.ImageSpec.ImageHeight);
-            sb.AppendLine("\t\tPixel Depth = " + Header.ImageSpec.PixelDepth);
-            sb.AppendLine("\t\tImage Descriptor (AsByte) = " + Header.ImageSpec.ImageDescriptor.ToByte());
-            sb.AppendLine("\t\tImage Descriptor -> AttributeBits = " + Header.ImageSpec.ImageDescriptor.AlphaChannelBits);
-            sb.AppendLine("\t\tImage Descriptor -> ImageOrigin = " + Header.ImageSpec.ImageDescriptor.ImageOrigin);
-            sb.AppendLine("\t\tX_Origin = " + Header.ImageSpec.XOrigin);
-            sb.AppendLine("\t\tY_Origin = " + Header.ImageSpec.YOrigin);
-            sb.AppendLine("\tColorMap Type = " + Header.ColorMapType);
-            sb.AppendLine("\tHeader -> ColorMapSpec:");
-            sb.AppendLine("\t\tColorMap Entry Size = " + Header.ColorMapSpec.ColorMapEntrySize);
-            sb.AppendLine("\t\tColorMap Length = " + Header.ColorMapSpec.ColorMapLength);
-            sb.AppendLine("\t\tFirstEntry Index = " + Header.ColorMapSpec.FirstEntryIndex);
-
-            sb.AppendLine("\nImage / Color Map Area:");
-            if (Header.IdLength > 0 && ImageOrColorMapArea?.ImageID is not null)
-                sb.AppendLine("\tImage ID = \"" + ImageOrColorMapArea.ImageID.GetString() + "\"");
-            else
-                sb.AppendLine("\tImage ID = null");
-
-            if (ImageOrColorMapArea?.ImageData is not null)
-                sb.AppendLine("\tImage Data Length = " + ImageOrColorMapArea.ImageData.Length);
-            else
-                sb.AppendLine("\tImage Data = null");
-
-            if (ImageOrColorMapArea?.ColorMapData != null)
-                sb.AppendLine("\tColorMap Data Length = " + ImageOrColorMapArea.ColorMapData.Length);
-            else
-                sb.AppendLine("\tColorMap Data = null");
-
-            sb.AppendLine("\nDevelopers Area:\tCount = " + DevArea?.Count ?? "null");
-
-            sb.AppendLine("\nExtension Area:");
-            if (ExtArea is not null)
-            {
-                sb.AppendLine("\tExtension Size = " + ExtArea.ExtensionSize);
-                sb.AppendLine("\tAuthor Name = \"" + ExtArea.AuthorName.GetString() + "\"");
-                sb.AppendLine("\tAuthor Comments = \"" + ExtArea.AuthorComments.GetString() + "\"");
-                sb.AppendLine("\tDate / Time Stamp = " + ExtArea.DateTimeStamp);
-                sb.AppendLine("\tJob Name / ID = \"" + ExtArea.JobNameOrID.GetString() + "\"");
-                sb.AppendLine("\tJob Time = " + ExtArea.JobTime);
-                sb.AppendLine("\tSoftware ID = \"" + ExtArea.SoftwareID.GetString() + "\"");
-                sb.AppendLine("\tSoftware Version = \"" + ExtArea.SoftVersion + "\"");
-                sb.AppendLine("\tKey Color = " + ExtArea.KeyColor);
-                sb.AppendLine("\tPixel Aspect Ratio = " + ExtArea.PixelAspectRatio);
-                sb.AppendLine("\tGamma Value = " + ExtArea.GammaValue);
-                sb.AppendLine("\tColor Correction Table Offset = " + ExtArea.ColorCorrectionTableOffset);
-                sb.AppendLine("\tPostage Stamp Offset = " + ExtArea.PostageStampOffset);
-                sb.AppendLine("\tScan Line Offset = " + ExtArea.ScanLineOffset);
-                sb.AppendLine("\tAttributes Type = " + ExtArea.AttributesType);
-                sb.AppendLine("\tScan Line Table = " + ExtArea.ScanLineTable?.Length ?? "null");
-                sb.AppendLine("\tPostage Stamp Image = " + ExtArea.PostageStampImage?.ToString() ?? "null");
-                sb.AppendLine("\tColor Correction Table = " + (ExtArea.ColorCorrectionTable != null));
-            }
-            else
-                sb.AppendLine("\tExtArea = null");
-
-            sb.AppendLine("\nFooter:");
-            if (Footer is not null)
-            {
-                sb.AppendLine("\tExtension Area Offset = " + Footer.ExtensionAreaOffset);
-                sb.AppendLine("\tDeveloper Directory Offset = " + Footer.DeveloperDirectoryOffset);
-                sb.AppendLine("\tSignature (Full) = \"" + Footer.Signature.ToString() +
-                    Footer.ReservedCharacter.ToString() + Footer.BinaryZeroStringTerminator.ToString() + "\"");
-            }
-            else
-                sb.AppendLine("\tFooter = null");
-
-            return sb.ToString();
         }
 
         /// <summary>
