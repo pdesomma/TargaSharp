@@ -1,15 +1,18 @@
-﻿using System.Reflection;
+﻿using System.Drawing;
+using System.Runtime.Versioning;
 using TargaSharp;
+using TargaSharp.Drawing;
 
-namespace TargaSharp.Tests;
+namespace TargaSharp.Drawing.Tests;
 
 /// <summary>
 /// Smoke tests that load every real-world .tga fixture shipped with <c>TestWpfApp\Examples\</c> and
-/// round-trip it through <see cref="TgaFile.Save(Stream)"/> / <see cref="TgaFile(Stream)"/> to make sure
-/// the header survives a save/reload cycle unchanged. See <c>TargaSharp.Drawing.Tests</c>' own
-/// <c>FixtureRoundTripTests</c> for the equivalent <see cref="System.Drawing.Bitmap"/> conversion assertions.
+/// convert it to a <see cref="Bitmap"/>, asserting the bitmap dimensions match the loaded
+/// <see cref="TgaFile"/>. See <c>TargaSharp.Tests</c>' own <c>FixtureRoundTripTests</c> for the
+/// Bitmap-free load/save/reload/Header-equals round trip.
 /// </summary>
 [TestClass]
+[SupportedOSPlatform("windows")]
 public class FixtureRoundTripTests
 {
     /// <summary>
@@ -67,30 +70,28 @@ public class FixtureRoundTripTests
     /// <param name="methodInfo">The test method being invoked.</param>
     /// <param name="data">The data row for this case (the fixture file path).</param>
     /// <returns>A human-readable test case name.</returns>
-    public static string GetFixtureDisplayName(MethodInfo methodInfo, object[] data) =>
+    public static string GetFixtureDisplayName(System.Reflection.MethodInfo methodInfo, object[] data) =>
         $"{methodInfo.Name} ({Path.GetFileName((string)data[0])})";
 
     /// <summary>
-    /// Loads a real-world .tga fixture and round-trips it through a <see cref="MemoryStream"/>
-    /// save/reload, asserting the header survives unchanged.
+    /// Loads a real-world .tga fixture and converts it to a bitmap, asserting the bitmap dimensions
+    /// match the loaded <see cref="TgaFile"/>.
     /// </summary>
     /// <param name="filePath">Absolute path to the .tga fixture under test.</param>
     [TestMethod]
     [DynamicData(nameof(GetFixtureFiles), DynamicDataDisplayName = nameof(GetFixtureDisplayName))]
-    public void LoadAndRoundTrip_RealWorldFixture_ProducesMatchingHeader(string filePath)
+    public void LoadToBitmap_RealWorldFixture_ProducesValidBitmap(string filePath)
     {
         // Read the fixture bytes with a shared-read handle (File.ReadAllBytes) rather than
         // TgaFile(string), whose FileStream defaults to non-shared write access: with the sibling
-        // TargaSharp.Drawing.Tests fixture tests reading these same files from a separate test host
-        // process, that non-shared handle intermittently collided with "file in use" IOExceptions.
+        // TargaSharp.Tests fixture tests reading these same files from a separate test host process,
+        // that non-shared handle intermittently collided with "file in use" IOExceptions.
         var tga = new TgaFile(File.ReadAllBytes(filePath));
 
-        using var stream = new MemoryStream();
-        Assert.IsTrue(tga.Save(stream));
+        var bitmap = tga.ToBitmap();
 
-        stream.Position = 0;
-        var reloaded = new TgaFile(stream);
-
-        Assert.AreEqual(tga.Header, reloaded.Header);
+        Assert.IsNotNull(bitmap);
+        Assert.AreEqual(tga.Width, (ushort)bitmap.Width);
+        Assert.AreEqual(tga.Height, (ushort)bitmap.Height);
     }
 }

@@ -1,6 +1,4 @@
-﻿using System.Drawing;
-
-namespace TargaSharp
+﻿namespace TargaSharp
 {
     public sealed record TgaColorKey : ICloneable
     {
@@ -40,24 +38,18 @@ namespace TargaSharp
             ArgumentNullException.ThrowIfNull(bytes);
             if (bytes.Length != Size)
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
-            Color color = Color.FromArgb(System.BitConverter.ToInt32(bytes, 0));
-            A = color.A;
-            R = color.R;
-            G = color.G;
-            B = color.B;
+            int argb = System.BitConverter.ToInt32(bytes, 0);
+            A = (byte)((argb >> 24) & 0xFF);
+            R = (byte)((argb >> 16) & 0xFF);
+            G = (byte)((argb >> 8) & 0xFF);
+            B = (byte)(argb & 0xFF);
         }
 
         /// <summary>
         /// Make <see cref="TgaColorKey"/> from <see cref="int"/>.
         /// </summary>
         /// <param name="ARGB">32bit ARGB integer color value.</param>
-        public TgaColorKey(int ARGB) : this(Color.FromArgb(ARGB)) { }
-
-        /// <summary>
-        /// Make <see cref="TgaColorKey"/> from <see cref="Color"/>.
-        /// </summary>
-        /// <param name="color">GDI+ <see cref="Color"/> value.</param>
-        public TgaColorKey(Color color) : this(color.A, color.R, color.G, color.B) { }
+        public TgaColorKey(int ARGB) : this((byte)((ARGB >> 24) & 0xFF), (byte)((ARGB >> 16) & 0xFF), (byte)((ARGB >> 8) & 0xFF), (byte)(ARGB & 0xFF)) { }
 
 
         /// <summary>
@@ -94,16 +86,10 @@ namespace TargaSharp
         public byte[] ToBytes() => System.BitConverter.GetBytes(ToInt());
 
         /// <summary>
-        /// Gets <see cref="TgaColorKey"/> like GDI+ <see cref="Color"/>.
-        /// </summary>
-        /// <returns><see cref="Color"/> value of <see cref="TgaColorKey"/>.</returns>
-        public Color ToColor() => Color.FromArgb(A, R, G, B);
-
-        /// <summary>
         /// Gets <see cref="TgaColorKey"/> like ARGB <see cref="int"/>.
         /// </summary>
         /// <returns>ARGB <see cref="int"/> value of <see cref="TgaColorKey"/>.</returns>
-        public int ToInt() => ToColor().ToArgb();
+        public int ToInt() => (A << 24) | (R << 16) | (G << 8) | B;
 
         /// <summary>
         /// Gets <see cref="TgaColorKey"/> like string.

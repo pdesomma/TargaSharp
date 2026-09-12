@@ -5,10 +5,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <SupportedOSPlatform>windows</SupportedOSPlatform>
     <Version>0.1.0</Version>
-    <Title>TargaSharp</Title>
+    <Title>TargaSharp.Drawing</Title>
     <Authors>Patrick DeSomma</Authors>
-    <Description>.NET 6/8/10 library for reading and writing .tga image files.</Description>
+    <Description>System.Drawing (GDI+) bridge for TargaSharp: Bitmap ↔ TGA conversion.</Description>
     <PackageProjectUrl>https://github.com/pdesomma/TargaSharp</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/pdesomma/TargaSharp</RepositoryUrl>
@@ -18,6 +19,22 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="System.Drawing.Common" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TargaSharp\TargaSharp.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Include="..\README.md">
