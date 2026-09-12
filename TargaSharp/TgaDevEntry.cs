@@ -33,19 +33,25 @@
         }
 
         /// <summary>
-        /// Make <see cref="TgaDevEntry"/> from bytes.
+        /// Make <see cref="TgaDevEntry"/> from bytes. This mirrors the layout written by
+        /// <see cref="ToBytes"/> - [Tag:2][Offset:4][FieldSize:4] - and NOT the field's actual
+        /// payload, which is not part of the directory entry itself and is loaded separately
+        /// (e.g. by <see cref="TgaFile"/>, which reads <see cref="FieldSize"/> bytes from
+        /// <see cref="Offset"/> in the file). <see cref="Data"/> is therefore initialized to a
+        /// zero-filled placeholder of length <see cref="FieldSize"/> so the byte layout
+        /// round-trips through <see cref="ToBytes"/>.
         /// </summary>
-        /// <param name="Bytes">Array of bytes(byte[6] or bigger, if <see cref="Data"/> exist).</param>
+        /// <param name="Bytes">Array of bytes, must be exactly <see cref="Size"/> (10) bytes long.</param>
         public TgaDevEntry(byte[] Bytes)
         {
             ArgumentNullException.ThrowIfNull(Bytes);
-            if (Bytes.Length < 6)
-                throw new ArgumentOutOfRangeException(nameof(Bytes), Bytes.Length, "Length must be >= 6.");
+            if (Bytes.Length != Size)
+                throw new ArgumentOutOfRangeException(nameof(Bytes), Bytes.Length, $"Length must be {Size}.");
 
             Tag = BitConverter.ToUInt16(Bytes, 0);
             Offset = BitConverter.ToUInt32(Bytes, 2);
-
-            if (Bytes.Length > 6) Data = BitConverterHelper.GetElements(Bytes, 6, Bytes.Length - 6);
+            int fieldSize = BitConverter.ToInt32(Bytes, 6);
+            Data = new byte[fieldSize];
         }
 
 
