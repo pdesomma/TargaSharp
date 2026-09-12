@@ -114,7 +114,6 @@ namespace TargaSharp
         public TgaFile(Bitmap bmp, bool UseRLE = false, bool NewFormat = true, bool ColorMap2BytesEntry = false) => LoadFunc(bmp, UseRLE, NewFormat, ColorMap2BytesEntry);
 
 
-
         /// <summary>
         /// Gets or Sets Image Height (see <see cref="Header.ImageSpec.ImageHeight"/>).
         /// </summary>
@@ -123,16 +122,6 @@ namespace TargaSharp
             get { return Header.ImageSpec.ImageHeight; }
             set { Header.ImageSpec.ImageHeight = value; }
         }
-
-        /// <summary>
-        /// Gets or Sets Image Width (see <see cref="Header.ImageSpec.ImageWidth"/>).
-        /// </summary>
-        public ushort Width
-        {
-            get { return Header.ImageSpec.ImageWidth; }
-            set { Header.ImageSpec.ImageWidth = value; }
-        }
-
         /// <summary>
         /// Gets or Sets <see cref="TgaFile"/> image Size.
         /// </summary>
@@ -145,6 +134,15 @@ namespace TargaSharp
                 Header.ImageSpec.ImageHeight = (ushort)value.Height;
             }
         }
+        /// <summary>
+        /// Gets or Sets Image Width (see <see cref="Header.ImageSpec.ImageWidth"/>).
+        /// </summary>
+        public ushort Width
+        {
+            get { return Header.ImageSpec.ImageWidth; }
+            set { Header.ImageSpec.ImageWidth = value; }
+        }
+
 
         /// <summary>
         /// Make full independed copy of <see cref="TgaFile"/>.
@@ -171,85 +169,80 @@ namespace TargaSharp
         /// <returns>MultiLine string with info fields (one per line).</returns>
         public string GetInfo()
         {
-            StringBuilder SB = new StringBuilder();
+            var sb = new StringBuilder();
+            sb.AppendLine("Header:");
+            sb.AppendLine("\tID Length = " + Header.IdLength);
+            sb.AppendLine("\tImage Type = " + Header.ImageType);
+            sb.AppendLine("\tHeader -> ImageSpec:");
+            sb.AppendLine("\t\tImage Width = " + Header.ImageSpec.ImageWidth);
+            sb.AppendLine("\t\tImage Height = " + Header.ImageSpec.ImageHeight);
+            sb.AppendLine("\t\tPixel Depth = " + Header.ImageSpec.PixelDepth);
+            sb.AppendLine("\t\tImage Descriptor (AsByte) = " + Header.ImageSpec.ImageDescriptor.ToByte());
+            sb.AppendLine("\t\tImage Descriptor -> AttributeBits = " + Header.ImageSpec.ImageDescriptor.AlphaChannelBits);
+            sb.AppendLine("\t\tImage Descriptor -> ImageOrigin = " + Header.ImageSpec.ImageDescriptor.ImageOrigin);
+            sb.AppendLine("\t\tX_Origin = " + Header.ImageSpec.XOrigin);
+            sb.AppendLine("\t\tY_Origin = " + Header.ImageSpec.YOrigin);
+            sb.AppendLine("\tColorMap Type = " + Header.ColorMapType);
+            sb.AppendLine("\tHeader -> ColorMapSpec:");
+            sb.AppendLine("\t\tColorMap Entry Size = " + Header.ColorMapSpec.ColorMapEntrySize);
+            sb.AppendLine("\t\tColorMap Length = " + Header.ColorMapSpec.ColorMapLength);
+            sb.AppendLine("\t\tFirstEntry Index = " + Header.ColorMapSpec.FirstEntryIndex);
 
-            SB.AppendLine("Header:");
-            SB.AppendLine("\tID Length = " + Header.IdLength);
-            SB.AppendLine("\tImage Type = " + Header.ImageType);
-            SB.AppendLine("\tHeader -> ImageSpec:");
-            SB.AppendLine("\t\tImage Width = " + Header.ImageSpec.ImageWidth);
-            SB.AppendLine("\t\tImage Height = " + Header.ImageSpec.ImageHeight);
-            SB.AppendLine("\t\tPixel Depth = " + Header.ImageSpec.PixelDepth);
-            SB.AppendLine("\t\tImage Descriptor (AsByte) = " + Header.ImageSpec.ImageDescriptor.ToByte());
-            SB.AppendLine("\t\tImage Descriptor -> AttributeBits = " + Header.ImageSpec.ImageDescriptor.AlphaChannelBits);
-            SB.AppendLine("\t\tImage Descriptor -> ImageOrigin = " + Header.ImageSpec.ImageDescriptor.ImageOrigin);
-            SB.AppendLine("\t\tX_Origin = " + Header.ImageSpec.XOrigin);
-            SB.AppendLine("\t\tY_Origin = " + Header.ImageSpec.YOrigin);
-            SB.AppendLine("\tColorMap Type = " + Header.ColorMapType);
-            SB.AppendLine("\tHeader -> ColorMapSpec:");
-            SB.AppendLine("\t\tColorMap Entry Size = " + Header.ColorMapSpec.ColorMapEntrySize);
-            SB.AppendLine("\t\tColorMap Length = " + Header.ColorMapSpec.ColorMapLength);
-            SB.AppendLine("\t\tFirstEntry Index = " + Header.ColorMapSpec.FirstEntryIndex);
-
-            SB.AppendLine("\nImage / Color Map Area:");
+            sb.AppendLine("\nImage / Color Map Area:");
             if (Header.IdLength > 0 && ImageOrColorMapArea?.ImageID is not null)
-                SB.AppendLine("\tImage ID = \"" + ImageOrColorMapArea.ImageID.GetString() + "\"");
+                sb.AppendLine("\tImage ID = \"" + ImageOrColorMapArea.ImageID.GetString() + "\"");
             else
-                SB.AppendLine("\tImage ID = null");
+                sb.AppendLine("\tImage ID = null");
 
             if (ImageOrColorMapArea?.ImageData is not null)
-                SB.AppendLine("\tImage Data Length = " + ImageOrColorMapArea.ImageData.Length);
+                sb.AppendLine("\tImage Data Length = " + ImageOrColorMapArea.ImageData.Length);
             else
-                SB.AppendLine("\tImage Data = null");
+                sb.AppendLine("\tImage Data = null");
 
             if (ImageOrColorMapArea?.ColorMapData != null)
-                SB.AppendLine("\tColorMap Data Length = " + ImageOrColorMapArea.ColorMapData.Length);
+                sb.AppendLine("\tColorMap Data Length = " + ImageOrColorMapArea.ColorMapData.Length);
             else
-                SB.AppendLine("\tColorMap Data = null");
+                sb.AppendLine("\tColorMap Data = null");
 
-            SB.AppendLine("\nDevelopers Area:");
-            if (DevArea is not null)
-                SB.AppendLine("\tCount = " + DevArea.Count);
-            else
-                SB.AppendLine("\tDevArea = null");
+            sb.AppendLine("\nDevelopers Area:\tCount = " + DevArea?.Count ?? "null");
 
-            SB.AppendLine("\nExtension Area:");
+            sb.AppendLine("\nExtension Area:");
             if (ExtArea is not null)
             {
-                SB.AppendLine("\tExtension Size = " + ExtArea.ExtensionSize);
-                SB.AppendLine("\tAuthor Name = \"" + ExtArea.AuthorName.GetString() + "\"");
-                SB.AppendLine("\tAuthor Comments = \"" + ExtArea.AuthorComments.GetString() + "\"");
-                SB.AppendLine("\tDate / Time Stamp = " + ExtArea.DateTimeStamp);
-                SB.AppendLine("\tJob Name / ID = \"" + ExtArea.JobNameOrID.GetString() + "\"");
-                SB.AppendLine("\tJob Time = " + ExtArea.JobTime);
-                SB.AppendLine("\tSoftware ID = \"" + ExtArea.SoftwareID.GetString() + "\"");
-                SB.AppendLine("\tSoftware Version = \"" + ExtArea.SoftVersion + "\"");
-                SB.AppendLine("\tKey Color = " + ExtArea.KeyColor);
-                SB.AppendLine("\tPixel Aspect Ratio = " + ExtArea.PixelAspectRatio);
-                SB.AppendLine("\tGamma Value = " + ExtArea.GammaValue);
-                SB.AppendLine("\tColor Correction Table Offset = " + ExtArea.ColorCorrectionTableOffset);
-                SB.AppendLine("\tPostage Stamp Offset = " + ExtArea.PostageStampOffset);
-                SB.AppendLine("\tScan Line Offset = " + ExtArea.ScanLineOffset);
-                SB.AppendLine("\tAttributes Type = " + ExtArea.AttributesType);
-                SB.AppendLine("\tScan Line Table = " + ExtArea.ScanLineTable?.Length ?? "null");
-                SB.AppendLine("\tPostage Stamp Image = " + ExtArea.PostageStampImage?.ToString() ?? "null");
-                SB.AppendLine("\tColor Correction Table = " + (ExtArea.ColorCorrectionTable != null));
+                sb.AppendLine("\tExtension Size = " + ExtArea.ExtensionSize);
+                sb.AppendLine("\tAuthor Name = \"" + ExtArea.AuthorName.GetString() + "\"");
+                sb.AppendLine("\tAuthor Comments = \"" + ExtArea.AuthorComments.GetString() + "\"");
+                sb.AppendLine("\tDate / Time Stamp = " + ExtArea.DateTimeStamp);
+                sb.AppendLine("\tJob Name / ID = \"" + ExtArea.JobNameOrID.GetString() + "\"");
+                sb.AppendLine("\tJob Time = " + ExtArea.JobTime);
+                sb.AppendLine("\tSoftware ID = \"" + ExtArea.SoftwareID.GetString() + "\"");
+                sb.AppendLine("\tSoftware Version = \"" + ExtArea.SoftVersion + "\"");
+                sb.AppendLine("\tKey Color = " + ExtArea.KeyColor);
+                sb.AppendLine("\tPixel Aspect Ratio = " + ExtArea.PixelAspectRatio);
+                sb.AppendLine("\tGamma Value = " + ExtArea.GammaValue);
+                sb.AppendLine("\tColor Correction Table Offset = " + ExtArea.ColorCorrectionTableOffset);
+                sb.AppendLine("\tPostage Stamp Offset = " + ExtArea.PostageStampOffset);
+                sb.AppendLine("\tScan Line Offset = " + ExtArea.ScanLineOffset);
+                sb.AppendLine("\tAttributes Type = " + ExtArea.AttributesType);
+                sb.AppendLine("\tScan Line Table = " + ExtArea.ScanLineTable?.Length ?? "null");
+                sb.AppendLine("\tPostage Stamp Image = " + ExtArea.PostageStampImage?.ToString() ?? "null");
+                sb.AppendLine("\tColor Correction Table = " + (ExtArea.ColorCorrectionTable != null));
             }
             else
-                SB.AppendLine("\tExtArea = null");
+                sb.AppendLine("\tExtArea = null");
 
-            SB.AppendLine("\nFooter:");
+            sb.AppendLine("\nFooter:");
             if (Footer is not null)
             {
-                SB.AppendLine("\tExtension Area Offset = " + Footer.ExtensionAreaOffset);
-                SB.AppendLine("\tDeveloper Directory Offset = " + Footer.DeveloperDirectoryOffset);
-                SB.AppendLine("\tSignature (Full) = \"" + Footer.Signature.ToString() +
+                sb.AppendLine("\tExtension Area Offset = " + Footer.ExtensionAreaOffset);
+                sb.AppendLine("\tDeveloper Directory Offset = " + Footer.DeveloperDirectoryOffset);
+                sb.AppendLine("\tSignature (Full) = \"" + Footer.Signature.ToString() +
                     Footer.ReservedCharacter.ToString() + Footer.BinaryZeroStringTerminator.ToString() + "\"");
             }
             else
-                SB.AppendLine("\tFooter = null");
+                sb.AppendLine("\tFooter = null");
 
-            return SB.ToString();
+            return sb.ToString();
         }
 
         /// <summary>
