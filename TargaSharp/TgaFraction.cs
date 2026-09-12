@@ -1,0 +1,95 @@
+﻿namespace TargaSharp
+{
+    public class TgaFraction : ICloneable
+    {
+        /// <summary>
+        /// Gets TGA Field size in bytes.
+        /// </summary>
+        public const int Size = 4;
+
+
+        /// <summary>
+        /// Make <see cref="TgaFraction"/> from <see cref="Numerator"/> and <see cref="Denominator"/>.
+        /// </summary>
+        /// <param name="Numerator">Numerator value.</param>
+        /// <param name="Denominator">Denominator value.</param>
+        public TgaFraction(ushort numerator = 0, ushort denominator = 0)
+        {
+            Numerator = numerator;
+            Denominator = denominator;
+        }
+
+        /// <summary>
+        /// Make <see cref="TgaFraction"/> from bytes.
+        /// </summary>
+        /// <param name="bytes">Array of bytes(byte[4]).</param>
+        public TgaFraction(byte[] bytes)
+        {
+            ArgumentNullException.ThrowIfNull(bytes);
+            if (bytes.Length != Size)
+                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            Numerator = BitConverter.ToUInt16(bytes, 0);
+            Denominator = BitConverter.ToUInt16(bytes, 2);
+        }
+
+
+        public static bool operator ==(TgaFraction item1, TgaFraction item2)
+        {
+            if(item1 is null) return item2 is null;
+            if (item2 is null) return item1 is null;
+            return item1.Equals(item2);
+        }
+        public static bool operator !=(TgaFraction item1, TgaFraction item2) => !(item1 == item2);
+
+
+        /// <summary>
+        /// Gets or sets numerator value.
+        /// </summary>
+        public ushort Numerator { get; set; }
+
+        /// <summary>
+        /// Gets or sets denominator value.
+        /// </summary>
+        public ushort Denominator { get; set; }
+
+        /// <summary>
+        /// Get aspect ratio = <see cref="Numerator"/> / <see cref="Denominator"/>.
+        /// </summary>
+        public float AspectRatio => Numerator == Denominator ? 1f : Numerator / (float)Denominator;
+
+
+        /// <summary>
+        /// Gets Empty <see cref="TgaFraction"/>, all values are 0.
+        /// </summary>
+        public static readonly TgaFraction Empty = new TgaFraction();
+
+        /// <summary>
+        /// Gets One <see cref="TgaFraction"/>, all values are 1 (ones, 1 / 1 = 1).
+        /// </summary>
+        public static readonly TgaFraction One = new TgaFraction(1, 1);
+
+        /// <summary>
+        /// Make full independed copy of <see cref="TgaFraction"/>.
+        /// </summary>
+        /// <returns>Copy of <see cref="TgaFraction"/></returns>
+        public TgaFraction Clone() => new TgaFraction(Numerator, Denominator);
+        object ICloneable.Clone() => Clone();
+
+        public override bool Equals(object? obj) => obj is TgaFraction ? Equals((TgaFraction)obj) : false;
+        public bool Equals(TgaFraction item) => Numerator == item.Numerator && Denominator == item.Denominator;
+
+        public override int GetHashCode() => (Numerator << 16 | Denominator).GetHashCode();
+
+        /// <summary>
+        /// Convert <see cref="TgaFraction"/> to byte array.
+        /// </summary>
+        /// <returns>Byte array with length = 4.</returns>
+        public byte[] ToBytes() => BitConverterHelper.ToBytes(Numerator, Denominator);
+
+        /// <summary>
+        /// Gets <see cref="TgaFraction"/> like string.
+        /// </summary>
+        /// <returns>String in "Numerator=1, Denominator=2" format.</returns>
+        public override string ToString() => string.Format("{0}={1}, {2}={3}", nameof(Numerator), Numerator, nameof(Denominator), Denominator);        
+    }
+}

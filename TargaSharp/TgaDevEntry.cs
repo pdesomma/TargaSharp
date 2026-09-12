@@ -1,0 +1,134 @@
+﻿namespace TargaSharp
+{
+    public class TgaDevEntry : ICloneable
+    {
+        /// <summary>
+        /// Make empty <see cref="TgaDevEntry"/>.
+        /// </summary>
+        public TgaDevEntry() { }
+
+        /// <summary>
+        /// Make <see cref="TgaDevEntry"/> from other <see cref="TgaDevEntry"/>.
+        /// </summary>
+        /// <param name="entry">Some <see cref="TgaDevEntry"/> variable.</param>
+        public TgaDevEntry(TgaDevEntry entry)
+        {
+            if (entry is null) throw new ArgumentNullException(nameof(entry));
+            Tag = entry.Tag;
+            Offset = entry.Offset;
+            Data = BitConverterHelper.ToBytes(entry.Data ?? Array.Empty<byte>());
+        }
+
+        /// <summary>
+        /// Make <see cref="TgaDevEntry"/> from <see cref="Tag"/>, <see cref="Offset"/> and <see cref="FieldSize"/>.
+        /// </summary>
+        /// <param name="tag">TAG ID (0 - 65535). See <see cref="Tag"/>.</param>
+        /// <param name="offset">TAG file offset in bytes. See <see cref="Offset"/>.</param>
+        /// <param name="data">This is DevEntry Field Data. See <see cref="Data"/>.</param>
+        public TgaDevEntry(ushort tag, uint offset, byte[] data = null)
+        {
+            Tag = tag;
+            Offset = offset;
+            Data = data;
+        }
+
+        /// <summary>
+        /// Make <see cref="TgaDevEntry"/> from bytes.
+        /// </summary>
+        /// <param name="Bytes">Array of bytes(byte[6] or bigger, if <see cref="Data"/> exist).</param>
+        public TgaDevEntry(byte[] Bytes)
+        {
+            ArgumentNullException.ThrowIfNull(Bytes);
+            if (Bytes.Length < 6)
+                throw new ArgumentOutOfRangeException(nameof(Bytes), Bytes.Length, "Length must be >= 6.");
+
+            Tag = BitConverter.ToUInt16(Bytes, 0);
+            Offset = BitConverter.ToUInt32(Bytes, 2);
+
+            if (Bytes.Length > 6) Data = BitConverterHelper.GetElements(Bytes, 6, Bytes.Length - 6);
+        }
+
+
+
+        public static bool operator == (TgaDevEntry item1, TgaDevEntry item2)
+        {
+            if (item1 is null) return item2 is null;
+            if (item2 is null) return item1 is null;
+            return item1.Equals(item2);
+        }
+        public static bool operator !=(TgaDevEntry item1, TgaDevEntry item2) => !(item1 == item2);
+
+
+
+
+        /// <summary>
+        /// Field DATA.
+        /// Although the size and format of the actual Developer Area fields are totally up to the developer,
+        /// please define your formats to address future considerations you might have concerning your fields.
+        /// This means that if you anticipate changing a field, build flexibility into the format to make these
+        /// changes easy on other developers.Major changes to an existing TAG’s definition should never happen.
+        /// </summary>
+        public byte[] Data { get; set; } = Array.Empty<byte>();
+
+        /// <summary>
+        /// The FIELD SIZE is a number of bytes in the field. Same as <see cref="Data"/>.Length.
+        /// </summary>
+        public int FieldSize => Data.Length;
+
+        /// <summary>
+        /// This OFFSET is a number of bytes from the beginning of the file to the start of the field
+        /// referenced by the tag.
+        /// </summary>
+        public uint Offset { get; set; }
+
+        /// <summary>
+        /// Each TAG is a value in the range of 0 to 65535. Values from 0 - 32767 are available for developer use,
+        /// while values from 32768 - 65535 are reserved for Truevision.
+        /// </summary>
+        public ushort Tag { get; set; }
+
+        /// <summary>
+        /// Gets TGA <see cref="TgaDevEntry"/> size in bytes (Always constant and equal 10!).
+        /// It is not <see cref="FieldSize"/>! It is just size of entry sizeof(ushort + uint + uint).
+        /// </summary>
+        public const int Size = 10;
+
+
+
+        /// <summary>
+        /// Make full independed copy of <see cref="TgaDevEntry"/>.
+        /// </summary>
+        /// <returns>Copy of <see cref="TgaDevEntry"/></returns>
+        public TgaDevEntry Clone() => new TgaDevEntry(this);
+        object ICloneable.Clone() => Clone();
+
+        public override bool Equals(object? obj) => obj is TgaDevEntry ? Equals((TgaDevEntry)obj) : false;
+        public bool Equals(TgaDevEntry item) => Tag == item.Tag && Offset == item.Offset && BitConverterHelper.IsArraysEqual(Data, item.Data);
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 23 + Tag.GetHashCode();
+                hash = hash * 23 + Offset.GetHashCode();
+                if (Data is not null)
+                    for (int i = 0; i < Data.Length; i++)
+                        hash = hash * 23 + Data[i].GetHashCode();
+                return hash;
+            }
+        }
+
+        /// <summary>
+        /// Convert <see cref="TgaDevEntry"/> to byte array. (Not include <see cref="Data"/>!).
+        /// </summary>
+        /// <returns>Byte array with length = 10.</returns>
+        public byte[] ToBytes() => BitConverterHelper.ToBytes(Tag, Offset, Data?.Length ?? 0);
+
+        /// <summary>
+        /// Gets <see cref="TgaDevEntry"/> like string.
+        /// </summary>
+        /// <returns>String in "Tag={0}, Offset={1}, FieldSize={2}" format.</returns>
+        public override string ToString() => string.Format("{0}={1}, {1}={2}, {3}={4}", nameof(Tag), Tag, nameof(Offset), Offset, nameof(FieldSize), FieldSize);
+    } 
+}

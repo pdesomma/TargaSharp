@@ -1,0 +1,57 @@
+﻿using TargaSharp;
+
+namespace TargaSharp.Tests;
+
+/// <summary>
+/// Tests for <see cref="TgaDevEntry"/>.
+/// </summary>
+[TestClass]
+public class TgaDevEntryTests
+{
+    [TestMethod]
+    public void DefaultCtor_NewInstance_DataIsEmptyAndFieldSizeIsZero()
+    {
+        var entry = new TgaDevEntry();
+
+        Assert.IsNotNull(entry.Data);
+        Assert.AreEqual(0, entry.Data.Length);
+        Assert.AreEqual(0, entry.FieldSize);
+    }
+
+    [TestMethod]
+    public void Ctor_NullBytes_ThrowsArgumentNullException()
+    {
+        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaDevEntry((byte[])null!));
+    }
+
+    [TestMethod]
+    public void Ctor_BytesShorterThanMinimum_ThrowsArgumentOutOfRangeException()
+    {
+        byte[] bytes = new byte[5];
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaDevEntry(bytes));
+    }
+
+    [TestMethod]
+    public void Ctor_MinimumLength_ConstructsWithEmptyData()
+    {
+        byte[] bytes = new byte[6];
+
+        var entry = new TgaDevEntry(bytes);
+
+        Assert.AreEqual(0, entry.FieldSize);
+    }
+
+    [TestMethod]
+    public void Ctor_LongerThanMinimum_RoundTripsThroughDataAndEquals()
+    {
+        ushort tag = 7;
+        uint offset = 123;
+        byte[] data = [10, 20, 30, 40];
+
+        var original = new TgaDevEntry(tag, offset, data);
+        var roundTripped = new TgaDevEntry(tag, offset, (byte[])original.Data.Clone());
+
+        Assert.IsTrue(roundTripped.Equals(original));
+    }
+}
