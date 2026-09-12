@@ -8,24 +8,20 @@ namespace TargaSharp
         /// </summary>
         public const int Size = 6;
 
-
         /// <summary>
         /// Make empty <see cref="TgaTime"/>.
         /// </summary>
         public TgaTime() { }
-
         /// <summary>
         /// Make <see cref="TgaTime"/> from <see cref="TimeSpan"/>.
         /// </summary>
         /// <param name="time">Some <see cref="TimeSpan"/> variable.</param>
         public TgaTime(TimeSpan time) : this((ushort)time.TotalHours, (ushort)time.Minutes, (ushort)time.Seconds) { }
-
         /// <summary>
         /// Make <see cref="TgaTime"/> from <see cref="TimeSpan"/>.
         /// </summary>
         /// <param name="time">Some <see cref="TimeSpan"/> variable.</param>
         public TgaTime(int hours, int minutes, int seconds) : this((ushort)hours, (ushort)minutes, (ushort)seconds) { }
-
         /// <summary>
         /// Make <see cref="TgaTime"/> from ushort values.
         /// </summary>
@@ -38,7 +34,6 @@ namespace TargaSharp
             Minutes = minutes;
             Seconds = seconds;
         }
-
         /// <summary>
         /// Make <see cref="TgaTime"/> from bytes.
         /// </summary>
@@ -46,8 +41,7 @@ namespace TargaSharp
         public TgaTime(byte[] bytes)
         {
             ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            if (bytes.Length != Size) throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
 
             Hours = BitConverter.ToUInt16(bytes, 0);
             Minutes = BitConverter.ToUInt16(bytes, 2);
@@ -69,12 +63,10 @@ namespace TargaSharp
         /// Gets or Sets hour (0 - 65535).
         /// </summary>
         public ushort Hours { get; set; }
-
         /// <summary>
         /// Gets or Sets minute (0 - 59).
         /// </summary>
         public ushort Minutes { get; set; } 
-
         /// <summary>
         /// Gets or Sets second (0 - 59).
         /// </summary>
@@ -107,13 +99,11 @@ namespace TargaSharp
         /// </summary>
         /// <returns>Byte array with length = 6.</returns>
         public byte[] ToBytes() => BitConverterHelper.ToBytes(Hours, Minutes, Seconds);
-        
         /// <summary>
         /// Gets <see cref="TgaTime"/> like string.
         /// </summary>
         /// <returns>String in "H:M:S" format.</returns>
         public override string ToString() => string.Format("{0}:{1}:{2}", Hours, Minutes, Seconds);
-
         /// <summary>
         /// Gets <see cref="TgaTime"/> like <see cref="TimeSpan"/>.
         /// </summary>
