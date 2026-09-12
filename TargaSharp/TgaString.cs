@@ -100,24 +100,30 @@ namespace TargaSharp
         public bool UseEndingChar { get; set; }
 
         /// <summary>
-        /// Gets Empty <see cref="TgaString"/>.
+        /// Gets a new Empty <see cref="TgaString"/>. A new instance is returned on every access
+        /// so callers cannot mutate a shared default.
         /// </summary>
-        public static readonly TgaString Empty = new TgaString();
+        public static TgaString Empty => new TgaString();
 
         /// <summary>
-        /// Gets <see cref="TgaString"/> with <see cref="DefaultEndingChar"/> = '\0' and <see cref="UseEndingChar"/> = true.
+        /// Gets a new <see cref="TgaString"/> with <see cref="DefaultEndingChar"/> = '\0' and
+        /// <see cref="UseEndingChar"/> = true. A new instance is returned on every access so
+        /// callers cannot mutate a shared default.
         /// </summary>
-        public static readonly TgaString ZeroTerminator = new TgaString(true);
+        public static TgaString ZeroTerminator => new TgaString(true);
 
         /// <summary>
-        /// Gets "." <see cref="TgaString"/> with dot (period) symbol.
+        /// Gets a new "." <see cref="TgaString"/> with dot (period) symbol. A new instance is
+        /// returned on every access so callers cannot mutate a shared default.
         /// </summary>
-        public static readonly TgaString DotSymbol = new TgaString(DotSymbolConst, DotSymbolConst.Length);
+        public static TgaString DotSymbol => new TgaString(DotSymbolConst, DotSymbolConst.Length);
 
         /// <summary>
-        /// Gets "TRUEVISION-XFILE" <see cref="TgaString"/> (TGA File Format Version 2.0 signatute).
+        /// Gets a new "TRUEVISION-XFILE" <see cref="TgaString"/> (TGA File Format Version 2.0
+        /// signatute). A new instance is returned on every access so callers cannot mutate a
+        /// shared default.
         /// </summary>
-        public static readonly TgaString XFileSignatute = new TgaString(XFileSignatuteConst, XFileSignatuteConst.Length);
+        public static TgaString XFileSignatute => new TgaString(XFileSignatuteConst, XFileSignatuteConst.Length);
 
         /// <summary>
         /// Make full independed copy of <see cref="TgaString"/>.
