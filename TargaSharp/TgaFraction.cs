@@ -1,11 +1,23 @@
 ﻿namespace TargaSharp
 {
-    public class TgaFraction : ICloneable
+    public sealed record TgaFraction : ICloneable
     {
         /// <summary>
         /// Gets TGA Field size in bytes.
         /// </summary>
         public const int Size = 4;
+
+        /// <summary>
+        /// Gets a new Empty <see cref="TgaFraction"/>, all values are 0. A new instance is
+        /// returned on every access so callers cannot mutate a shared default.
+        /// </summary>
+        public static TgaFraction Empty => new TgaFraction();
+
+        /// <summary>
+        /// Gets a new One <see cref="TgaFraction"/>, all values are 1 (ones, 1 / 1 = 1). A new
+        /// instance is returned on every access so callers cannot mutate a shared default.
+        /// </summary>
+        public static TgaFraction One => new TgaFraction(1, 1);
 
 
         /// <summary>
@@ -33,15 +45,6 @@
         }
 
 
-        public static bool operator ==(TgaFraction item1, TgaFraction item2)
-        {
-            if(item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaFraction item1, TgaFraction item2) => !(item1 == item2);
-
-
         /// <summary>
         /// Gets or sets numerator value.
         /// </summary>
@@ -66,28 +69,11 @@
 
 
         /// <summary>
-        /// Gets a new Empty <see cref="TgaFraction"/>, all values are 0. A new instance is
-        /// returned on every access so callers cannot mutate a shared default.
-        /// </summary>
-        public static TgaFraction Empty => new TgaFraction();
-
-        /// <summary>
-        /// Gets a new One <see cref="TgaFraction"/>, all values are 1 (ones, 1 / 1 = 1). A new
-        /// instance is returned on every access so callers cannot mutate a shared default.
-        /// </summary>
-        public static TgaFraction One => new TgaFraction(1, 1);
-
-        /// <summary>
-        /// Make full independed copy of <see cref="TgaFraction"/>.
+        /// Make full independed copy of <see cref="TgaFraction"/>. Named <c>Copy</c> rather than
+        /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaFraction"/></returns>
-        public TgaFraction Clone() => new TgaFraction(Numerator, Denominator);
-        object ICloneable.Clone() => Clone();
-
-        public override bool Equals(object? obj) => obj is TgaFraction ? Equals((TgaFraction)obj) : false;
-        public bool Equals(TgaFraction item) => Numerator == item.Numerator && Denominator == item.Denominator;
-
-        public override int GetHashCode() => (Numerator << 16 | Denominator).GetHashCode();
+        public TgaFraction Copy() => this with { };
 
         /// <summary>
         /// Convert <see cref="TgaFraction"/> to byte array.
@@ -99,6 +85,9 @@
         /// Gets <see cref="TgaFraction"/> like string.
         /// </summary>
         /// <returns>String in "Numerator=1, Denominator=2" format.</returns>
-        public override string ToString() => string.Format("{0}={1}, {2}={3}", nameof(Numerator), Numerator, nameof(Denominator), Denominator);        
+        public override string ToString() => string.Format("{0}={1}, {2}={3}", nameof(Numerator), Numerator, nameof(Denominator), Denominator);
+
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
     }
 }

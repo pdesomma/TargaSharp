@@ -10,7 +10,7 @@
     /// Bits 7-6 are reserved and must be 0. Bits 5-4 hold <see cref="ImageOrigin"/>.
     /// Bits 3-0 hold <see cref="AlphaChannelBits"/> (or number of overlay bits).
     /// </remarks>
-    public class TgaImageDescriptor : ICloneable
+    public sealed record TgaImageDescriptor : ICloneable
     {
         /// <summary>
         /// Gets TGA Field size in bytes.
@@ -40,16 +40,6 @@
         }
 
 
-
-        public static bool operator ==(TgaImageDescriptor item1, TgaImageDescriptor item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaImageDescriptor item1, TgaImageDescriptor item2) => !(item1 == item2);
-
-
         /// <summary>
         /// Gets or Sets Image Origin bits (select from enum only, don'n use 5-4 bits!).
         /// </summary>
@@ -73,22 +63,11 @@
         }
 
         /// <summary>
-        /// Make full copy of <see cref="TgaImageDescriptor"/>.
+        /// Make full copy of <see cref="TgaImageDescriptor"/>. Named <c>Copy</c> rather than
+        /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Full independent copy of <see cref="TgaImageDescriptor"/>.</returns>
-        public TgaImageDescriptor Clone() => new TgaImageDescriptor(ToByte());
-        object ICloneable.Clone() => Clone();
-
-        public override bool Equals(object obj) => obj is TgaImageDescriptor ? Equals((TgaImageDescriptor)obj) : false;
-        public bool Equals(TgaImageDescriptor item) => ImageOrigin == item.ImageOrigin && AlphaChannelBits == item.AlphaChannelBits;
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return ((int)ImageOrigin << 4 | AlphaChannelBits).GetHashCode();
-            }
-        }
+        public TgaImageDescriptor Copy() => this with { };
 
         public override string ToString() => string.Format("{0}={1}, {2}={3}, ImageDescriptor_AsByte={4}", nameof(ImageOrigin), ImageOrigin, nameof(AlphaChannelBits), AlphaChannelBits, ToByte());
 
@@ -98,5 +77,8 @@
         /// <returns>ImageDescriptor byte with reserved 7-6 bits, bits 5-4 used for imageOrigin,
         /// 3-0 used as alpha channel bits or number of overlay bits.</returns>
         public byte ToByte() => (byte)(((int)ImageOrigin << 4) | (AlphaChannelBits & 0x0F));
+
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
     }
 }

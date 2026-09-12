@@ -1,6 +1,6 @@
 ﻿namespace TargaSharp
 {
-    public class TgaDateTime : ICloneable
+    public sealed record TgaDateTime : ICloneable
     {
         /// <summary>
         /// Gets TGA Field size in bytes.
@@ -46,17 +46,6 @@
             Minute = minute;
             Second = second;
         }
-
-
-
-        public static bool operator ==(TgaDateTime item1, TgaDateTime item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaDateTime item1, TgaDateTime item2) => !(item1 == item2);
-        
 
         /// <summary>
         /// Make <see cref="TgaDateTime"/> from bytes.
@@ -107,32 +96,11 @@
 
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaDateTime"/>.
+        /// Make full independed copy of <see cref="TgaDateTime"/>. Named <c>Copy</c> rather than
+        /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaDateTime"/></returns>
-        public TgaDateTime Clone() => new TgaDateTime(Month, Day, Year, Hour, Minute, Second);
-        object ICloneable.Clone() => Clone();
-
-        public override bool Equals(object? obj) => obj is TgaDateTime ? Equals((TgaDateTime)obj) : false;
-        public bool Equals(TgaDateTime item) =>
-                Month == item.Month &&
-                Day == item.Day &&
-                Year == item.Year &&
-                Hour == item.Hour &&
-                Minute == item.Minute &&
-                Second == item.Second;
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 23 + (Month << 16 | Hour).GetHashCode();
-                hash = hash * 23 + (Day << 16 | Minute).GetHashCode();
-                hash = hash * 23 + (Year << 16 | Second).GetHashCode();
-                return hash;
-            }
-        }
+        public TgaDateTime Copy() => this with { };
 
         /// <summary>
         /// Convert <see cref="TgaDateTime"/> to byte array.
@@ -151,5 +119,8 @@
         /// </summary>
         /// <returns>String in "1990.01.23 1:02:03" format.</returns>
         public override string ToString() => string.Format("{0:D4}.{1:D2}.{2:D2} {3}:{4:D2}:{5:D2}", Year, Month, Day, Hour, Minute, Second);
+
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
     }
 }

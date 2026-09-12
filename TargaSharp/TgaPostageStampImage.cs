@@ -3,7 +3,7 @@
     /// <summary>
     /// Postage Stamp Image (MaxSize 64x64, uncompressed, PixelDepth like in full image).
     /// </summary>
-    public class TgaPostageStampImage : ICloneable
+    public sealed record TgaPostageStampImage : ICloneable
     {
         public TgaPostageStampImage() { }
 
@@ -38,15 +38,6 @@
         }
 
 
-        public static bool operator ==(TgaPostageStampImage item1, TgaPostageStampImage item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaPostageStampImage item1, TgaPostageStampImage item2) => !(item1 == item2);
-
-
         /// <summary>
         /// Postage Stamp Image Data
         /// </summary>
@@ -64,14 +55,22 @@
 
 
         /// <summary>
-        /// Make full copy of <see cref="TgaPostageStampImage"/>.
+        /// Make full copy of <see cref="TgaPostageStampImage"/>. Named <c>Copy</c> rather than <c>Clone</c>
+        /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Full independent copy of <see cref="TgaPostageStampImage"/>.</returns>
-        public TgaPostageStampImage Clone() => new TgaPostageStampImage(Width, Height, BitConverterHelper.ToBytes(Data));
-        object ICloneable.Clone() => Clone();
-        
-        public override bool Equals(object? obj) => obj is TgaPostageStampImage ? Equals((TgaPostageStampImage)obj) : false;
-        public bool Equals(TgaPostageStampImage item) => Width == item.Width && Height == item.Height && BitConverterHelper.IsArraysEqual(Data, item.Data);
+        public TgaPostageStampImage Copy() => this with { Data = (byte[])Data.Clone() };
+
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
+
+        /// <inheritdoc />
+        public bool Equals(TgaPostageStampImage? other)
+        {
+            if (other is null) return false;
+            return Width == other.Width && Height == other.Height &&
+                (ReferenceEquals(Data, other.Data) || (Data is not null && other.Data is not null && Data.AsSpan().SequenceEqual(other.Data)));
+        }
 
         public override int GetHashCode()
         {

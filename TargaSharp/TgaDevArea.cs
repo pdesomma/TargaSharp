@@ -3,7 +3,7 @@
     /// <summary>
     /// Developer Area
     /// </summary> 
-    public class TgaDevArea : ICloneable
+    public sealed record TgaDevArea : ICloneable
     {
         /// <summary>
         /// Create a new instnace of the <see cref="TgaDevArea"/> class.
@@ -21,14 +21,6 @@
             Entries = entries;
         }
 
-
-        public static bool operator ==(TgaDevArea item1, TgaDevArea item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaDevArea item1, TgaDevArea item2) => !(item1 == item2);
 
         public TgaDevEntry this[int index]
         {
@@ -51,15 +43,22 @@
 
 
         /// <summary>
-        /// Make full copy of <see cref="TgaDevArea"/>.
+        /// Make full copy of <see cref="TgaDevArea"/>. Named <c>Copy</c> rather than <c>Clone</c>
+        /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Full independent copy of <see cref="TgaDevArea"/>.</returns>
-        public TgaDevArea Clone() => new TgaDevArea(new List<TgaDevEntry>(Entries.Select(x => x.Clone())));
-        object ICloneable.Clone() => Clone();
+        public TgaDevArea Copy() => this with { Entries = new List<TgaDevEntry>(Entries.Select(x => x.Copy())) };
 
-        public override bool Equals(object? obj) => obj is TgaDevArea ? Equals((TgaDevArea)obj) : false;
-        public bool Equals(TgaDevArea item) => BitConverterHelper.IsListsEqual(Entries, item.Entries);
-       
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
+
+        /// <inheritdoc />
+        public bool Equals(TgaDevArea? other)
+        {
+            if (other is null) return false;
+            return ReferenceEquals(Entries, other.Entries) || (Entries is not null && other.Entries is not null && Entries.SequenceEqual(other.Entries));
+        }
+
         public override int GetHashCode()
         {
             unchecked

@@ -1,6 +1,6 @@
 ﻿namespace TargaSharp
 {
-    public class TgaDevEntry : ICloneable
+    public sealed record TgaDevEntry : ICloneable
     {
         /// <summary>
         /// Make empty <see cref="TgaDevEntry"/>.
@@ -56,17 +56,6 @@
 
 
 
-        public static bool operator == (TgaDevEntry item1, TgaDevEntry item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaDevEntry item1, TgaDevEntry item2) => !(item1 == item2);
-
-
-
-
         /// <summary>
         /// Field DATA.
         /// Although the size and format of the actual Developer Area fields are totally up to the developer,
@@ -102,14 +91,22 @@
 
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaDevEntry"/>.
+        /// Make full independed copy of <see cref="TgaDevEntry"/>. Named <c>Copy</c> rather than <c>Clone</c>
+        /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaDevEntry"/></returns>
-        public TgaDevEntry Clone() => new TgaDevEntry(this);
-        object ICloneable.Clone() => Clone();
+        public TgaDevEntry Copy() => this with { Data = (byte[])Data.Clone() };
 
-        public override bool Equals(object? obj) => obj is TgaDevEntry ? Equals((TgaDevEntry)obj) : false;
-        public bool Equals(TgaDevEntry item) => Tag == item.Tag && Offset == item.Offset && BitConverterHelper.IsArraysEqual(Data, item.Data);
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
+
+        /// <inheritdoc />
+        public bool Equals(TgaDevEntry? other)
+        {
+            if (other is null) return false;
+            return Tag == other.Tag && Offset == other.Offset &&
+                (ReferenceEquals(Data, other.Data) || (Data is not null && other.Data is not null && Data.AsSpan().SequenceEqual(other.Data)));
+        }
 
         public override int GetHashCode()
         {

@@ -1,8 +1,8 @@
 ﻿using System.Text;
 
 namespace TargaSharp
-{    
-    public class TgaSoftVersion : ICloneable
+{
+    public sealed record TgaSoftVersion : ICloneable
     {
 
         /// <summary>
@@ -56,30 +56,16 @@ namespace TargaSharp
         }
 
 
-        public static bool operator ==(TgaSoftVersion item1, TgaSoftVersion item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaSoftVersion item1, TgaSoftVersion item2) => !(item1 == item2);
-
-
         public ushort VersionNumber { get; set; } = 0;
         public char VersionLetter { get; set; } = ' ';
 
 
         /// <summary>
-        /// Make full copy of <see cref="TgaSoftVersion"/>.
+        /// Make full copy of <see cref="TgaSoftVersion"/>. Named <c>Copy</c> rather than
+        /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns></returns>
-        public TgaSoftVersion Clone() => new TgaSoftVersion(VersionNumber, VersionLetter);
-        object ICloneable.Clone() => Clone();
-
-        public override bool Equals(object? obj) => obj is TgaSoftVersion ? Equals((TgaSoftVersion)obj) : false;
-        public bool Equals(TgaSoftVersion item) => VersionNumber == item.VersionNumber && VersionLetter == item.VersionLetter;
-
-        public override int GetHashCode() => VersionNumber.GetHashCode() ^ VersionLetter.GetHashCode();
+        public TgaSoftVersion Copy() => this with { };
 
         /// <summary>
         /// Convert <see cref="TgaSoftVersion"/> to byte array.
@@ -97,5 +83,8 @@ namespace TargaSharp
         public static byte[] ToBytes(ushort VersionNumber, char VersionLetter = ' ') => BitConverterHelper.ToBytes(VersionNumber, Encoding.ASCII.GetBytes(VersionLetter.ToString()));
 
         public override string ToString() => (VersionNumber.ToString("000") + VersionLetter).TrimEnd(new char[] { ' ', '\0' });
+
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
     }
 }

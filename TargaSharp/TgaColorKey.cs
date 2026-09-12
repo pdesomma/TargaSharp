@@ -2,8 +2,14 @@
 
 namespace TargaSharp
 {
-    public class TgaColorKey : ICloneable
+    public sealed record TgaColorKey : ICloneable
     {
+        /// <summary>
+        /// Gets TGA Field size in bytes.
+        /// </summary>
+        public const int Size = 4;
+
+
         /// <summary>
         /// Empty constructor (for serialization?)
         /// </summary>
@@ -53,19 +59,6 @@ namespace TargaSharp
         /// <param name="color">GDI+ <see cref="Color"/> value.</param>
         public TgaColorKey(Color color) : this(color.A, color.R, color.G, color.B) { }
 
-        public static bool operator == (TgaColorKey item1, TgaColorKey item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-
-        public static bool operator != (TgaColorKey item1, TgaColorKey item2) => !(item1 == item2);
-
-        /// <summary>
-        /// Gets TGA Field size in bytes.
-        /// </summary>
-        public const int Size = 4;
 
         /// <summary>
         /// Gets or sets alpha color value.
@@ -88,23 +81,11 @@ namespace TargaSharp
         public byte B { get; set; }
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaColorKey"/>.
+        /// Make full independed copy of <see cref="TgaColorKey"/>. Named <c>Copy</c> rather than
+        /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaColorKey"/></returns>
-        public TgaColorKey Clone() => new TgaColorKey(A, R, G, B);
-
-        /// <summary>
-        /// Make full independed copy of <see cref="TgaColorKey"/>.
-        /// </summary>
-        /// <returns>Copy of <see cref="TgaColorKey"/></returns>
-        object ICloneable.Clone() => Clone();
-
-        public override bool Equals(object? obj) => obj is not null && ((obj is TgaColorKey) ? Equals((TgaColorKey)obj) : false);
-
-        public bool Equals(TgaColorKey item) => A == item.A && R == item.R && G == item.G && B == item.B;
-
-        public override int GetHashCode() => ToInt().GetHashCode();
-
+        public TgaColorKey Copy() => this with { };
 
         /// <summary>
         /// Convert <see cref="TgaColorKey"/> to byte array.
@@ -129,5 +110,8 @@ namespace TargaSharp
         /// </summary>
         /// <returns>String in ARGB format.</returns>
         public override string ToString() => string.Format("{0}={1}, {2}={3}, {4}={5}, {6}={7}", nameof(A), A, nameof(R), R, nameof(G), G, nameof(B), B);
+
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
     }
 }

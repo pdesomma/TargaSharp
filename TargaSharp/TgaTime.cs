@@ -1,7 +1,7 @@
 ﻿
 namespace TargaSharp
 {
-    public class TgaTime : ICloneable
+    public sealed record TgaTime : ICloneable
     {
         /// <summary>
         /// Gets TGA Field size in bytes.
@@ -49,16 +49,6 @@ namespace TargaSharp
         }
 
 
-        public static bool operator ==(TgaTime item1, TgaTime item2)
-        {
-            if (item1 is null) return item2 is null;
-            if (item2 is null) return item1 is null;
-            return item1.Equals(item2);
-        }
-        public static bool operator !=(TgaTime item1, TgaTime item2) => !(item1 == item2);
-
-
-
         /// <summary>
         /// Gets or Sets hour (0 - 65535).
         /// </summary>
@@ -66,33 +56,19 @@ namespace TargaSharp
         /// <summary>
         /// Gets or Sets minute (0 - 59).
         /// </summary>
-        public ushort Minutes { get; set; } 
+        public ushort Minutes { get; set; }
         /// <summary>
         /// Gets or Sets second (0 - 59).
         /// </summary>
-        public ushort Seconds { get; set; } 
+        public ushort Seconds { get; set; }
 
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaTime"/>.
+        /// Make full independed copy of <see cref="TgaTime"/>. Named <c>Copy</c> rather than
+        /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaTime"/></returns>
-        public TgaTime Clone() => new TgaTime(Hours, Minutes, Seconds);
-        object ICloneable.Clone() => Clone();
-
-        public override bool Equals(object? obj) => obj is TgaTime ? Equals((TgaTime)obj) : false;
-        public bool Equals(TgaTime item) => Hours == item.Hours && Minutes == item.Minutes && Seconds == item.Seconds;
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 23 + Hours.GetHashCode();
-                hash = hash * 23 + (Minutes << 16 | Seconds).GetHashCode();
-                return hash;
-            }
-        }
+        public TgaTime Copy() => this with { };
 
         /// <summary>
         /// Convert <see cref="TgaTime"/> to byte array.
@@ -109,5 +85,8 @@ namespace TargaSharp
         /// </summary>
         /// <returns><see cref="TimeSpan"/> value of <see cref="TgaTime"/>.</returns>
         public TimeSpan ToTimeSpan() => new TimeSpan(Hours, Minutes, Seconds);
+
+        /// <inheritdoc />
+        object ICloneable.Clone() => Copy();
     }
 }
