@@ -50,4 +50,31 @@ public class TgaFractionTests
 
         Assert.AreNotSame(first, second);
     }
+
+    [TestMethod]
+    public void AspectRatio_ZeroOverZero_ReturnsNullAndIsUnspecified()
+    {
+        var fraction = new TgaFraction(0, 0);
+
+        Assert.IsNull(fraction.AspectRatio);
+        Assert.IsTrue(fraction.IsUnspecified);
+    }
+
+    [TestMethod]
+    public void AspectRatio_OneOverOne_ReturnsOne()
+    {
+        var fraction = new TgaFraction(1, 1);
+
+        Assert.AreEqual(1f, fraction.AspectRatio);
+        Assert.IsFalse(fraction.IsUnspecified);
+    }
+
+    [TestMethod]
+    public void AspectRatio_FourOverThree_ReturnsFourThirds()
+    {
+        var fraction = new TgaFraction(4, 3);
+
+        Assert.AreEqual(4f / 3f, fraction.AspectRatio);
+        Assert.IsFalse(fraction.IsUnspecified);
+    }
 }
