@@ -55,21 +55,15 @@
             if (file.Header.ImageType != TgaImageType.NoImageData)
             {
                 int imageDataSize = file.Width * file.Height * bytesPerPixel;
-                switch (file.Header.ImageType)
+                if (file.Header.ImageType.IsRunLengthEncoded())
                 {
-                    case TgaImageType.RLE_ColorMapped:
-                    case TgaImageType.RLE_TrueColor:
-                    case TgaImageType.RLE_BlackWhite:
-                        file.ImageOrColorMapArea.ImageData = RleCodec.Decode(binaryReader, bytesPerPixel, imageDataSize);
-                        break;
-
-                    case TgaImageType.Uncompressed_ColorMapped:
-                    case TgaImageType.Uncompressed_TrueColor:
-                    case TgaImageType.Uncompressed_BlackWhite:
-                        file.ImageOrColorMapArea.ImageData = binaryReader.ReadBytes(imageDataSize);
-                        if (file.ImageOrColorMapArea.ImageData.Length != imageDataSize)
-                            throw new EndOfStreamException($"Image data truncated: expected {imageDataSize} bytes, got {file.ImageOrColorMapArea.ImageData.Length}.");
-                        break;
+                    file.ImageOrColorMapArea.ImageData = RleCodec.Decode(binaryReader, bytesPerPixel, imageDataSize);
+                }
+                else
+                {
+                    file.ImageOrColorMapArea.ImageData = binaryReader.ReadBytes(imageDataSize);
+                    if (file.ImageOrColorMapArea.ImageData.Length != imageDataSize)
+                        throw new EndOfStreamException($"Image data truncated: expected {imageDataSize} bytes, got {file.ImageOrColorMapArea.ImageData.Length}.");
                 }
             }
 

@@ -40,8 +40,8 @@
             ArgumentNullException.ThrowIfNull(bytes);
             if (bytes.Length != Size)
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
-            Numerator = BitConverter.ToUInt16(bytes, 0);
-            Denominator = BitConverter.ToUInt16(bytes, 2);
+            Numerator = TgaBinary.ReadUInt16(bytes, 0);
+            Denominator = TgaBinary.ReadUInt16(bytes, 2);
         }
 
 
@@ -79,7 +79,7 @@
         /// Convert <see cref="TgaFraction"/> to byte array.
         /// </summary>
         /// <returns>Byte array with length = 4.</returns>
-        public byte[] ToBytes() => BitConverterHelper.ToBytes(Numerator, Denominator);
+        public byte[] ToBytes() => new TgaByteBuilder(Size).Add(Numerator).Add(Denominator).ToArray();
 
         /// <summary>
         /// Gets <see cref="TgaFraction"/> like string.

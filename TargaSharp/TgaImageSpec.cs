@@ -52,10 +52,10 @@
             ArgumentNullException.ThrowIfNull(Bytes);
             if (Bytes.Length != Size)
                 throw new ArgumentOutOfRangeException(nameof(Bytes), Bytes.Length, $"Length must be {Size}.");
-            XOrigin = BitConverter.ToUInt16(Bytes, 0);
-            YOrigin = BitConverter.ToUInt16(Bytes, 2);
-            ImageWidth = BitConverter.ToUInt16(Bytes, 4);
-            ImageHeight = BitConverter.ToUInt16(Bytes, 6);
+            XOrigin = TgaBinary.ReadUInt16(Bytes, 0);
+            YOrigin = TgaBinary.ReadUInt16(Bytes, 2);
+            ImageWidth = TgaBinary.ReadUInt16(Bytes, 4);
+            ImageHeight = TgaBinary.ReadUInt16(Bytes, 6);
             PixelDepth = (TgaPixelDepth)Bytes[8];
             ImageDescriptor = new TgaImageDescriptor(Bytes[9]);
         }
@@ -117,7 +117,14 @@
         /// Convert <see cref="TgaImageSpec"/> to byte array.
         /// </summary>
         /// <returns>Byte array with length = 10.</returns>
-        public byte[] ToBytes() => BitConverterHelper.ToBytes(XOrigin, YOrigin, ImageWidth, ImageHeight, (byte)PixelDepth, ImageDescriptor == null ? byte.MinValue : ImageDescriptor.ToByte());
+        public byte[] ToBytes() => new TgaByteBuilder(Size)
+            .Add(XOrigin)
+            .Add(YOrigin)
+            .Add(ImageWidth)
+            .Add(ImageHeight)
+            .Add((byte)PixelDepth)
+            .Add(ImageDescriptor == null ? byte.MinValue : ImageDescriptor.ToByte())
+            .ToArray();
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();

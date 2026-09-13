@@ -56,12 +56,12 @@
             ArgumentNullException.ThrowIfNull(bytes);
             if (bytes.Length != Size)
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
-            Month = BitConverter.ToUInt16(bytes, 0);
-            Day = BitConverter.ToUInt16(bytes, 2);
-            Year = BitConverter.ToUInt16(bytes, 4);
-            Hour = BitConverter.ToUInt16(bytes, 6);
-            Minute = BitConverter.ToUInt16(bytes, 8);
-            Second = BitConverter.ToUInt16(bytes, 10);
+            Month = TgaBinary.ReadUInt16(bytes, 0);
+            Day = TgaBinary.ReadUInt16(bytes, 2);
+            Year = TgaBinary.ReadUInt16(bytes, 4);
+            Hour = TgaBinary.ReadUInt16(bytes, 6);
+            Minute = TgaBinary.ReadUInt16(bytes, 8);
+            Second = TgaBinary.ReadUInt16(bytes, 10);
         }
 
         /// <summary>
@@ -106,7 +106,7 @@
         /// Convert <see cref="TgaDateTime"/> to byte array.
         /// </summary>
         /// <returns>Byte array with length = 12.</returns>
-        public byte[] ToBytes() => BitConverterHelper.ToBytes(Month, Day, Year, Hour, Minute, Second)!;
+        public byte[] ToBytes() => new TgaByteBuilder(Size).Add(Month).Add(Day).Add(Year).Add(Hour).Add(Minute).Add(Second).ToArray();
 
         /// <summary>
         /// Gets <see cref="TgaDateTime"/> like <see cref="DateTime"/>.

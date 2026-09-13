@@ -22,23 +22,23 @@
             if (bytes.Length < MinSize)
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be >= {MinSize}.");
 
-            ExtensionSize = BitConverter.ToUInt16(bytes, 0);
-            AuthorName = new TgaString(BitConverterHelper.GetElements(bytes, 2, 41), true);
-            AuthorComments = new TgaComment(BitConverterHelper.GetElements(bytes, 43, TgaComment.Size));
-            DateTimeStamp = new TgaDateTime(BitConverterHelper.GetElements(bytes, 367, TgaDateTime.Size));
-            JobNameOrID = new TgaString(BitConverterHelper.GetElements(bytes, 379, 41), true);
-            JobTime = new TgaTime(BitConverterHelper.GetElements(bytes, 420, TgaTime.Size));
-            SoftwareID = new TgaString(BitConverterHelper.GetElements(bytes, 426, 41), true);
-            SoftVersion = new TgaSoftVersion(BitConverterHelper.GetElements(bytes, 467, TgaSoftVersion.Size));
-            KeyColor = new TgaColorKey(BitConverterHelper.GetElements(bytes, 470, TgaColorKey.Size));
-            PixelAspectRatio = new TgaFraction(BitConverterHelper.GetElements(bytes, 474, TgaFraction.Size));
-            GammaValue = new TgaFraction(BitConverterHelper.GetElements(bytes, 478, TgaFraction.Size));
-            ColorCorrectionTableOffset = BitConverter.ToUInt32(bytes, 482);
-            PostageStampOffset = BitConverter.ToUInt32(bytes, 486);
-            ScanLineOffset = BitConverter.ToUInt32(bytes, 490);
+            ExtensionSize = TgaBinary.ReadUInt16(bytes, 0);
+            AuthorName = new TgaString(bytes.AsSpan(2, 41).ToArray(), true);
+            AuthorComments = new TgaComment(bytes.AsSpan(43, TgaComment.Size).ToArray());
+            DateTimeStamp = new TgaDateTime(bytes.AsSpan(367, TgaDateTime.Size).ToArray());
+            JobNameOrID = new TgaString(bytes.AsSpan(379, 41).ToArray(), true);
+            JobTime = new TgaTime(bytes.AsSpan(420, TgaTime.Size).ToArray());
+            SoftwareID = new TgaString(bytes.AsSpan(426, 41).ToArray(), true);
+            SoftVersion = new TgaSoftVersion(bytes.AsSpan(467, TgaSoftVersion.Size).ToArray());
+            KeyColor = new TgaColorKey(bytes.AsSpan(470, TgaColorKey.Size).ToArray());
+            PixelAspectRatio = new TgaFraction(bytes.AsSpan(474, TgaFraction.Size).ToArray());
+            GammaValue = new TgaFraction(bytes.AsSpan(478, TgaFraction.Size).ToArray());
+            ColorCorrectionTableOffset = TgaBinary.ReadUInt32(bytes, 482);
+            PostageStampOffset = TgaBinary.ReadUInt32(bytes, 486);
+            ScanLineOffset = TgaBinary.ReadUInt32(bytes, 490);
             AttributesType = (TgaAttributeType)bytes[494];
 
-            if (ExtensionSize > MinSize) OtherDataInExtensionArea = BitConverterHelper.GetElements(bytes, 495, bytes.Length - MinSize);
+            if (ExtensionSize > MinSize) OtherDataInExtensionArea = bytes.AsSpan(495, bytes.Length - MinSize).ToArray();
 
             ScanLineTable = slt;
             this.PostageStampImage = postageStampImage;
@@ -415,23 +415,24 @@
             PixelAspectRatio ??= new TgaFraction();
             GammaValue ??= new TgaFraction();
 
-            return BitConverterHelper.ToBytes(
-                ExtensionSize,
-                AuthorName.ToBytes(),
-                AuthorComments.ToBytes(),
-                DateTimeStamp.ToBytes(),
-                JobNameOrID.ToBytes(),
-                JobTime.ToBytes(),
-                SoftwareID.ToBytes(),
-                SoftVersion.ToBytes(),
-                KeyColor.ToBytes(),
-                PixelAspectRatio.ToBytes(),
-                GammaValue.ToBytes(),
-                ColorCorrectionTableOffset,
-                PostageStampOffset,
-                ScanLineOffset,
-                (byte)AttributesType,
-                OtherDataInExtensionArea);
+            return new TgaByteBuilder(MinSize + (OtherDataInExtensionArea?.Length ?? 0))
+                .Add(ExtensionSize)
+                .Add(AuthorName.ToBytes())
+                .Add(AuthorComments.ToBytes())
+                .Add(DateTimeStamp.ToBytes())
+                .Add(JobNameOrID.ToBytes())
+                .Add(JobTime.ToBytes())
+                .Add(SoftwareID.ToBytes())
+                .Add(SoftVersion.ToBytes())
+                .Add(KeyColor.ToBytes())
+                .Add(PixelAspectRatio.ToBytes())
+                .Add(GammaValue.ToBytes())
+                .Add(ColorCorrectionTableOffset)
+                .Add(PostageStampOffset)
+                .Add(ScanLineOffset)
+                .Add((byte)AttributesType)
+                .Add(OtherDataInExtensionArea)
+                .ToArray();
         }
     } //Not full ToBytes()
 }

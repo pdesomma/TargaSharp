@@ -43,9 +43,9 @@ namespace TargaSharp
             ArgumentNullException.ThrowIfNull(bytes);
             if (bytes.Length != Size) throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
 
-            Hours = BitConverter.ToUInt16(bytes, 0);
-            Minutes = BitConverter.ToUInt16(bytes, 2);
-            Seconds = BitConverter.ToUInt16(bytes, 4);
+            Hours = TgaBinary.ReadUInt16(bytes, 0);
+            Minutes = TgaBinary.ReadUInt16(bytes, 2);
+            Seconds = TgaBinary.ReadUInt16(bytes, 4);
         }
 
 
@@ -74,7 +74,7 @@ namespace TargaSharp
         /// Convert <see cref="TgaTime"/> to byte array.
         /// </summary>
         /// <returns>Byte array with length = 6.</returns>
-        public byte[] ToBytes() => BitConverterHelper.ToBytes(Hours, Minutes, Seconds);
+        public byte[] ToBytes() => new TgaByteBuilder(Size).Add(Hours).Add(Minutes).Add(Seconds).ToArray();
         /// <summary>
         /// Gets <see cref="TgaTime"/> like string.
         /// </summary>

@@ -60,8 +60,7 @@ namespace TargaSharp.IO
             // ImageData
             if (file.Header.ImageType != TgaImageType.NoImageData)
             {
-                if (file.Header.ImageType >= TgaImageType.RLE_ColorMapped &&
-                    file.Header.ImageType <= TgaImageType.RLE_BlackWhite)
+                if (file.Header.ImageType.IsRunLengthEncoded())
                 {
                     int bytesPerPixel = file.Header.ImageSpec.PixelDepth.BytesPerPixel();
                     bw.Write(RleCodec.Encode(file.ImageOrColorMapArea.ImageData, bytesPerPixel, file.Width, file.Height));
@@ -240,8 +239,7 @@ namespace TargaSharp.IO
                     return false;
                 }
 
-                if (file.Header.ImageType >= TgaImageType.RLE_ColorMapped &&
-                    file.Header.ImageType <= TgaImageType.RLE_BlackWhite)
+                if (file.Header.ImageType.IsRunLengthEncoded())
                 {
                     // Encoded size is only known by encoding; the validator has already checked ImageData length.
                     offset += (uint)RleCodec.Encode(file.ImageOrColorMapArea.ImageData, bytesPerPixel, file.Width, file.Height).Length;

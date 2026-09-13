@@ -50,17 +50,17 @@
                     if (pos >= scanLineSize - bytesPerPixel)
                     {
                         encoded.Add(0);
-                        encoded.AddRange(BitConverterHelper.GetElements(rowData, pos, bytesPerPixel));
+                        encoded.AddRange(rowData.AsSpan(pos, bytesPerPixel).ToArray());
                         pos += bytesPerPixel;
                         break;
                     }
 
                     count = 0; //1
-                    isRle = BitConverterHelper.IsElementsEqual(rowData, pos, pos + bytesPerPixel, bytesPerPixel);
+                    isRle = rowData.AsSpan(pos, bytesPerPixel).SequenceEqual(rowData.AsSpan(pos + bytesPerPixel, bytesPerPixel));
 
                     for (int i = pos + bytesPerPixel; i < Math.Min(pos + 128 * bytesPerPixel, scanLineSize) - bytesPerPixel; i += bytesPerPixel)
                     {
-                        if (isRle ^ BitConverterHelper.IsElementsEqual(rowData, (isRle ? pos : i), i + bytesPerPixel, bytesPerPixel))
+                        if (isRle ^ rowData.AsSpan(isRle ? pos : i, bytesPerPixel).SequenceEqual(rowData.AsSpan(i + bytesPerPixel, bytesPerPixel)))
                         {
                             //count--;
                             break;
@@ -71,7 +71,7 @@
 
                     int countBpp = (count + 1) * bytesPerPixel;
                     encoded.Add((byte)(isRle ? count | 128 : count));
-                    encoded.AddRange(BitConverterHelper.GetElements(rowData, pos, (isRle ? bytesPerPixel : countBpp)));
+                    encoded.AddRange(rowData.AsSpan(pos, (isRle ? bytesPerPixel : countBpp)).ToArray());
                     pos += countBpp;
                 }
             }

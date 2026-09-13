@@ -27,8 +27,8 @@
             if (bytes.Length != Size)
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
 
-            FirstEntryIndex = BitConverter.ToUInt16(bytes, 0);
-            ColorMapLength = BitConverter.ToUInt16(bytes, 2);
+            FirstEntryIndex = TgaBinary.ReadUInt16(bytes, 0);
+            ColorMapLength = TgaBinary.ReadUInt16(bytes, 2);
             ColorMapEntrySize = (TgaColorMapEntrySize)bytes[4];
         }
 
@@ -79,7 +79,7 @@
         /// Convert ColorMapSpec to byte array.
         /// </summary>
         /// <returns>Byte array with length = 5.</returns>
-        public byte[] ToBytes() => BitConverterHelper.ToBytes(FirstEntryIndex, ColorMapLength, (byte)ColorMapEntrySize)!;
+        public byte[] ToBytes() => new TgaByteBuilder(Size).Add(FirstEntryIndex).Add(ColorMapLength).Add((byte)ColorMapEntrySize).ToArray();
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();

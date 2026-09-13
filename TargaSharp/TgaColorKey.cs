@@ -38,7 +38,7 @@
             ArgumentNullException.ThrowIfNull(bytes);
             if (bytes.Length != Size)
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
-            int argb = System.BitConverter.ToInt32(bytes, 0);
+            int argb = unchecked((int)TgaBinary.ReadUInt32(bytes, 0));
             A = (byte)((argb >> 24) & 0xFF);
             R = (byte)((argb >> 16) & 0xFF);
             G = (byte)((argb >> 8) & 0xFF);
@@ -83,7 +83,7 @@
         /// Convert <see cref="TgaColorKey"/> to byte array.
         /// </summary>
         /// <returns>Byte array with length = 4.</returns>
-        public byte[] ToBytes() => System.BitConverter.GetBytes(ToInt());
+        public byte[] ToBytes() => new TgaByteBuilder(Size).Add(unchecked((uint)ToInt())).ToArray();
 
         /// <summary>
         /// Gets <see cref="TgaColorKey"/> like ARGB <see cref="int"/>.

@@ -127,10 +127,8 @@
         private static void ValidateImageTypeKnown(TgaFile file, List<TgaValidationError> errors)
         {
             var imageType = file.Header.ImageType;
-            bool isKnown = imageType is TgaImageType.NoImageData or TgaImageType.Uncompressed_ColorMapped or TgaImageType.Uncompressed_TrueColor
-                or TgaImageType.Uncompressed_BlackWhite or TgaImageType.RLE_ColorMapped or TgaImageType.RLE_TrueColor or TgaImageType.RLE_BlackWhite;
 
-            if (!isKnown)
+            if (!imageType.IsKnown())
                 errors.Add(new TgaValidationError("Header.ImageType", $"{(byte)imageType} is a reserved/unknown image type."));
         }
 

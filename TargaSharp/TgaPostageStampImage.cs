@@ -41,7 +41,7 @@
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, "Length must be >= 2.");
             Width = bytes[0];
             Height = bytes[1];
-            if (bytes.Length > 2) Data = BitConverterHelper.GetElements(bytes, 2, bytes.Length - 2);
+            Data = bytes.AsSpan(2, bytes.Length - 2).ToArray();
         }
 
         /// <summary>
@@ -137,7 +137,7 @@
         /// Convert <see cref="TgaPostageStampImage"/> to byte array.
         /// </summary>
         /// <returns>Byte array.</returns>
-        public byte[] ToBytes() => BitConverterHelper.ToBytes(Width, Height, Data);
+        public byte[] ToBytes() => new TgaByteBuilder(2 + Data.Length).Add(Width).Add(Height).Add(Data).ToArray();
 
         public override string ToString() => string.Format("{0}={1}, {2}={3}, DataLength={4}", nameof(Width), Width, nameof(Height), Height, Data.Length);
     }

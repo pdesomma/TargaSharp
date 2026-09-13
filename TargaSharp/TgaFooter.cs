@@ -103,8 +103,8 @@
 
             footer = new TgaFooter
             {
-                ExtensionAreaOffset = BitConverter.ToUInt32(bytes, 0),
-                DeveloperDirectoryOffset = BitConverter.ToUInt32(bytes, 4),
+                ExtensionAreaOffset = TgaBinary.ReadUInt32(bytes, 0),
+                DeveloperDirectoryOffset = TgaBinary.ReadUInt32(bytes, 4),
             };
             return true;
         }
@@ -115,12 +115,13 @@
         /// are always written as "TRUEVISION-XFILE", '.' and '\0' respectively.
         /// </summary>
         /// <returns>Byte array with size equal <see cref="Size"/>.</returns>
-        public byte[] ToBytes() => BitConverterHelper.ToBytes(
-            ExtensionAreaOffset,
-            DeveloperDirectoryOffset,
-            TgaString.XFileSignatute.ToBytes(),
-            TgaString.DotSymbol.ToBytes(),
-            TgaString.ZeroTerminator.ToBytes())!;
+        public byte[] ToBytes() => new TgaByteBuilder(Size)
+            .Add(ExtensionAreaOffset)
+            .Add(DeveloperDirectoryOffset)
+            .Add(TgaString.XFileSignatute.ToBytes())
+            .Add(TgaString.DotSymbol.ToBytes())
+            .Add(TgaString.ZeroTerminator.ToBytes())
+            .ToArray();
 
         /// <summary>
         /// Gets <see cref="TgaFooter"/> like string.
