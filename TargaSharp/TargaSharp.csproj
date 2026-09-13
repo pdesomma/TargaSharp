@@ -13,7 +13,7 @@
     <PackageTags>tga;targa</PackageTags>
     <PackageReleaseNotes>0.2.0: records, validation, typed exceptions, TargaSharp.Drawing split, naming cleanup. Breaking changes from 0.1.0.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release'">true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
