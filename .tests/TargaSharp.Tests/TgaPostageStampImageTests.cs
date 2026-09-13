@@ -9,17 +9,16 @@ namespace TargaSharp.Tests;
 public class TgaPostageStampImageTests
 {
     [TestMethod]
-    public void Ctor_NullBytes_ThrowsArgumentNullException()
+    public void Ctor_ByteContract_Holds()
     {
-        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaPostageStampImage((byte[])null!));
-    }
-
-    [TestMethod]
-    public void Ctor_BytesShorterThanMinimum_ThrowsArgumentOutOfRangeException()
-    {
-        byte[] bytes = new byte[1];
-
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaPostageStampImage(bytes));
+        // Only the 2-byte Width/Height header is a fixed lower bound; Data is variable-length trailing
+        // bytes, so an over-long array is valid (larger Data), not an error - hence the minLength variant.
+        ByteSerializableContract.AssertByteCtorContract(
+            bytes => new TgaPostageStampImage(bytes),
+            x => x.ToBytes(),
+            size: 6,
+            sample: () => new TgaPostageStampImage(2, 1, [10, 20, 30, 40]),
+            minLength: 2);
     }
 
     [TestMethod]

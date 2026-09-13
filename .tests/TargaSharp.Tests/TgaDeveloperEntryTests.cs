@@ -28,25 +28,17 @@ public class TgaDeveloperEntryTests
     }
 
     [TestMethod]
-    public void Ctor_NullBytes_ThrowsArgumentNullException()
+    public void Ctor_ByteContract_Holds()
     {
-        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaDeveloperEntry((byte[])null!));
-    }
-
-    [TestMethod]
-    public void Ctor_BytesShorterThanSize_ThrowsArgumentOutOfRangeException()
-    {
-        byte[] bytes = new byte[TgaDeveloperEntry.Size - 1];
-
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaDeveloperEntry(bytes));
-    }
-
-    [TestMethod]
-    public void Ctor_BytesLongerThanSize_ThrowsArgumentOutOfRangeException()
-    {
-        byte[] bytes = new byte[TgaDeveloperEntry.Size + 1];
-
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaDeveloperEntry(bytes));
+        // ToBytes() serializes only Tag/Offset/FieldSize (never Data itself - see TgaDeveloperEntry.ToBytes),
+        // and reconstructing from those bytes always yields a zero-filled Data placeholder of FieldSize
+        // length (see the byte[] constructor's remarks), so the sample's own Data must already be
+        // zero-filled for the round-tripped instance to compare equal to it.
+        ByteSerializableContract.AssertByteCtorContract(
+            bytes => new TgaDeveloperEntry(bytes),
+            x => x.ToBytes(),
+            TgaDeveloperEntry.Size,
+            () => new TgaDeveloperEntry(7, 123, new byte[4]));
     }
 
     [TestMethod]

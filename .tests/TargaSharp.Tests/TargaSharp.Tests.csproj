@@ -15,4 +15,8 @@
     <ProjectReference Include="..\..\TargaSharp\TargaSharp.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\Fixtures\**\*.tga;..\Fixtures\**\*.TGA" Link="Fixtures\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

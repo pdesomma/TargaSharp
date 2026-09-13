@@ -37,26 +37,12 @@ public class TgaHeaderTests
     }
 
     [TestMethod]
-    public void Ctor_NullBytes_ThrowsArgumentNullException()
+    public void Ctor_ByteContract_Holds()
     {
-        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaHeader(null!));
-    }
-
-    [TestMethod]
-    public void Ctor_WrongLength_ThrowsArgumentOutOfRangeException()
-    {
-        byte[] bytes = new byte[TgaHeader.Size - 1];
-
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaHeader(bytes));
-    }
-
-    [TestMethod]
-    public void Ctor_FromBytesOfDefaultInstance_RoundTripsToEqualInstance()
-    {
-        var original = new TgaHeader();
-
-        var roundTripped = new TgaHeader(original.ToBytes());
-
-        Assert.IsTrue(roundTripped.Equals(original));
+        ByteSerializableContract.AssertByteCtorContract(
+            bytes => new TgaHeader(bytes),
+            x => x.ToBytes(),
+            TgaHeader.Size,
+            () => new TgaHeader());
     }
 }

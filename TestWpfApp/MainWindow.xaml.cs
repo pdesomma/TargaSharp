@@ -16,6 +16,8 @@ namespace TestWpfApp
     /// </summary>
     public partial class MainWindow : Window
     {
+        // Fixtures now live in .tests\Fixtures\ (see TASK M12), but the csproj's <None Include> links
+        // them back under Examples\ in the build output, so this relative path is unchanged.
         string[] Files = Directory.GetFiles(@"Examples\", "*.tga", SearchOption.AllDirectories);
         TgaFile? T;
 

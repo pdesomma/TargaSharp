@@ -10,30 +10,13 @@ namespace TargaSharp.Tests;
 public class TgaCommentTests
 {
     [TestMethod]
-    public void Ctor_NullBytes_ThrowsArgumentNullException()
+    public void Ctor_ByteContract_Holds()
     {
-        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaComment((byte[])null!));
-    }
-
-    [TestMethod]
-    public void Ctor_WrongLength_ThrowsArgumentOutOfRangeException()
-    {
-        byte[] bytes = new byte[TgaComment.Size - 1];
-
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaComment(bytes));
-    }
-
-    [TestMethod]
-    public void Ctor_CorrectLength_RoundTripsThroughToBytesAndEquals()
-    {
-        byte[] bytes = new byte[TgaComment.Size];
-        for (int i = 0; i < bytes.Length; i++)
-            bytes[i] = (byte)('A' + (i % 26));
-
-        var original = new TgaComment(bytes);
-        var roundTripped = new TgaComment(original.ToBytes());
-
-        Assert.IsTrue(roundTripped.Equals(original));
+        ByteSerializableContract.AssertByteCtorContract(
+            bytes => new TgaComment(bytes),
+            x => x.ToBytes(),
+            TgaComment.Size,
+            () => new TgaComment("line 1", "line 2"));
     }
 
     [TestMethod]
