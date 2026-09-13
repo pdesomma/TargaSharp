@@ -16,7 +16,7 @@
             if (entry is null) throw new ArgumentNullException(nameof(entry));
             Tag = entry.Tag;
             Offset = entry.Offset;
-            Data = BitConverterHelper.ToBytes(entry.Data ?? Array.Empty<byte>());
+            Data = (byte[])(entry.Data ?? Array.Empty<byte>()).Clone();
         }
 
         /// <summary>
@@ -48,9 +48,9 @@
             if (Bytes.Length != Size)
                 throw new ArgumentOutOfRangeException(nameof(Bytes), Bytes.Length, $"Length must be {Size}.");
 
-            Tag = BitConverter.ToUInt16(Bytes, 0);
-            Offset = BitConverter.ToUInt32(Bytes, 2);
-            int fieldSize = BitConverter.ToInt32(Bytes, 6);
+            Tag = TgaBinary.ReadUInt16(Bytes, 0);
+            Offset = TgaBinary.ReadUInt32(Bytes, 2);
+            int fieldSize = unchecked((int)TgaBinary.ReadUInt32(Bytes, 6));
             Data = new byte[fieldSize];
         }
 
@@ -129,7 +129,7 @@
         /// Convert <see cref="TgaDevEntry"/> to byte array. (Not include <see cref="Data"/>!).
         /// </summary>
         /// <returns>Byte array with length = 10.</returns>
-        public byte[] ToBytes() => BitConverterHelper.ToBytes(Tag, Offset, Data?.Length ?? 0);
+        public byte[] ToBytes() => new TgaByteBuilder(Size).Add(Tag).Add(Offset).Add(unchecked((uint)(Data?.Length ?? 0))).ToArray();
 
         /// <summary>
         /// Gets <see cref="TgaDevEntry"/> like string.

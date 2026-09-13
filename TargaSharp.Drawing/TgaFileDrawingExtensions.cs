@@ -158,7 +158,7 @@ namespace TargaSharp.Drawing
                     Buffer.BlockCopy(sourceData, i * strideBytes, imageData, i * (strideBytes + paddingBytes), strideBytes);
             }
             else
-                imageData = BitConverterHelper.ToBytes(sourceData);
+                imageData = (byte[])sourceData.Clone();
 
             // Not official supported, but works (tested on 2 test images)!
             if (pixFormat == PixelFormat.Format16bppGrayScale)

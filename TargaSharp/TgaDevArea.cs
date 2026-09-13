@@ -85,12 +85,12 @@
                 throw new InvalidOperationException($"{nameof(Entries)}.Count ({Entries.Count}) exceeds the TGA spec limit of {ushort.MaxValue} tags in the Developer Directory.");
 
             ushort numEntries = (ushort)Entries.Count;
-            var devDir = new List<byte>(BitConverter.GetBytes(numEntries));
+            var devDir = new TgaByteBuilder(sizeof(ushort) + Entries.Count * TgaDevEntry.Size).Add(numEntries);
             for (int i = 0; i < Entries.Count; i++)
             {
-                devDir.AddRange(BitConverter.GetBytes(Entries[i].Tag));
-                devDir.AddRange(BitConverter.GetBytes(Entries[i].Offset));
-                devDir.AddRange(BitConverter.GetBytes(Entries[i].FieldSize));
+                devDir.Add(Entries[i].Tag);
+                devDir.Add(Entries[i].Offset);
+                devDir.Add(unchecked((uint)Entries[i].FieldSize));
             }
             return devDir.ToArray();
         }

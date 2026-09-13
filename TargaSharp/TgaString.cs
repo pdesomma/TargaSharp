@@ -141,7 +141,9 @@ namespace TargaSharp
         public static TgaString operator +(TgaString item1, TgaString item2)
         {
             if (item1 is null || item2 is null) throw new ArgumentNullException();
-            return new TgaString(BitConverterHelper.ToBytes(item1.ToBytes(), item2.ToBytes())!);
+            byte[] bytes1 = item1.ToBytes();
+            byte[] bytes2 = item2.ToBytes();
+            return new TgaString(new TgaByteBuilder(bytes1.Length + bytes2.Length).Add(bytes1).Add(bytes2).ToArray());
         }
 
         /// <summary>

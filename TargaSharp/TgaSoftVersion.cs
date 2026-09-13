@@ -40,7 +40,7 @@ namespace TargaSharp
             if (bytes.Length != Size)
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
 
-            VersionNumber = BitConverter.ToUInt16(bytes, 0);
+            VersionNumber = TgaBinary.ReadUInt16(bytes, 0);
             VersionLetter = Encoding.ASCII.GetString(bytes, 2, 1)[0];
         }
 
@@ -80,7 +80,7 @@ namespace TargaSharp
         /// <param name="VersionNumber">Set 123 for 1.23 version.</param>
         /// <param name="VersionLetter">Version letter, example: for 'a' - "1.23a".</param>
         /// <returns>Byte array, <see cref="VersionNumber"/> (2 bytes) and <see cref="VersionLetter"/> (ASCII symbol).</returns>
-        public static byte[] ToBytes(ushort VersionNumber, char VersionLetter = ' ') => BitConverterHelper.ToBytes(VersionNumber, Encoding.ASCII.GetBytes(VersionLetter.ToString()));
+        public static byte[] ToBytes(ushort VersionNumber, char VersionLetter = ' ') => new TgaByteBuilder(Size).Add(VersionNumber).Add(Encoding.ASCII.GetBytes(VersionLetter.ToString())).ToArray();
 
         public override string ToString() => (VersionNumber.ToString("000") + VersionLetter).TrimEnd(new char[] { ' ', '\0' });
 

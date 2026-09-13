@@ -28,8 +28,8 @@
             IdLength = bytes[0];
             ColorMapType = (TgaColorMapType)bytes[1];
             ImageType = (TgaImageType)bytes[2];
-            ColorMapSpec = new TgaColorMapSpec(BitConverterHelper.GetElements(bytes, 3, TgaColorMapSpec.Size));
-            ImageSpec = new TgaImageSpec(BitConverterHelper.GetElements(bytes, 8, TgaImageSpec.Size));
+            ColorMapSpec = new TgaColorMapSpec(bytes.AsSpan(3, TgaColorMapSpec.Size).ToArray());
+            ImageSpec = new TgaImageSpec(bytes.AsSpan(8, TgaImageSpec.Size).ToArray());
         }
 
         /// <summary>
@@ -93,7 +93,13 @@
         /// Convert <see cref="TgaHeader"/> to byte array.
         /// </summary>
         /// <returns>Byte array with size equal <see cref="Size"/>.</returns>
-        public byte[] ToBytes() => BitConverterHelper.ToBytes(IdLength, (byte)ColorMapType, (byte)ImageType, ColorMapSpec?.ToBytes() ?? new byte[TgaColorMapSpec.Size], ImageSpec?.ToBytes() ?? new byte[TgaImageSpec.Size])!;
+        public byte[] ToBytes() => new TgaByteBuilder(Size)
+            .Add(IdLength)
+            .Add((byte)ColorMapType)
+            .Add((byte)ImageType)
+            .Add(ColorMapSpec?.ToBytes() ?? new byte[TgaColorMapSpec.Size])
+            .Add(ImageSpec?.ToBytes() ?? new byte[TgaImageSpec.Size])
+            .ToArray();
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();
