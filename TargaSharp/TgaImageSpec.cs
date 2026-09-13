@@ -46,18 +46,18 @@
         /// <summary>
         /// Make ImageSpec from bytes.
         /// </summary>
-        /// <param name="Bytes">Array of bytes(byte[10]).</param>
-        public TgaImageSpec(byte[] Bytes)
+        /// <param name="bytes">Array of bytes(byte[10]).</param>
+        public TgaImageSpec(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(Bytes);
-            if (Bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(Bytes), Bytes.Length, $"Length must be {Size}.");
-            XOrigin = TgaBinary.ReadUInt16(Bytes, 0);
-            YOrigin = TgaBinary.ReadUInt16(Bytes, 2);
-            ImageWidth = TgaBinary.ReadUInt16(Bytes, 4);
-            ImageHeight = TgaBinary.ReadUInt16(Bytes, 6);
-            PixelDepth = (TgaPixelDepth)Bytes[8];
-            ImageDescriptor = new TgaImageDescriptor(Bytes[9]);
+            ArgumentNullException.ThrowIfNull(bytes);
+            if (bytes.Length != Size)
+                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            XOrigin = TgaBinary.ReadUInt16(bytes, 0);
+            YOrigin = TgaBinary.ReadUInt16(bytes, 2);
+            ImageWidth = TgaBinary.ReadUInt16(bytes, 4);
+            ImageHeight = TgaBinary.ReadUInt16(bytes, 6);
+            PixelDepth = (TgaPixelDepth)bytes[8];
+            ImageDescriptor = new TgaImageDescriptor(bytes[9]);
         }
 
         /// <summary>

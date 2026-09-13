@@ -98,12 +98,12 @@ namespace TargaSharp.Drawing
 
                         tga.Header.ColorMapSpec.ColorMapLength = Math.Min((ushort)colors.Length, ushort.MaxValue);
                         tga.Header.ColorMapSpec.ColorMapEntrySize = (TgaColorMapEntrySize)cMapBpp;
-                        tga.ImageOrColorMapArea.ColorMapData = new byte[tga.Header.ColorMapSpec.ColorMapLength * cmBytesPP];
+                        tga.ImageArea.ColorMapData = new byte[tga.Header.ColorMapSpec.ColorMapLength * cmBytesPP];
 
                         for (int i = 0; i < colors.Length; i++)
                         {
                             byte[] cMapEntry = TgaColorMapDrawing.WriteEntry(tga.Header.ColorMapSpec.ColorMapEntrySize, colors[i], cmBytesPP);
-                            Buffer.BlockCopy(cMapEntry, 0, tga.ImageOrColorMapArea.ColorMapData!, i * cmBytesPP, cmBytesPP);
+                            Buffer.BlockCopy(cMapEntry, 0, tga.ImageArea.ColorMapData!, i * cmBytesPP, cmBytesPP);
                         }
                     }
                     #endregion
@@ -112,20 +112,20 @@ namespace TargaSharp.Drawing
                     if (useRle)
                     {
                         if (isGrayImage)
-                            tga.Header.ImageType = TgaImageType.RLE_BlackWhite;
+                            tga.Header.ImageType = TgaImageType.RleGrayscale;
                         else if (isColorMapped)
-                            tga.Header.ImageType = TgaImageType.RLE_ColorMapped;
+                            tga.Header.ImageType = TgaImageType.RleColorMapped;
                         else
-                            tga.Header.ImageType = TgaImageType.RLE_TrueColor;
+                            tga.Header.ImageType = TgaImageType.RleTrueColor;
                     }
                     else
                     {
                         if (isGrayImage)
-                            tga.Header.ImageType = TgaImageType.Uncompressed_BlackWhite;
+                            tga.Header.ImageType = TgaImageType.UncompressedGrayscale;
                         else if (isColorMapped)
-                            tga.Header.ImageType = TgaImageType.Uncompressed_ColorMapped;
+                            tga.Header.ImageType = TgaImageType.UncompressedColorMapped;
                         else
-                            tga.Header.ImageType = TgaImageType.Uncompressed_TrueColor;
+                            tga.Header.ImageType = TgaImageType.UncompressedTrueColor;
                     }
 
                     tga.Header.ColorMapType = (isColorMapped ? TgaColorMapType.ColorMap : TgaColorMapType.NoColorMap);
@@ -134,24 +134,24 @@ namespace TargaSharp.Drawing
                     #region NewFormat
                     if (newFormat)
                     {
-                        // ToNewFormat() creates Footer + a default ExtArea (DateTimeStamp = now, a simple
+                        // ToNewFormat() creates Footer + a default ExtensionArea (DateTimeStamp = now, a simple
                         // Alpha-bits-based AttributesType); override AttributesType below with the fuller
                         // pre-multiplied / "should be retained" semantics ToNewFormat() doesn't know about.
                         tga.ToNewFormat();
 
                         if (isAlpha)
                         {
-                            tga.ExtArea!.AttributesType = TgaAttributeType.UsefulAlpha;
+                            tga.ExtensionArea!.AttributesType = TgaAttributeType.UsefulAlpha;
 
                             if (isPreAlpha)
-                                tga.ExtArea.AttributesType = TgaAttributeType.PreMultipliedAlpha;
+                                tga.ExtensionArea.AttributesType = TgaAttributeType.PreMultipliedAlpha;
                         }
                         else
                         {
-                            tga.ExtArea!.AttributesType = TgaAttributeType.NoAlpha;
+                            tga.ExtensionArea!.AttributesType = TgaAttributeType.NoAlpha;
 
                             if (tga.Header.ImageSpec.ImageDescriptor.AlphaChannelBits > 0)
-                                tga.ExtArea.AttributesType = TgaAttributeType.UndefinedAlphaButShouldBeRetained;
+                                tga.ExtensionArea.AttributesType = TgaAttributeType.UndefinedAlphaButShouldBeRetained;
                         }
                     }
                     #endregion
@@ -169,19 +169,19 @@ namespace TargaSharp.Drawing
 
                     if (paddingBytes > 0) // Need delete bytes align
                     {
-                        tga.ImageOrColorMapArea.ImageData = new byte[strideBytes * bmp.Height];
+                        tga.ImageArea.ImageData = new byte[strideBytes * bmp.Height];
                         for (int i = 0; i < bmp.Height; i++)
                             Buffer.BlockCopy(imageData, i * (strideBytes + paddingBytes),
-                                tga.ImageOrColorMapArea.ImageData, i * strideBytes, strideBytes);
+                                tga.ImageArea.ImageData, i * strideBytes, strideBytes);
                     }
                     else
-                        tga.ImageOrColorMapArea.ImageData = imageData;
+                        tga.ImageArea.ImageData = imageData;
 
                     // Not official supported, but works (tested on 16bpp GrayScale test images)!
                     if (bmp.PixelFormat == PixelFormat.Format16bppGrayScale)
                     {
-                        for (long i = 0; i < tga.ImageOrColorMapArea.ImageData.Length; i++)
-                            tga.ImageOrColorMapArea.ImageData[i] ^= byte.MaxValue;
+                        for (long i = 0; i < tga.ImageArea.ImageData.Length; i++)
+                            tga.ImageArea.ImageData[i] ^= byte.MaxValue;
                     }
                     #endregion
 

@@ -14,7 +14,7 @@ public class TgaFileTests
     [TestMethod]
     public void Ctor_ColorMappedImage_ConstructsAndPopulatesColorMapSpec()
     {
-        var tga = new TgaFile(4, 4, TgaPixelDepth.Bpp8, TgaImageType.Uncompressed_ColorMapped);
+        var tga = new TgaFile(4, 4, TgaPixelDepth.Bpp8, TgaImageType.UncompressedColorMapped);
 
         Assert.IsNotNull(tga.Header.ColorMapSpec);
         Assert.AreEqual(TgaColorMapType.ColorMap, tga.Header.ColorMapType);
@@ -30,19 +30,19 @@ public class TgaFileTests
         var tga = new TgaFile(2, 2);
 
         Assert.IsNotNull(tga.Header);
-        Assert.IsNotNull(tga.ImageOrColorMapArea);
+        Assert.IsNotNull(tga.ImageArea);
         Assert.AreEqual((ushort)2, tga.Width);
         Assert.AreEqual((ushort)2, tga.Height);
     }
 
     [TestMethod]
-    public void Clone_DefaultFormatTga_DoesNotThrowAndHasNoExtAreaOrFooter()
+    public void Clone_DefaultFormatTga_DoesNotThrowAndHasNoExtensionAreaOrFooter()
     {
         var tga = new TgaFile(2, 2, newFormat: false);
 
         var clone = tga.Clone();
 
-        Assert.IsNull(clone.ExtArea);
+        Assert.IsNull(clone.ExtensionArea);
         Assert.IsNull(clone.Footer);
     }
 
@@ -61,17 +61,17 @@ public class TgaFileTests
     [TestMethod]
     public void UpdatePostageStampImage_ThenDeletePostageStampImage_ClearsPostageStampImage()
     {
-        var tga = new TgaFile(4, 4, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
+        var tga = new TgaFile(4, 4, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
 
         tga.UpdatePostageStampImage();
-        Assert.IsNotNull(tga.ExtArea?.PostageStampImage);
+        Assert.IsNotNull(tga.ExtensionArea?.PostageStampImage);
 
         tga.DeletePostageStampImage();
-        Assert.IsNull(tga.ExtArea?.PostageStampImage);
+        Assert.IsNull(tga.ExtensionArea?.PostageStampImage);
     }
 
     [TestMethod]
-    public void DeletePostageStampImage_NullExtArea_DoesNotThrow()
+    public void DeletePostageStampImage_NullExtensionArea_DoesNotThrow()
     {
         var tga = new TgaFile();
 
@@ -81,8 +81,8 @@ public class TgaFileTests
     [TestMethod]
     public void Save_ThenLoadFromStream_RoundTripsToIdenticalBytes()
     {
-        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
-        tga.ImageOrColorMapArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
+        tga.ImageArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
         using var firstStream = new MemoryStream();
         tga.Save(firstStream);
@@ -98,11 +98,11 @@ public class TgaFileTests
     }
 
     [TestMethod]
-    public void Save_ImageIDWithNChars_ReloadedHeaderIdLengthEqualsN()
+    public void Save_ImageIdWithNChars_ReloadedHeaderIdLengthEqualsN()
     {
-        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
-        tga.ImageOrColorMapArea.ImageData = new byte[2 * 2 * 3];
-        tga.ImageOrColorMapArea.ImageID = new TgaString("Hello", 5);
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
+        tga.ImageArea.ImageData = new byte[2 * 2 * 3];
+        tga.ImageArea.ImageId = new TgaString("Hello", 5);
 
         using var stream = new MemoryStream();
         tga.Save(stream);
@@ -114,11 +114,11 @@ public class TgaFileTests
     }
 
     [TestMethod]
-    public void Save_NullImageID_ReloadedHeaderIdLengthIsZero()
+    public void Save_NullImageId_ReloadedHeaderIdLengthIsZero()
     {
-        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
-        tga.ImageOrColorMapArea.ImageData = new byte[2 * 2 * 3];
-        tga.ImageOrColorMapArea.ImageID = null;
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
+        tga.ImageArea.ImageData = new byte[2 * 2 * 3];
+        tga.ImageArea.ImageId = null;
 
         using var stream = new MemoryStream();
         tga.Save(stream);
@@ -130,11 +130,11 @@ public class TgaFileTests
     }
 
     [TestMethod]
-    public void Save_ExtAreaWithOtherData_ReloadedExtensionSizeEqualsMinSizePlusOtherDataLength()
+    public void Save_ExtensionAreaWithOtherData_ReloadedExtensionSizeEqualsMinSizePlusOtherDataLength()
     {
-        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
-        tga.ImageOrColorMapArea.ImageData = new byte[2 * 2 * 3];
-        tga.ExtArea!.OtherDataInExtensionArea = [1, 2, 3, 4];
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
+        tga.ImageArea.ImageData = new byte[2 * 2 * 3];
+        tga.ExtensionArea!.OtherDataInExtensionArea = [1, 2, 3, 4];
 
         using var stream = new MemoryStream();
         tga.Save(stream);
@@ -142,7 +142,7 @@ public class TgaFileTests
         stream.Position = 0;
         var reloaded = new TgaFile(stream);
 
-        Assert.AreEqual((ushort)(TgaExtArea.MinSize + 4), reloaded.ExtArea!.ExtensionSize);
+        Assert.AreEqual((ushort)(TgaExtensionArea.MinSize + 4), reloaded.ExtensionArea!.ExtensionSize);
     }
 
     [TestMethod]
@@ -154,25 +154,25 @@ public class TgaFileTests
     }
 
     [TestMethod]
-    public void ImageOrColorMapArea_Property_HasInternalSetter()
+    public void ImageArea_Property_HasInternalSetter()
     {
-        PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.ImageOrColorMapArea))!;
+        PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.ImageArea))!;
 
         Assert.IsTrue(property.SetMethod!.IsAssembly);
     }
 
     [TestMethod]
-    public void DevArea_Property_HasInternalSetter()
+    public void DeveloperArea_Property_HasInternalSetter()
     {
-        PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.DevArea))!;
+        PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.DeveloperArea))!;
 
         Assert.IsTrue(property.SetMethod!.IsAssembly);
     }
 
     [TestMethod]
-    public void ExtArea_Property_HasInternalSetter()
+    public void ExtensionArea_Property_HasInternalSetter()
     {
-        PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.ExtArea))!;
+        PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.ExtensionArea))!;
 
         Assert.IsTrue(property.SetMethod!.IsAssembly);
     }
@@ -186,9 +186,9 @@ public class TgaFileTests
     }
 
     [TestMethod]
-    public void LoadFromStream_ExtAreaSizeBelowMinSize_LeavesExtAreaNullWithoutThrowing()
+    public void LoadFromStream_ExtensionAreaSizeBelowMinSize_LeavesExtensionAreaNullWithoutThrowing()
     {
-        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
 
         using var stream = new MemoryStream();
         tga.Save(stream);
@@ -196,7 +196,7 @@ public class TgaFileTests
 
         // Control: reloading the untouched bytes must find the (valid, 495-byte) v2.0 ext area.
         var control = new TgaFile(bytes);
-        Assert.IsNotNull(control.ExtArea);
+        Assert.IsNotNull(control.ExtensionArea);
 
         // Per spec the Extension Area Size field must be 495 for a v2.0 ext area; a reader should
         // only parse what it understands. Patch the declared size (the first 2 bytes of the ext
@@ -208,26 +208,26 @@ public class TgaFileTests
 
         var reloaded = new TgaFile(patched);
 
-        Assert.IsNull(reloaded.ExtArea);
+        Assert.IsNull(reloaded.ExtensionArea);
         Assert.AreEqual((ushort)2, reloaded.Width);
         Assert.AreEqual((ushort)2, reloaded.Height);
         Assert.AreEqual(TgaPixelDepth.Bpp24, reloaded.Header.ImageSpec.PixelDepth);
     }
 
     [TestMethod]
-    public void ToBytes_TwoDevAreaEntriesWithSameTag_ThrowsTgaValidationException()
+    public void ToBytes_TwoDeveloperAreaEntriesWithSameTag_ThrowsTgaValidationException()
     {
-        TgaFile tga = LoadTgaWithDevArea([5, 5]);
+        TgaFile tga = LoadTgaWithDeveloperArea([5, 5]);
 
         var ex = Assert.ThrowsExactly<TgaValidationException>(() => tga.ToBytes());
 
-        Assert.IsTrue(ex.Errors.Any(e => e.Path.StartsWith("DevArea", StringComparison.Ordinal)), ex.Message);
+        Assert.IsTrue(ex.Errors.Any(e => e.Path.StartsWith("DeveloperArea", StringComparison.Ordinal)), ex.Message);
     }
 
     [TestMethod]
-    public void ToBytes_TwoDevAreaEntriesWithDifferentTags_Succeeds()
+    public void ToBytes_TwoDeveloperAreaEntriesWithDifferentTags_Succeeds()
     {
-        TgaFile tga = LoadTgaWithDevArea([5, 6]);
+        TgaFile tga = LoadTgaWithDeveloperArea([5, 6]);
 
         byte[] bytes = tga.ToBytes();
 
@@ -235,9 +235,9 @@ public class TgaFileTests
     }
 
     /// <summary>
-    /// <see cref="TgaFile.DevArea"/> has an internal setter with no public constructor parameter to seed
+    /// <see cref="TgaFile.DeveloperArea"/> has an internal setter with no public constructor parameter to seed
     /// it directly, so the only public way to obtain a <see cref="TgaFile"/> with populated
-    /// <see cref="TgaFile.DevArea"/> entries is to load bytes containing a hand-built Developer Area
+    /// <see cref="TgaFile.DeveloperArea"/> entries is to load bytes containing a hand-built Developer Area
     /// directory (mirroring what <c>TargaSharp.IO.TgaReader.Read(Stream)</c> parses). This builds a
     /// minimal, otherwise-valid TGA (no image data, no dev area) via the public API, then splices in a
     /// Developer Directory with the given tags (each entry gets a 1-byte field, so it survives the
@@ -245,21 +245,21 @@ public class TgaFileTests
     /// DeveloperDirectoryOffset to point at it.
     /// </summary>
     /// <param name="tags">Tag value for each Developer Area entry to create.</param>
-    /// <returns>A <see cref="TgaFile"/> loaded from the crafted bytes, with DevArea populated.</returns>
-    private static TgaFile LoadTgaWithDevArea(ushort[] tags)
+    /// <returns>A <see cref="TgaFile"/> loaded from the crafted bytes, with DeveloperArea populated.</returns>
+    private static TgaFile LoadTgaWithDeveloperArea(ushort[] tags)
     {
-        var baseTga = new TgaFile(0, 0); // No image data; newFormat: true => Header + ExtArea + Footer only.
+        var baseTga = new TgaFile(0, 0); // No image data; newFormat: true => Header + ExtensionArea + Footer only.
         using var baseStream = new MemoryStream();
         baseTga.Save(baseStream);
         byte[] baseBytes = baseStream.ToArray();
 
-        int headerAndExtAreaLength = baseBytes.Length - TgaFooter.Size;
-        byte[] headerAndExtArea = baseBytes[..headerAndExtAreaLength];
-        byte[] originalFooter = baseBytes[headerAndExtAreaLength..];
+        int headerAndExtensionAreaLength = baseBytes.Length - TgaFooter.Size;
+        byte[] headerAndExtensionArea = baseBytes[..headerAndExtensionAreaLength];
+        byte[] originalFooter = baseBytes[headerAndExtensionAreaLength..];
 
         // One byte of field data per entry, placed right after the ext area.
         byte[] fieldData = new byte[tags.Length];
-        uint devDirOffset = (uint)(headerAndExtAreaLength + fieldData.Length);
+        uint devDirOffset = (uint)(headerAndExtensionAreaLength + fieldData.Length);
 
         using var devDirStream = new MemoryStream();
         using (var writer = new BinaryWriter(devDirStream))
@@ -268,7 +268,7 @@ public class TgaFileTests
             for (int i = 0; i < tags.Length; i++)
             {
                 writer.Write(tags[i]);
-                writer.Write((uint)(headerAndExtAreaLength + i)); // Offset of this entry's 1-byte field data.
+                writer.Write((uint)(headerAndExtensionAreaLength + i)); // Offset of this entry's 1-byte field data.
                 writer.Write((uint)1); // Field size.
             }
         }
@@ -279,11 +279,11 @@ public class TgaFileTests
         byte[] patchedFooter = (byte[])originalFooter.Clone();
         BitConverter.GetBytes(devDirOffset).CopyTo(patchedFooter, 4);
 
-        byte[] full = [.. headerAndExtArea, .. fieldData, .. devDirBytes, .. patchedFooter];
+        byte[] full = [.. headerAndExtensionArea, .. fieldData, .. devDirBytes, .. patchedFooter];
 
         var tga = new TgaFile(full);
-        Assert.IsNotNull(tga.DevArea);
-        Assert.AreEqual(tags.Length, tga.DevArea!.Count);
+        Assert.IsNotNull(tga.DeveloperArea);
+        Assert.AreEqual(tags.Length, tga.DeveloperArea!.Count);
         return tga;
     }
 }

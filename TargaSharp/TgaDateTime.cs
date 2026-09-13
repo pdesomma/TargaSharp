@@ -17,15 +17,15 @@
         /// <summary>
         /// Make <see cref="TgaDateTime"/> from <see cref="DateTime"/>.
         /// </summary>
-        /// <param name="DateAndTime">Some <see cref="DateTime"/> variable.</param>
-        public TgaDateTime(DateTime DateAndTime)
+        /// <param name="dateTime">Some <see cref="DateTime"/> variable.</param>
+        public TgaDateTime(DateTime dateTime)
         {
-            Month = (ushort)DateAndTime.Month;
-            Day = (ushort)DateAndTime.Day;
-            Year = (ushort)DateAndTime.Year;
-            Hour = (ushort)DateAndTime.Hour;
-            Minute = (ushort)DateAndTime.Minute;
-            Second = (ushort)DateAndTime.Second;
+            Month = (ushort)dateTime.Month;
+            Day = (ushort)dateTime.Day;
+            Year = (ushort)dateTime.Year;
+            Hour = (ushort)dateTime.Hour;
+            Minute = (ushort)dateTime.Minute;
+            Second = (ushort)dateTime.Second;
         }
 
         /// <summary>

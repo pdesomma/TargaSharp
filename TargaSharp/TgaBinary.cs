@@ -141,7 +141,7 @@ namespace TargaSharp
         /// <summary>
         /// Appends raw bytes, or nothing when <paramref name="value"/> is <see langword="null"/>
         /// (mirrors <c>BitConverterHelper.ToBytes</c>'s null-element skip, relied on for optional
-        /// trailing fields such as <see cref="TgaExtArea.OtherDataInExtensionArea"/>).
+        /// trailing fields such as <see cref="TgaExtensionArea.OtherDataInExtensionArea"/>).
         /// </summary>
         /// <param name="value">Bytes to append, or <see langword="null"/> to add nothing.</param>
         /// <returns>This builder, for chaining.</returns>

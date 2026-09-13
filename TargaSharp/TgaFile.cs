@@ -6,9 +6,9 @@ namespace TargaSharp
     public class TgaFile : ICloneable
     {
         public TgaHeader Header { get; internal set; } = new TgaHeader();
-        public TgaImgOrColMap ImageOrColorMapArea { get; internal set; } = new TgaImgOrColMap();
-        public TgaDevArea? DevArea { get; internal set; } = null;
-        public TgaExtArea? ExtArea { get; internal set; } = null;
+        public TgaImageArea ImageArea { get; internal set; } = new TgaImageArea();
+        public TgaDeveloperArea? DeveloperArea { get; internal set; } = null;
+        public TgaExtensionArea? ExtensionArea { get; internal set; } = null;
         public TgaFooter? Footer { get; internal set; } = null;
 
         /// <summary>
@@ -18,8 +18,8 @@ namespace TargaSharp
 
         /// <summary>
         /// Create <see cref="TgaFile"/> instance with some params. If it must have ColorMap,
-        /// check all ColorMap fields and settings after. Color-mapped images (<see cref="TgaImageType.Uncompressed_ColorMapped"/>
-        /// or <see cref="TgaImageType.RLE_ColorMapped"/>) default to 24-bit (<see cref="TgaColorMapEntrySize.R8G8B8"/>)
+        /// check all ColorMap fields and settings after. Color-mapped images (<see cref="TgaImageType.UncompressedColorMapped"/>
+        /// or <see cref="TgaImageType.RleColorMapped"/>) default to 24-bit (<see cref="TgaColorMapEntrySize.R8G8B8"/>)
         /// palette entries; the palette length and entry data themselves are left for the caller to set afterward.
         /// </summary>
         /// <param name="width">Image Width.</param>
@@ -28,7 +28,7 @@ namespace TargaSharp
         /// <param name="imgType">Image Type (is RLE compressed, ColorMapped or GrayScaled).</param>
         /// <param name="attrBits">Set numder of Attrbute bits (Alpha channel bits), default: 0, 1, 8.</param>
         /// <param name="newFormat">Use new 2.0 TGA XFile format?</param>
-        public TgaFile(ushort width, ushort height, TgaPixelDepth pixDepth = TgaPixelDepth.Bpp24, TgaImageType imgType = TgaImageType.Uncompressed_TrueColor, byte attrBits = 0, bool newFormat = true)
+        public TgaFile(ushort width, ushort height, TgaPixelDepth pixDepth = TgaPixelDepth.Bpp24, TgaImageType imgType = TgaImageType.UncompressedTrueColor, byte attrBits = 0, bool newFormat = true)
         {
             if (width <= 0 || height <= 0 || pixDepth == TgaPixelDepth.Other)
             {
@@ -39,10 +39,10 @@ namespace TargaSharp
             }
             else
             {
-                int BytesPerPixel = (int)Math.Ceiling((double)pixDepth / 8.0);
-                ImageOrColorMapArea.ImageData = new byte[width * height * BytesPerPixel];
+                int bytesPerPixel = (int)Math.Ceiling((double)pixDepth / 8.0);
+                ImageArea.ImageData = new byte[width * height * bytesPerPixel];
 
-                if (imgType == TgaImageType.Uncompressed_ColorMapped || imgType == TgaImageType.RLE_ColorMapped)
+                if (imgType == TgaImageType.UncompressedColorMapped || imgType == TgaImageType.RleColorMapped)
                 {
                     Header.ColorMapType = TgaColorMapType.ColorMap;
                     Header.ColorMapSpec.FirstEntryIndex = 0;
@@ -63,7 +63,7 @@ namespace TargaSharp
             if (newFormat)
             {
                 Footer = new TgaFooter();
-                ExtArea = new TgaExtArea
+                ExtensionArea = new TgaExtensionArea
                 {
                     DateTimeStamp = new TgaDateTime(DateTime.UtcNow),
                     AttributesType = (attrBits > 0 ? TgaAttributeType.UsefulAlpha : TgaAttributeType.NoAlpha)
@@ -79,9 +79,9 @@ namespace TargaSharp
         public TgaFile(TgaFile tga)
         {
             Header = tga.Header.Copy();
-            ImageOrColorMapArea = tga.ImageOrColorMapArea.Copy();
-            DevArea = tga.DevArea?.Copy();
-            ExtArea = tga.ExtArea?.Copy();
+            ImageArea = tga.ImageArea.Copy();
+            DeveloperArea = tga.DeveloperArea?.Copy();
+            ExtensionArea = tga.ExtensionArea?.Copy();
             Footer = tga.Footer?.Copy();
         }
         /// <summary>
@@ -133,13 +133,13 @@ namespace TargaSharp
         /// <summary>
         /// Flip <see cref="TgaFile"/> directions, for more info see <see cref="TgaImageOrigin"/>.
         /// </summary>
-        /// <param name="Horizontal">Flip horizontal.</param>
-        /// <param name="Vertical">Flip vertical.</param>
-        public void Flip(bool Horizontal = false, bool Vertical = false)
+        /// <param name="horizontal">Flip horizontal.</param>
+        /// <param name="vertical">Flip vertical.</param>
+        public void Flip(bool horizontal = false, bool vertical = false)
         {
-            int NewOrigin = (int)Header.ImageSpec.ImageDescriptor.ImageOrigin;
-            NewOrigin = NewOrigin ^ ((Vertical ? 0x20 : 0) | (Horizontal ? 0x10 : 0));
-            Header.ImageSpec.ImageDescriptor.ImageOrigin = (TgaImageOrigin)NewOrigin;
+            int newOrigin = (int)Header.ImageSpec.ImageDescriptor.ImageOrigin;
+            newOrigin = newOrigin ^ ((vertical ? 0x20 : 0) | (horizontal ? 0x10 : 0));
+            Header.ImageSpec.ImageDescriptor.ImageOrigin = (TgaImageOrigin)newOrigin;
         }
 
         /// <summary>
@@ -179,15 +179,15 @@ namespace TargaSharp
         {
             Footer ??= new TgaFooter();
 
-            if (ExtArea is null)
+            if (ExtensionArea is null)
             {
-                ExtArea = new TgaExtArea();
-                ExtArea.DateTimeStamp = new TgaDateTime(DateTime.UtcNow);
+                ExtensionArea = new TgaExtensionArea();
+                ExtensionArea.DateTimeStamp = new TgaDateTime(DateTime.UtcNow);
 
                 if (Header.ImageSpec.ImageDescriptor.AlphaChannelBits > 0)
-                    ExtArea.AttributesType = TgaAttributeType.UsefulAlpha;
+                    ExtensionArea.AttributesType = TgaAttributeType.UsefulAlpha;
                 else
-                    ExtArea.AttributesType = TgaAttributeType.NoAlpha;
+                    ExtensionArea.AttributesType = TgaAttributeType.NoAlpha;
             }
         }
 
@@ -198,43 +198,43 @@ namespace TargaSharp
         {
             if (Header.ImageType == TgaImageType.NoImageData)
             {
-                if (ExtArea is not null) ExtArea.PostageStampImage = null;
+                if (ExtensionArea is not null) ExtensionArea.PostageStampImage = null;
                 return;
             }
 
             ToNewFormat();
-            if (ExtArea is not null) ExtArea.PostageStampImage ??= new TgaPostageStampImage();
+            if (ExtensionArea is not null) ExtensionArea.PostageStampImage ??= new TgaPostageStampImage();
 
-            int PS_Width = Header.ImageSpec.ImageWidth;
-            int PS_Height = Header.ImageSpec.ImageHeight;
+            int psWidth = Header.ImageSpec.ImageWidth;
+            int psHeight = Header.ImageSpec.ImageHeight;
 
             if (Width > 64 || Height > 64)
             {
-                float AspectRatio = Width / (float)Height;
-                PS_Width = (byte)(64f * (AspectRatio < 1f ? AspectRatio : 1f));
-                PS_Height = (byte)(64f / (AspectRatio > 1f ? AspectRatio : 1f));
+                float aspectRatio = Width / (float)Height;
+                psWidth = (byte)(64f * (aspectRatio < 1f ? aspectRatio : 1f));
+                psHeight = (byte)(64f / (aspectRatio > 1f ? aspectRatio : 1f));
             }
-            PS_Width = Math.Max(PS_Width, 4);
-            PS_Height = Math.Max(PS_Height, 4);
+            psWidth = Math.Max(psWidth, 4);
+            psHeight = Math.Max(psHeight, 4);
 
-            ExtArea.PostageStampImage.Width = (byte)PS_Width;
-            ExtArea.PostageStampImage.Height = (byte)PS_Height;
+            ExtensionArea.PostageStampImage.Width = (byte)psWidth;
+            ExtensionArea.PostageStampImage.Height = (byte)psHeight;
 
-            int BytesPerPixel = (int)Math.Ceiling((double)Header.ImageSpec.PixelDepth / 8.0);
-            ExtArea.PostageStampImage.Data = new byte[PS_Width * PS_Height * BytesPerPixel];
+            int bytesPerPixel = (int)Math.Ceiling((double)Header.ImageSpec.PixelDepth / 8.0);
+            ExtensionArea.PostageStampImage.Data = new byte[psWidth * psHeight * bytesPerPixel];
 
-            float WidthCoef = Width / (float)PS_Width;
-            float HeightCoef = Height / (float)PS_Height;
+            float widthCoef = Width / (float)psWidth;
+            float heightCoef = Height / (float)psHeight;
 
-            for (int y = 0; y < PS_Height; y++)
+            for (int y = 0; y < psHeight; y++)
             {
-                int Y_Offset = (int)(y * HeightCoef) * Width * BytesPerPixel;
-                int y_Offset = y * PS_Width * BytesPerPixel;
+                int sourceOffset = (int)(y * heightCoef) * Width * bytesPerPixel;
+                int stampOffset = y * psWidth * bytesPerPixel;
 
-                for (int x = 0; x < PS_Width; x++)
+                for (int x = 0; x < psWidth; x++)
                 {
-                    Buffer.BlockCopy(ImageOrColorMapArea.ImageData, Y_Offset + (int)(x * WidthCoef) * BytesPerPixel,
-                        ExtArea.PostageStampImage.Data, y_Offset + x * BytesPerPixel, BytesPerPixel);
+                    Buffer.BlockCopy(ImageArea.ImageData, sourceOffset + (int)(x * widthCoef) * bytesPerPixel,
+                        ExtensionArea.PostageStampImage.Data, stampOffset + x * bytesPerPixel, bytesPerPixel);
                 }
             }
         }
@@ -244,7 +244,7 @@ namespace TargaSharp
         /// </summary>
         public void DeletePostageStampImage()
         {
-            if (ExtArea is not null) ExtArea.PostageStampImage = null;
+            if (ExtensionArea is not null) ExtensionArea.PostageStampImage = null;
         }
 
         /// <summary>
@@ -257,9 +257,9 @@ namespace TargaSharp
         private void CopyAreasFrom(TgaFile source)
         {
             Header = source.Header;
-            ImageOrColorMapArea = source.ImageOrColorMapArea;
-            DevArea = source.DevArea;
-            ExtArea = source.ExtArea;
+            ImageArea = source.ImageArea;
+            DeveloperArea = source.DeveloperArea;
+            ExtensionArea = source.ExtensionArea;
             Footer = source.Footer;
         }
     }

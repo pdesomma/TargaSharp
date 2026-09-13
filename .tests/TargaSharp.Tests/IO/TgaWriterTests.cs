@@ -26,8 +26,8 @@ public class TgaWriterTests
     /// <returns>A small 24bpp <see cref="TgaFile"/>.</returns>
     private static TgaFile CreateSmall24BppFile()
     {
-        var file = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
-        file.ImageOrColorMapArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        var file = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
+        file.ImageArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
         return file;
     }
 
@@ -85,7 +85,7 @@ public class TgaWriterTests
         TgaFile reloaded = reader.Read(bytes);
 
         Assert.AreEqual(file.Header, reloaded.Header);
-        CollectionAssert.AreEqual(file.ImageOrColorMapArea.ImageData, reloaded.ImageOrColorMapArea.ImageData);
+        CollectionAssert.AreEqual(file.ImageArea.ImageData, reloaded.ImageArea.ImageData);
     }
 
     [TestMethod]
@@ -137,13 +137,13 @@ public class TgaWriterTests
     public void Write_InvalidFile_ThrowsTgaValidationExceptionWithErrors()
     {
         TgaFile file = CreateSmall24BppFile();
-        file.ImageOrColorMapArea.ImageData = [1, 2, 3]; // Wrong length: expects 2*2*3 = 12 bytes.
+        file.ImageArea.ImageData = [1, 2, 3]; // Wrong length: expects 2*2*3 = 12 bytes.
         ITgaWriter writer = new TgaWriter();
 
         var exception = Assert.ThrowsExactly<TgaValidationException>(() => writer.Write(file));
 
         Assert.HasCount(1, exception.Errors);
-        Assert.AreEqual("ImageOrColorMapArea.ImageData", exception.Errors[0].Path);
+        Assert.AreEqual("ImageArea.ImageData", exception.Errors[0].Path);
     }
 
     [TestMethod]
@@ -175,8 +175,8 @@ public class TgaWriterTests
     [TestMethod]
     public void Write_LayoutFailure_ThrowsTgaValidationExceptionDerivedFromTgaException()
     {
-        var file = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
-        file.ImageOrColorMapArea.ImageData = new byte[1]; // wrong length: caught by validation first
+        var file = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
+        file.ImageArea.ImageData = new byte[1]; // wrong length: caught by validation first
 
         var ex = Assert.ThrowsExactly<TgaValidationException>(() => new TgaWriter().Write(file));
 

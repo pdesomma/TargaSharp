@@ -51,7 +51,7 @@
 
         /// <summary>
         /// ID Length - Field 1 (1 byte):
-        /// This field identifies the number of bytes contained in the <see cref="ImageID"/> Field.
+        /// This field identifies the number of bytes contained in the <see cref="ImageId"/> Field.
         /// The maximum number of characters is 255. A value of zero indicates that no Image ID
         /// field is included with the image. This is a derived field: it is computed by
         /// <see cref="TargaSharp.IO.TgaWriter"/> from the Image ID string's length during layout

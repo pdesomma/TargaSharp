@@ -14,8 +14,8 @@ public class TgaReaderTests
     /// <returns>A small 24bpp <see cref="TgaFile"/>.</returns>
     private static TgaFile CreateSmall24BppFile()
     {
-        var file = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
-        file.ImageOrColorMapArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        var file = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
+        file.ImageArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
         return file;
     }
 
@@ -30,7 +30,7 @@ public class TgaReaderTests
         TgaFile loaded = reader.Read(new MemoryStream(bytes));
 
         Assert.AreEqual(original.Header, loaded.Header);
-        CollectionAssert.AreEqual(original.ImageOrColorMapArea.ImageData, loaded.ImageOrColorMapArea.ImageData);
+        CollectionAssert.AreEqual(original.ImageArea.ImageData, loaded.ImageArea.ImageData);
     }
 
     [TestMethod]
@@ -44,7 +44,7 @@ public class TgaReaderTests
         TgaFile loaded = reader.Read(bytes);
 
         Assert.AreEqual(original.Header, loaded.Header);
-        CollectionAssert.AreEqual(original.ImageOrColorMapArea.ImageData, loaded.ImageOrColorMapArea.ImageData);
+        CollectionAssert.AreEqual(original.ImageArea.ImageData, loaded.ImageArea.ImageData);
     }
 
     [TestMethod]
@@ -61,7 +61,7 @@ public class TgaReaderTests
             TgaFile loaded = reader.Read(path);
 
             Assert.AreEqual(original.Header, loaded.Header);
-            CollectionAssert.AreEqual(original.ImageOrColorMapArea.ImageData, loaded.ImageOrColorMapArea.ImageData);
+            CollectionAssert.AreEqual(original.ImageArea.ImageData, loaded.ImageArea.ImageData);
         }
         finally
         {

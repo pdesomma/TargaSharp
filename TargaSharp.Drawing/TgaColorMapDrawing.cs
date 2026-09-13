@@ -69,7 +69,7 @@ namespace TargaSharp.Drawing
         /// Unpacks the color map entry at <paramref name="index"/> of <paramref name="colorMapData"/> into a <see cref="Color"/>.
         /// </summary>
         /// <param name="entrySize">Packed layout of each entry (bits per entry).</param>
-        /// <param name="colorMapData">Raw color map bytes (see <see cref="TgaImgOrColMap.ColorMapData"/>).</param>
+        /// <param name="colorMapData">Raw color map bytes (see <see cref="TgaImageArea.ColorMapData"/>).</param>
         /// <param name="index">Zero-based entry index.</param>
         /// <param name="useAlpha">Whether the unpacked color should carry a meaningful alpha channel.</param>
         /// <returns>The unpacked <see cref="Color"/>, or <see langword="null"/> for an unsupported <paramref name="entrySize"/>.</returns>

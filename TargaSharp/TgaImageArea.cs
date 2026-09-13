@@ -3,15 +3,15 @@
     /// <summary>
     /// Image Or ColorMap Area
     /// </summary>
-    public sealed record TgaImgOrColMap : ICloneable
+    public sealed record TgaImageArea : ICloneable
     {
         /// <summary>
-        /// Make empty <see cref="TgaImgOrColMap"/>.
+        /// Make empty <see cref="TgaImageArea"/>.
         /// </summary>
-        public TgaImgOrColMap() { }
+        public TgaImageArea() { }
 
         /// <summary>
-        /// Make <see cref="TgaImgOrColMap"/> from arrays.
+        /// Make <see cref="TgaImageArea"/> from arrays.
         /// </summary>
         /// <param name="imageID">This optional field contains identifying information about the image.
         /// The maximum length for this field is 255 bytes. Refer to <see cref="TgaHeader.IDLength"/>
@@ -19,9 +19,9 @@
         /// then these bytes are not written to the file.</param>
         /// <param name="colorMapData">Color Map Data, see <see cref="ColorMapData"/> description.</param>
         /// <param name="imageData">Image Data, see <see cref="ImageData"/> description.</param>
-        public TgaImgOrColMap(TgaString? imageID, byte[]? colorMapData, byte[]? imageData)
+        public TgaImageArea(TgaString? imageID, byte[]? colorMapData, byte[]? imageData)
         {
-            ImageID = imageID;
+            ImageId = imageID;
             ColorMapData = colorMapData;
             ImageData = imageData;
         }
@@ -34,7 +34,7 @@
         /// field. If field 1 is set to Zero indicating that no Image ID exists then these bytes are not
         /// written to the file. Can have text inside (ASCII).</para>
         /// </summary>
-        public TgaString? ImageID { get; set; }
+        public TgaString? ImageId { get; set; }
 
         /// <summary>
         /// Color Map Data - Field 7 (variable):
@@ -75,20 +75,20 @@
         public byte[]? ImageData { get; set; }
 
         /// <summary>
-        /// Make full copy of <see cref="TgaImgOrColMap"/>. Named <c>Copy</c> rather than <c>Clone</c>
+        /// Make full copy of <see cref="TgaImageArea"/>. Named <c>Copy</c> rather than <c>Clone</c>
         /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
-        /// <returns>Full independed copy of <see cref="TgaImgOrColMap"/>.</returns>
-        public TgaImgOrColMap Copy() => this with { ImageID = ImageID?.Copy(), ColorMapData = (byte[]?)ColorMapData?.Clone(), ImageData = (byte[]?)ImageData?.Clone() };
+        /// <returns>Full independed copy of <see cref="TgaImageArea"/>.</returns>
+        public TgaImageArea Copy() => this with { ImageId = ImageId?.Copy(), ColorMapData = (byte[]?)ColorMapData?.Clone(), ImageData = (byte[]?)ImageData?.Clone() };
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();
 
         /// <inheritdoc />
-        public bool Equals(TgaImgOrColMap? other)
+        public bool Equals(TgaImageArea? other)
         {
             if (other is null) return false;
-            return ImageID == other.ImageID &&
+            return ImageId == other.ImageId &&
                 (ReferenceEquals(ColorMapData, other.ColorMapData) || (ColorMapData is not null && other.ColorMapData is not null && ColorMapData.AsSpan().SequenceEqual(other.ColorMapData))) &&
                 (ReferenceEquals(ImageData, other.ImageData) || (ImageData is not null && other.ImageData is not null && ImageData.AsSpan().SequenceEqual(other.ImageData)));
         }
@@ -98,7 +98,7 @@
             unchecked
             {
                 int hash = 27;
-                if (ImageID is not null) hash = (13 * hash) + ImageID.GetHashCode();
+                if (ImageId is not null) hash = (13 * hash) + ImageId.GetHashCode();
                 if (ColorMapData is not null)
                     for (int i = 0; i < ColorMapData.Length; i++)
                         hash = (13 * hash) + ColorMapData[i].GetHashCode();

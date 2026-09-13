@@ -27,8 +27,8 @@ namespace TargaSharp.Drawing
         {
             ArgumentNullException.ThrowIfNull(tga);
 
-            if (tga.ExtArea?.PostageStampImage is null || tga.ExtArea.PostageStampImage.Data is null ||
-                tga.ExtArea.PostageStampImage.Width <= 0 || tga.ExtArea.PostageStampImage.Height <= 0)
+            if (tga.ExtensionArea?.PostageStampImage is null || tga.ExtensionArea.PostageStampImage.Data is null ||
+                tga.ExtensionArea.PostageStampImage.Width <= 0 || tga.ExtensionArea.PostageStampImage.Height <= 0)
                 return null;
 
             return ToBitmapCore(tga, forceUseAlpha, true);
@@ -47,9 +47,9 @@ namespace TargaSharp.Drawing
 
             #region UseAlpha?
             bool useAlpha = true;
-            if (tga.ExtArea != null)
+            if (tga.ExtensionArea != null)
             {
-                switch (tga.ExtArea.AttributesType)
+                switch (tga.ExtensionArea.AttributesType)
                 {
                     case TgaAttributeType.NoAlpha:
                     case TgaAttributeType.UndefinedAlphaCanBeIgnored:
@@ -66,8 +66,8 @@ namespace TargaSharp.Drawing
             #endregion
 
             #region IsGrayImage
-            bool isGrayImage = tga.Header.ImageType == TgaImageType.RLE_BlackWhite ||
-                tga.Header.ImageType == TgaImageType.Uncompressed_BlackWhite;
+            bool isGrayImage = tga.Header.ImageType == TgaImageType.RleGrayscale ||
+                tga.Header.ImageType == TgaImageType.UncompressedGrayscale;
             #endregion
 
             #region Get PixelFormat
@@ -92,7 +92,7 @@ namespace TargaSharp.Drawing
 
                 case TgaPixelDepth.Bpp32:
                     if (useAlpha)
-                        pixFormat = (tga.ExtArea?.AttributesType == TgaAttributeType.PreMultipliedAlpha
+                        pixFormat = (tga.ExtensionArea?.AttributesType == TgaAttributeType.PreMultipliedAlpha
                             ? PixelFormat.Format32bppPArgb
                             : PixelFormat.Format32bppArgb);
                     else
@@ -105,14 +105,14 @@ namespace TargaSharp.Drawing
             }
             #endregion
 
-            ushort bmpWidth = (postageStampImage ? tga.ExtArea!.PostageStampImage!.Width : tga.Width);
-            ushort bmpHeight = (postageStampImage ? tga.ExtArea!.PostageStampImage!.Height : tga.Height);
+            ushort bmpWidth = (postageStampImage ? tga.ExtensionArea!.PostageStampImage!.Width : tga.Width);
+            ushort bmpHeight = (postageStampImage ? tga.ExtensionArea!.PostageStampImage!.Height : tga.Height);
             Bitmap bmp = new Bitmap(bmpWidth, bmpHeight, pixFormat);
 
             #region ColorMap and GrayPalette
             if (tga.Header.ColorMapType == TgaColorMapType.ColorMap &&
-               (tga.Header.ImageType == TgaImageType.RLE_ColorMapped ||
-                tga.Header.ImageType == TgaImageType.Uncompressed_ColorMapped))
+               (tga.Header.ImageType == TgaImageType.RleColorMapped ||
+                tga.Header.ImageType == TgaImageType.UncompressedColorMapped))
             {
                 ColorPalette? colorMap = bmp.Palette;
                 Color[] cMapColors = colorMap.Entries;
@@ -120,7 +120,7 @@ namespace TargaSharp.Drawing
 
                 for (int i = 0; i < entryCount; i++)
                 {
-                    Color? entry = TgaColorMapDrawing.ReadEntry(tga.Header.ColorMapSpec.ColorMapEntrySize, tga.ImageOrColorMapArea.ColorMapData!, i, useAlpha);
+                    Color? entry = TgaColorMapDrawing.ReadEntry(tga.Header.ColorMapSpec.ColorMapEntrySize, tga.ImageArea.ColorMapData!, i, useAlpha);
                     if (entry is null)
                     {
                         colorMap = null;
@@ -149,7 +149,7 @@ namespace TargaSharp.Drawing
             int strideBytes = bmp.Width * bytesPerPixel;
             int paddingBytes = (int)Math.Ceiling(strideBytes / 4.0) * 4 - strideBytes;
 
-            byte[] sourceData = (postageStampImage ? tga.ExtArea!.PostageStampImage!.Data : tga.ImageOrColorMapArea.ImageData)!;
+            byte[] sourceData = (postageStampImage ? tga.ExtensionArea!.PostageStampImage!.Data : tga.ImageArea.ImageData)!;
 
             if (paddingBytes > 0) // Need bytes align
             {
@@ -173,8 +173,8 @@ namespace TargaSharp.Drawing
             Marshal.Copy(imageData, 0, bmpData.Scan0, imageData.Length);
             bmp.UnlockBits(bmpData);
 
-            if (tga.ExtArea != null && tga.ExtArea.KeyColor.ToInt() != 0)
-                bmp.MakeTransparent(tga.ExtArea.KeyColor.ToColor());
+            if (tga.ExtensionArea != null && tga.ExtensionArea.KeyColor.ToInt() != 0)
+                bmp.MakeTransparent(tga.ExtensionArea.KeyColor.ToColor());
 
             #region Flip Image
             switch (tga.Header.ImageSpec.ImageDescriptor.ImageOrigin)

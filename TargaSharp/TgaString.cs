@@ -7,7 +7,7 @@ namespace TargaSharp
     /// </summary>
     public sealed record TgaString : ICloneable
     {
-        public const string XFileSignatuteConst = "TRUEVISION-XFILE";
+        public const string XFileSignatureText = "TRUEVISION-XFILE";
         public const string DotSymbolConst = ".";
         public const char DefaultEndingChar = '\0';
         public const char DefaultBlankSpaceChar = '\0';
@@ -48,10 +48,10 @@ namespace TargaSharp
 
         /// <summary>
         /// Gets a new "TRUEVISION-XFILE" <see cref="TgaString"/> (TGA File Format Version 2.0
-        /// signatute). A new instance is returned on every access so callers cannot mutate a
+        /// signature). A new instance is returned on every access so callers cannot mutate a
         /// shared default.
         /// </summary>
-        public static TgaString XFileSignatute => new TgaString(XFileSignatuteConst, XFileSignatuteConst.Length);
+        public static TgaString XFileSignature => new TgaString(XFileSignatureText, XFileSignatureText.Length);
 
         /// <summary>
         /// Create a new instance of the <see cref="TgaString"/> class.
@@ -217,11 +217,11 @@ namespace TargaSharp
         /// <returns>String to first string-terminator.</returns>
         public string GetString()
         {
-            String Str = Encoding.ASCII.GetString(ToBytes());
-            int EndIndex = Str.IndexOf('\0');
-            if (EndIndex != -1)
-                Str = Str.Substring(0, EndIndex);
-            return Str;
+            string text = Encoding.ASCII.GetString(ToBytes());
+            int endIndex = text.IndexOf('\0');
+            if (endIndex != -1)
+                text = text.Substring(0, endIndex);
+            return text;
         }
 
         /// <summary>
@@ -240,28 +240,28 @@ namespace TargaSharp
         /// Convert <see cref="TgaString"/> to byte array.
         /// </summary>
         /// <param name="str">Input string.</param>
-        /// <param name="Length">Length of output ASCII string with Ending char (if used).</param>
-        /// <param name="UseEnding">Add <see cref="EndingChr"/> to string or not?</param>
-        /// <param name="BlankSpaceChar">Char for filling blank space in string. If this char is '-' (only for example!),
+        /// <param name="length">Length of output ASCII string with Ending char (if used).</param>
+        /// <param name="useEnding">Add <see cref="EndingChr"/> to string or not?</param>
+        /// <param name="blankSpaceChar">Char for filling blank space in string. If this char is '-' (only for example!),
         /// for string "ABC" with <see cref="Length"/> = 7, with <see cref="UseEnding"/> = true,
         /// <see cref="DefaultEndingChar"/> is '\0', result string is "ABC---\0".</param>
         /// <returns>Byte array, every byte is ASCII symbol.</returns>
         /// <remarks>
         /// This static overload is a general-purpose utility independent of any
         /// <see cref="TgaString"/> instance invariants, so it still pads/truncates defensively
-        /// rather than throwing when <paramref name="str"/> is longer than <paramref name="Length"/>.
+        /// rather than throwing when <paramref name="str"/> is longer than <paramref name="length"/>.
         /// </remarks>
-        public static byte[] ToBytes(string str, int Length, bool UseEnding = true, char BlankSpaceChar = '\0')
+        public static byte[] ToBytes(string str, int length, bool useEnding = true, char blankSpaceChar = '\0')
         {
-            char[] C = new char[Math.Max(Length, (UseEnding ? 1 : 0))];
+            char[] chars = new char[Math.Max(length, (useEnding ? 1 : 0))];
 
-            for (int i = 0; i < C.Length; i++)
-                C[i] = (i < str.Length ? str[i] : BlankSpaceChar);
+            for (int i = 0; i < chars.Length; i++)
+                chars[i] = (i < str.Length ? str[i] : blankSpaceChar);
 
-            if (UseEnding)
-                C[C.Length - 1] = DefaultEndingChar;
+            if (useEnding)
+                chars[chars.Length - 1] = DefaultEndingChar;
 
-            return Encoding.ASCII.GetBytes(C);
+            return Encoding.ASCII.GetBytes(chars);
         }
 
         /// <summary>

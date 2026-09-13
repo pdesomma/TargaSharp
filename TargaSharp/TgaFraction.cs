@@ -62,10 +62,11 @@
         public bool IsUnspecified => Denominator == 0;
 
         /// <summary>
-        /// Get aspect ratio = <see cref="Numerator"/> / <see cref="Denominator"/>, or null when
-        /// <see cref="IsUnspecified"/> is true (<see cref="Denominator"/> is 0).
+        /// Get the ratio value = <see cref="Numerator"/> / <see cref="Denominator"/>, or null when
+        /// <see cref="IsUnspecified"/> is true (<see cref="Denominator"/> is 0). Used for both the
+        /// pixel aspect ratio and the gamma value fields.
         /// </summary>
-        public float? AspectRatio => IsUnspecified ? null : Numerator == Denominator ? 1f : Numerator / (float)Denominator;
+        public float? Value => IsUnspecified ? null : Numerator == Denominator ? 1f : Numerator / (float)Denominator;
 
 
         /// <summary>

@@ -4,15 +4,15 @@ using TargaSharp;
 namespace TargaSharp.Tests;
 
 /// <summary>
-/// Tests for <see cref="TgaDevEntry"/>.
+/// Tests for <see cref="TgaDeveloperEntry"/>.
 /// </summary>
 [TestClass]
-public class TgaDevEntryTests
+public class TgaDeveloperEntryTests
 {
     [TestMethod]
     public void Offset_Property_HasInternalSetter()
     {
-        PropertyInfo property = typeof(TgaDevEntry).GetProperty(nameof(TgaDevEntry.Offset))!;
+        PropertyInfo property = typeof(TgaDeveloperEntry).GetProperty(nameof(TgaDeveloperEntry.Offset))!;
 
         Assert.IsTrue(property.SetMethod!.IsAssembly);
     }
@@ -20,7 +20,7 @@ public class TgaDevEntryTests
     [TestMethod]
     public void DefaultCtor_NewInstance_DataIsEmptyAndFieldSizeIsZero()
     {
-        var entry = new TgaDevEntry();
+        var entry = new TgaDeveloperEntry();
 
         Assert.IsNotNull(entry.Data);
         Assert.AreEqual(0, entry.Data.Length);
@@ -30,31 +30,31 @@ public class TgaDevEntryTests
     [TestMethod]
     public void Ctor_NullBytes_ThrowsArgumentNullException()
     {
-        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaDevEntry((byte[])null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaDeveloperEntry((byte[])null!));
     }
 
     [TestMethod]
     public void Ctor_BytesShorterThanSize_ThrowsArgumentOutOfRangeException()
     {
-        byte[] bytes = new byte[TgaDevEntry.Size - 1];
+        byte[] bytes = new byte[TgaDeveloperEntry.Size - 1];
 
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaDevEntry(bytes));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaDeveloperEntry(bytes));
     }
 
     [TestMethod]
     public void Ctor_BytesLongerThanSize_ThrowsArgumentOutOfRangeException()
     {
-        byte[] bytes = new byte[TgaDevEntry.Size + 1];
+        byte[] bytes = new byte[TgaDeveloperEntry.Size + 1];
 
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaDevEntry(bytes));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaDeveloperEntry(bytes));
     }
 
     [TestMethod]
     public void Ctor_ExactSize_ConstructsWithEmptyData()
     {
-        byte[] bytes = new byte[TgaDevEntry.Size];
+        byte[] bytes = new byte[TgaDeveloperEntry.Size];
 
-        var entry = new TgaDevEntry(bytes);
+        var entry = new TgaDeveloperEntry(bytes);
 
         Assert.AreEqual(0, entry.FieldSize);
     }
@@ -66,8 +66,8 @@ public class TgaDevEntryTests
         uint offset = 123;
         byte[] data = [10, 20, 30, 40];
 
-        var original = new TgaDevEntry(tag, offset, data);
-        var roundTripped = new TgaDevEntry(tag, offset, (byte[])original.Data.Clone());
+        var original = new TgaDeveloperEntry(tag, offset, data);
+        var roundTripped = new TgaDeveloperEntry(tag, offset, (byte[])original.Data.Clone());
 
         Assert.IsTrue(roundTripped.Equals(original));
     }
@@ -79,8 +79,8 @@ public class TgaDevEntryTests
         uint offset = 99;
         byte[] data = new byte[7];
 
-        var original = new TgaDevEntry(tag, offset, data);
-        var roundTripped = new TgaDevEntry(original.ToBytes());
+        var original = new TgaDeveloperEntry(tag, offset, data);
+        var roundTripped = new TgaDeveloperEntry(original.ToBytes());
 
         Assert.AreEqual(original.Tag, roundTripped.Tag);
         Assert.AreEqual(original.Offset, roundTripped.Offset);
@@ -90,7 +90,7 @@ public class TgaDevEntryTests
     [TestMethod]
     public void ToString_KnownValues_ReturnsExpectedFormat()
     {
-        var entry = new TgaDevEntry(7, 123, [10, 20, 30, 40]);
+        var entry = new TgaDeveloperEntry(7, 123, [10, 20, 30, 40]);
 
         string result = entry.ToString();
 

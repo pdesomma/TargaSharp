@@ -1,17 +1,17 @@
 ﻿namespace TargaSharp
 {
-    public sealed record TgaDevEntry : ICloneable
+    public sealed record TgaDeveloperEntry : ICloneable
     {
         /// <summary>
-        /// Make empty <see cref="TgaDevEntry"/>.
+        /// Make empty <see cref="TgaDeveloperEntry"/>.
         /// </summary>
-        public TgaDevEntry() { }
+        public TgaDeveloperEntry() { }
 
         /// <summary>
-        /// Make <see cref="TgaDevEntry"/> from other <see cref="TgaDevEntry"/>.
+        /// Make <see cref="TgaDeveloperEntry"/> from other <see cref="TgaDeveloperEntry"/>.
         /// </summary>
-        /// <param name="entry">Some <see cref="TgaDevEntry"/> variable.</param>
-        public TgaDevEntry(TgaDevEntry entry)
+        /// <param name="entry">Some <see cref="TgaDeveloperEntry"/> variable.</param>
+        public TgaDeveloperEntry(TgaDeveloperEntry entry)
         {
             if (entry is null) throw new ArgumentNullException(nameof(entry));
             Tag = entry.Tag;
@@ -20,12 +20,12 @@
         }
 
         /// <summary>
-        /// Make <see cref="TgaDevEntry"/> from <see cref="Tag"/>, <see cref="Offset"/> and <see cref="FieldSize"/>.
+        /// Make <see cref="TgaDeveloperEntry"/> from <see cref="Tag"/>, <see cref="Offset"/> and <see cref="FieldSize"/>.
         /// </summary>
         /// <param name="tag">TAG ID (0 - 65535). See <see cref="Tag"/>.</param>
         /// <param name="offset">TAG file offset in bytes. See <see cref="Offset"/>.</param>
-        /// <param name="data">This is DevEntry Field Data. See <see cref="Data"/>.</param>
-        public TgaDevEntry(ushort tag, uint offset, byte[] data = null)
+        /// <param name="data">This is DeveloperEntry Field Data. See <see cref="Data"/>.</param>
+        public TgaDeveloperEntry(ushort tag, uint offset, byte[] data = null)
         {
             Tag = tag;
             Offset = offset;
@@ -33,7 +33,7 @@
         }
 
         /// <summary>
-        /// Make <see cref="TgaDevEntry"/> from bytes. This mirrors the layout written by
+        /// Make <see cref="TgaDeveloperEntry"/> from bytes. This mirrors the layout written by
         /// <see cref="ToBytes"/> - [Tag:2][Offset:4][FieldSize:4] - and NOT the field's actual
         /// payload, which is not part of the directory entry itself and is loaded separately
         /// (e.g. by <see cref="TgaFile"/>, which reads <see cref="FieldSize"/> bytes from
@@ -41,16 +41,16 @@
         /// zero-filled placeholder of length <see cref="FieldSize"/> so the byte layout
         /// round-trips through <see cref="ToBytes"/>.
         /// </summary>
-        /// <param name="Bytes">Array of bytes, must be exactly <see cref="Size"/> (10) bytes long.</param>
-        public TgaDevEntry(byte[] Bytes)
+        /// <param name="bytes">Array of bytes, must be exactly <see cref="Size"/> (10) bytes long.</param>
+        public TgaDeveloperEntry(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(Bytes);
-            if (Bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(Bytes), Bytes.Length, $"Length must be {Size}.");
+            ArgumentNullException.ThrowIfNull(bytes);
+            if (bytes.Length != Size)
+                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
 
-            Tag = TgaBinary.ReadUInt16(Bytes, 0);
-            Offset = TgaBinary.ReadUInt32(Bytes, 2);
-            int fieldSize = unchecked((int)TgaBinary.ReadUInt32(Bytes, 6));
+            Tag = TgaBinary.ReadUInt16(bytes, 0);
+            Offset = TgaBinary.ReadUInt32(bytes, 2);
+            int fieldSize = unchecked((int)TgaBinary.ReadUInt32(bytes, 6));
             Data = new byte[fieldSize];
         }
 
@@ -74,7 +74,7 @@
         /// This OFFSET is a number of bytes from the beginning of the file to the start of the field
         /// referenced by the tag. This is a derived field: it is computed by <see cref="TargaSharp.IO.TgaWriter"/>
         /// during layout (or read from the file by <see cref="TargaSharp.IO.TgaReader"/>, which also
-        /// passes it through the <see cref="TgaDevEntry(ushort, uint, byte[])"/> constructor), so
+        /// passes it through the <see cref="TgaDeveloperEntry(ushort, uint, byte[])"/> constructor), so
         /// consumers cannot set it directly.
         /// </summary>
         public uint Offset { get; internal set; }
@@ -86,7 +86,7 @@
         public ushort Tag { get; set; }
 
         /// <summary>
-        /// Gets TGA <see cref="TgaDevEntry"/> size in bytes (Always constant and equal 10!).
+        /// Gets TGA <see cref="TgaDeveloperEntry"/> size in bytes (Always constant and equal 10!).
         /// It is not <see cref="FieldSize"/>! It is just size of entry sizeof(ushort + uint + uint).
         /// </summary>
         public const int Size = 10;
@@ -94,17 +94,17 @@
 
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaDevEntry"/>. Named <c>Copy</c> rather than <c>Clone</c>
+        /// Make full independed copy of <see cref="TgaDeveloperEntry"/>. Named <c>Copy</c> rather than <c>Clone</c>
         /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
-        /// <returns>Copy of <see cref="TgaDevEntry"/></returns>
-        public TgaDevEntry Copy() => this with { Data = (byte[])Data.Clone() };
+        /// <returns>Copy of <see cref="TgaDeveloperEntry"/></returns>
+        public TgaDeveloperEntry Copy() => this with { Data = (byte[])Data.Clone() };
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();
 
         /// <inheritdoc />
-        public bool Equals(TgaDevEntry? other)
+        public bool Equals(TgaDeveloperEntry? other)
         {
             if (other is null) return false;
             return Tag == other.Tag && Offset == other.Offset &&
@@ -126,13 +126,13 @@
         }
 
         /// <summary>
-        /// Convert <see cref="TgaDevEntry"/> to byte array. (Not include <see cref="Data"/>!).
+        /// Convert <see cref="TgaDeveloperEntry"/> to byte array. (Not include <see cref="Data"/>!).
         /// </summary>
         /// <returns>Byte array with length = 10.</returns>
         public byte[] ToBytes() => new TgaByteBuilder(Size).Add(Tag).Add(Offset).Add(unchecked((uint)(Data?.Length ?? 0))).ToArray();
 
         /// <summary>
-        /// Gets <see cref="TgaDevEntry"/> like string.
+        /// Gets <see cref="TgaDeveloperEntry"/> like string.
         /// </summary>
         /// <returns>String in "Tag={0}, Offset={1}, FieldSize={2}" format.</returns>
         public override string ToString() => $"{nameof(Tag)}={Tag}, {nameof(Offset)}={Offset}, {nameof(FieldSize)}={FieldSize}";
