@@ -13,8 +13,26 @@
         {
             ArgumentNullException.ThrowIfNull(stream);
             if (!(stream.CanRead && stream.CanSeek))
-                throw new FileLoadException("Stream reading or seeking is not avaiable!");
+                throw new ArgumentException("Stream must be readable and seekable.", nameof(stream));
 
+            try
+            {
+                return ReadCore(stream);
+            }
+            // Short reads surface as EndOfStream from BinaryReader or as length errors from the byte[] ctors.
+            catch (Exception e) when (e is EndOfStreamException or ArgumentException)
+            {
+                throw new TgaFormatException("Stream is not a well-formed TGA file: " + e.Message, e);
+            }
+        }
+
+        /// <summary>
+        /// Parses a TGA file from a readable, seekable stream positioned anywhere; the stream is left open.
+        /// </summary>
+        /// <param name="stream">Stream to parse.</param>
+        /// <returns>The parsed file.</returns>
+        private static TgaFile ReadCore(Stream stream)
+        {
             var file = new TgaFile();
 
             stream.Seek(0, SeekOrigin.Begin);
@@ -49,11 +67,16 @@
                     case TgaImageType.Uncompressed_TrueColor:
                     case TgaImageType.Uncompressed_BlackWhite:
                         file.ImageOrColorMapArea.ImageData = binaryReader.ReadBytes(imageDataSize);
+                        if (file.ImageOrColorMapArea.ImageData.Length != imageDataSize)
+                            throw new EndOfStreamException($"Image data truncated: expected {imageDataSize} bytes, got {file.ImageOrColorMapArea.ImageData.Length}.");
                         break;
                 }
             }
 
-            // Try parse Footer
+            // Try parse Footer (a v1.0 file may legitimately be shorter than a footer)
+            if (stream.Length < TgaFooter.Size)
+                return file;
+
             stream.Seek(-TgaFooter.Size, SeekOrigin.End);
             if (TgaFooter.TryParse(binaryReader.ReadBytes(TgaFooter.Size), out TgaFooter? mbFooter))
             {
@@ -132,7 +155,6 @@
                 }
             }
 
-            binaryReader.Close();
             return file;
         }
 

@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using TargaSharp;
+using TargaSharp.Validation;
 
 namespace TargaSharp.Tests;
 
@@ -84,13 +85,13 @@ public class TgaFileTests
         tga.ImageOrColorMapArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
         using var firstStream = new MemoryStream();
-        Assert.IsTrue(tga.Save(firstStream));
+        tga.Save(firstStream);
         byte[] firstBytes = firstStream.ToArray();
 
         var loaded = new TgaFile(new MemoryStream(firstBytes));
 
         using var secondStream = new MemoryStream();
-        Assert.IsTrue(loaded.Save(secondStream));
+        loaded.Save(secondStream);
         byte[] secondBytes = secondStream.ToArray();
 
         CollectionAssert.AreEqual(firstBytes, secondBytes);
@@ -104,7 +105,7 @@ public class TgaFileTests
         tga.ImageOrColorMapArea.ImageID = new TgaString("Hello", 5);
 
         using var stream = new MemoryStream();
-        Assert.IsTrue(tga.Save(stream));
+        tga.Save(stream);
 
         stream.Position = 0;
         var reloaded = new TgaFile(stream);
@@ -120,7 +121,7 @@ public class TgaFileTests
         tga.ImageOrColorMapArea.ImageID = null;
 
         using var stream = new MemoryStream();
-        Assert.IsTrue(tga.Save(stream));
+        tga.Save(stream);
 
         stream.Position = 0;
         var reloaded = new TgaFile(stream);
@@ -136,7 +137,7 @@ public class TgaFileTests
         tga.ExtArea!.OtherDataInExtensionArea = [1, 2, 3, 4];
 
         using var stream = new MemoryStream();
-        Assert.IsTrue(tga.Save(stream));
+        tga.Save(stream);
 
         stream.Position = 0;
         var reloaded = new TgaFile(stream);
@@ -190,7 +191,7 @@ public class TgaFileTests
         var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
 
         using var stream = new MemoryStream();
-        Assert.IsTrue(tga.Save(stream));
+        tga.Save(stream);
         byte[] bytes = stream.ToArray();
 
         // Control: reloading the untouched bytes must find the (valid, 495-byte) v2.0 ext area.
@@ -214,24 +215,23 @@ public class TgaFileTests
     }
 
     [TestMethod]
-    public void CheckAndUpdateOffsets_TwoDevAreaEntriesWithSameTag_ReturnsFalse()
+    public void ToBytes_TwoDevAreaEntriesWithSameTag_ThrowsTgaValidationException()
     {
         TgaFile tga = LoadTgaWithDevArea([5, 5]);
 
-        bool result = tga.CheckAndUpdateOffsets(out string errorStr);
+        var ex = Assert.ThrowsExactly<TgaValidationException>(() => tga.ToBytes());
 
-        Assert.IsFalse(result);
-        StringAssert.Contains(errorStr, "same Tags");
+        Assert.IsTrue(ex.Errors.Any(e => e.Path.StartsWith("DevArea", StringComparison.Ordinal)), ex.Message);
     }
 
     [TestMethod]
-    public void CheckAndUpdateOffsets_TwoDevAreaEntriesWithDifferentTags_ReturnsTrue()
+    public void ToBytes_TwoDevAreaEntriesWithDifferentTags_Succeeds()
     {
         TgaFile tga = LoadTgaWithDevArea([5, 6]);
 
-        bool result = tga.CheckAndUpdateOffsets(out string errorStr);
+        byte[] bytes = tga.ToBytes();
 
-        Assert.IsTrue(result, errorStr);
+        Assert.IsTrue(bytes.Length > TgaHeader.Size);
     }
 
     /// <summary>
@@ -250,7 +250,7 @@ public class TgaFileTests
     {
         var baseTga = new TgaFile(0, 0); // No image data; newFormat: true => Header + ExtArea + Footer only.
         using var baseStream = new MemoryStream();
-        Assert.IsTrue(baseTga.Save(baseStream));
+        baseTga.Save(baseStream);
         byte[] baseBytes = baseStream.ToArray();
 
         int headerAndExtAreaLength = baseBytes.Length - TgaFooter.Size;

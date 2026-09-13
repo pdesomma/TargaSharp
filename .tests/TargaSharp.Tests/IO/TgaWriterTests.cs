@@ -163,4 +163,32 @@ public class TgaWriterTests
     {
         Assert.ThrowsExactly<ArgumentNullException>(() => new TgaWriter(null!));
     }
+
+    [TestMethod]
+    public void Write_NonSeekableStream_ThrowsArgumentException()
+    {
+        using var nonSeekable = new WriteOnlyStream();
+
+        Assert.ThrowsExactly<ArgumentException>(() => new TgaWriter().Write(new TgaFile(2, 2), nonSeekable));
+    }
+
+    [TestMethod]
+    public void Write_LayoutFailure_ThrowsTgaValidationExceptionDerivedFromTgaException()
+    {
+        var file = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
+        file.ImageOrColorMapArea.ImageData = new byte[1]; // wrong length: caught by validation first
+
+        var ex = Assert.ThrowsExactly<TgaValidationException>(() => new TgaWriter().Write(file));
+
+        Assert.IsInstanceOfType<TgaException>(ex);
+    }
+
+    /// <summary>
+    /// A writable stream that reports <see cref="Stream.CanSeek"/> as false, to exercise the writer's argument check.
+    /// </summary>
+    private sealed class WriteOnlyStream : MemoryStream
+    {
+        /// <inheritdoc />
+        public override bool CanSeek => false;
+    }
 }

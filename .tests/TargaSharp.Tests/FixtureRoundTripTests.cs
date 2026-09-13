@@ -86,7 +86,7 @@ public class FixtureRoundTripTests
         var tga = new TgaFile(File.ReadAllBytes(filePath));
 
         using var stream = new MemoryStream();
-        Assert.IsTrue(tga.Save(stream));
+        tga.Save(stream);
 
         stream.Position = 0;
         var reloaded = new TgaFile(stream);

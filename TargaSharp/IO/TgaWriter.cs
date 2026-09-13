@@ -38,14 +38,15 @@ namespace TargaSharp.IO
             ArgumentNullException.ThrowIfNull(file);
             ArgumentNullException.ThrowIfNull(stream);
             if (!(stream.CanWrite && stream.CanSeek))
-                throw new FileLoadException("Stream writing or seeking is not avaiable!");
+                throw new ArgumentException("Stream must be writable and seekable.", nameof(stream));
 
             IReadOnlyList<TgaValidationError> errors = _validator.Validate(file);
             if (errors.Count > 0)
                 throw new TgaValidationException(errors);
 
+            // Layout failures are structural problems the validator didn't model; surface them the same way.
             if (!TryComputeLayout(file, out string checkResult))
-                throw new InvalidOperationException(checkResult);
+                throw new TgaValidationException([new TgaValidationError("Layout", checkResult)]);
 
             BinaryWriter bw = new BinaryWriter(stream);
             bw.Write(file.Header.ToBytes());
@@ -242,15 +243,8 @@ namespace TargaSharp.IO
                 if (file.Header.ImageType >= TgaImageType.RLE_ColorMapped &&
                     file.Header.ImageType <= TgaImageType.RLE_BlackWhite)
                 {
-                    byte[]? rle = RleCodec.Encode(file.ImageOrColorMapArea.ImageData, bytesPerPixel, file.Width, file.Height);
-                    if (rle == null)
-                    {
-                        errorStr = "RLE Compressing error! Check Image Data size.";
-                        return false;
-                    }
-
-                    offset += (uint)rle.Length;
-                    rle = null;
+                    // Encoded size is only known by encoding; the validator has already checked ImageData length.
+                    offset += (uint)RleCodec.Encode(file.ImageOrColorMapArea.ImageData, bytesPerPixel, file.Width, file.Height).Length;
                 }
                 else
                     offset += (uint)file.ImageOrColorMapArea.ImageData.Length;

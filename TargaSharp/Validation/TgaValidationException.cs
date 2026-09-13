@@ -2,9 +2,9 @@
 {
     /// <summary>
     /// Thrown by <see cref="TargaSharp.IO.TgaWriter"/> when a <see cref="TgaFile"/> fails
-    /// <see cref="ITgaValidator"/> validation and therefore cannot be written.
+    /// <see cref="ITgaValidator"/> validation or layout computation and therefore cannot be written.
     /// </summary>
-    public sealed class TgaValidationException : Exception
+    public sealed class TgaValidationException : TgaException
     {
         /// <summary>
         /// Maximum number of error paths quoted in <see cref="Exception.Message"/> before the
