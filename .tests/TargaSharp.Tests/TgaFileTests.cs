@@ -71,11 +71,13 @@ public class TgaFileTests
     }
 
     [TestMethod]
-    public void DeletePostageStampImage_NullExtensionArea_DoesNotThrow()
+    public void DeletePostageStampImage_NullExtensionArea_LeavesExtensionAreaNull()
     {
         var tga = new TgaFile();
 
         tga.DeletePostageStampImage();
+
+        Assert.IsNull(tga.ExtensionArea);
     }
 
     [TestMethod]
@@ -339,5 +341,89 @@ public class TgaFileTests
         tga.Flip(horizontal: true, vertical: true);
 
         CollectionAssert.AreEqual(snapshot, tga.ImageArea.ImageData);
+    }
+
+    [TestMethod]
+    public void ToNewFormat_LegacyFile_AddsExtensionAreaAndFooter()
+    {
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor, newFormat: false);
+        Assert.IsNull(tga.ExtensionArea);
+        Assert.IsNull(tga.Footer);
+
+        tga.ToNewFormat();
+
+        Assert.IsNotNull(tga.ExtensionArea);
+        Assert.IsNotNull(tga.Footer);
+    }
+
+    [TestMethod]
+    public void ToNewFormat_CalledTwice_DoesNotReplaceExistingExtensionArea()
+    {
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor, newFormat: false);
+
+        tga.ToNewFormat();
+        TgaExtensionArea? firstExtensionArea = tga.ExtensionArea;
+        TgaFooter? firstFooter = tga.Footer;
+        tga.ToNewFormat();
+
+        Assert.AreSame(firstExtensionArea, tga.ExtensionArea);
+        Assert.AreSame(firstFooter, tga.Footer);
+    }
+
+    [TestMethod]
+    public void UpdatePostageStampImage_ImageLargerThanMaxSize_ScalesDownKeepingAspectRatioAndSamplePixel()
+    {
+        const int width = 200;
+        const int height = 50; // 4:1 aspect ratio, both dimensions above TgaPostageStampImage.MaxSize (64).
+        var tga = new TgaFile(width, height, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
+        tga.ImageArea.ImageData = new byte[width * height * 3];
+        // Pixel (0,0) = a recognizable, non-zero BGR triplet, so we can confirm the stamp's own
+        // (0,0) pixel was sampled from the source rather than left zeroed.
+        tga.ImageArea.ImageData[0] = 0x10;
+        tga.ImageArea.ImageData[1] = 0x20;
+        tga.ImageArea.ImageData[2] = 0x30;
+
+        tga.UpdatePostageStampImage();
+
+        TgaPostageStampImage stamp = tga.ExtensionArea!.PostageStampImage!;
+        Assert.IsTrue(stamp.Width <= TgaPostageStampImage.MaxSize);
+        Assert.IsTrue(stamp.Height <= TgaPostageStampImage.MaxSize);
+        Assert.AreEqual(width / (float)height, stamp.Width / (float)stamp.Height, 0.01f, "aspect ratio must be preserved");
+        Assert.AreEqual(stamp.Width * stamp.Height * 3, stamp.Data.Length);
+        Assert.AreEqual(0x10, stamp.Data[0]);
+        Assert.AreEqual(0x20, stamp.Data[1]);
+        Assert.AreEqual(0x30, stamp.Data[2]);
+    }
+
+    [TestMethod]
+    public void Save_ToPath_ThenReload_ProducesEqualHeader()
+    {
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
+        tga.ImageArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        string path = Path.Combine(Path.GetTempPath(), $"{nameof(TgaFileTests)}_{Guid.NewGuid():N}.tga");
+
+        try
+        {
+            tga.Save(path);
+            var reloaded = new TgaFile(path);
+
+            Assert.AreEqual(tga.Header, reloaded.Header);
+            CollectionAssert.AreEqual(tga.ImageArea.ImageData, reloaded.ImageArea.ImageData);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [TestMethod]
+    public void Clone_DeveloperAreaEntryMutatedOnClone_DoesNotAffectOriginal()
+    {
+        TgaFile tga = LoadTgaWithDeveloperArea([5, 6]);
+
+        TgaFile clone = tga.Clone();
+        clone.DeveloperArea!.Entries[0].Data[0] = 0xFF;
+
+        Assert.AreNotEqual(0xFF, tga.DeveloperArea!.Entries[0].Data[0]);
     }
 }

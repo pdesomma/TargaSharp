@@ -13,26 +13,17 @@ namespace TargaSharp.Tests;
 public class TgaStringTests
 {
     [TestMethod]
-    public void Ctor_NullBytes_ThrowsArgumentNullException()
+    public void Ctor_ByteContract_Holds()
     {
-        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaString((byte[])null!));
-    }
-
-    [TestMethod]
-    public void Ctor_EmptyBytesWithUseEndingChar_ThrowsArgumentOutOfRangeException()
-    {
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaString(Array.Empty<byte>(), true));
-    }
-
-    [TestMethod]
-    public void Ctor_ValidBytes_RoundTripsThroughToBytesAndEquals()
-    {
-        byte[] bytes = Encoding.ASCII.GetBytes("AB\0");
-
-        var original = new TgaString(bytes, true);
-        var roundTripped = new TgaString(original.ToBytes(), true);
-
-        Assert.IsTrue(roundTripped.Equals(original));
+        // Unlike the fixed-size field types, TgaString(byte[], useEnding: true) has no exact/upper
+        // length bound - only the useEnding: true lower bound of 1 byte (room for the mandatory ending
+        // character) - so this uses the minLength variant with a wrapper pinning useEnding to true.
+        ByteSerializableContract.AssertByteCtorContract(
+            bytes => new TgaString(bytes, true),
+            x => x.ToBytes(),
+            size: 3,
+            sample: () => new TgaString(Encoding.ASCII.GetBytes("AB\0"), true),
+            minLength: 1);
     }
 
     [TestMethod]

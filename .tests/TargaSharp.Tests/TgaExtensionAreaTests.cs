@@ -67,11 +67,12 @@ public class TgaExtensionAreaTests
     }
 
     [TestMethod]
-    public void GetHashCode_DefaultInstance_DoesNotThrow()
+    public void GetHashCode_TwoDefaultInstances_ReturnEqualHashCodes()
     {
-        var extArea = new TgaExtensionArea();
+        var first = new TgaExtensionArea();
+        var second = new TgaExtensionArea();
 
-        _ = extArea.GetHashCode();
+        Assert.AreEqual(first.GetHashCode(), second.GetHashCode());
     }
 
     [TestMethod]
@@ -96,27 +97,16 @@ public class TgaExtensionAreaTests
     }
 
     [TestMethod]
-    public void Ctor_NullBytes_ThrowsArgumentNullException()
+    public void Ctor_ByteContract_Holds()
     {
-        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaExtensionArea(null!));
-    }
-
-    [TestMethod]
-    public void Ctor_BytesShorterThanMinSize_ThrowsArgumentOutOfRangeException()
-    {
-        byte[] bytes = new byte[TgaExtensionArea.MinSize - 1];
-
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaExtensionArea(bytes));
-    }
-
-    [TestMethod]
-    public void Ctor_FromBytesOfDefaultInstance_RoundTripsToEqualInstance()
-    {
-        var original = new TgaExtensionArea();
-
-        var roundTripped = new TgaExtensionArea(original.ToBytes());
-
-        Assert.IsTrue(roundTripped.Equals(original));
+        // OtherDataInExtensionArea is variable-length trailing data beyond the fixed 495-byte body,
+        // so an over-long array is valid, not an error - hence the minLength variant.
+        ByteSerializableContract.AssertByteCtorContract(
+            bytes => new TgaExtensionArea(bytes),
+            x => x.ToBytes(),
+            size: TgaExtensionArea.MinSize,
+            sample: () => new TgaExtensionArea(),
+            minLength: TgaExtensionArea.MinSize);
     }
 
     [TestMethod]

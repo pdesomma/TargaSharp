@@ -4,7 +4,7 @@ using TargaSharp;
 namespace TargaSharp.Tests;
 
 /// <summary>
-/// Smoke tests that load every real-world .tga fixture shipped with <c>TestWpfApp\Examples\</c> and
+/// Smoke tests that load every real-world .tga fixture shipped with <c>.tests\Fixtures\</c> and
 /// round-trip it through <see cref="TgaFile.Save(Stream)"/> / <see cref="TgaFile(Stream)"/> to make sure
 /// the header survives a save/reload cycle unchanged. See <c>TargaSharp.Drawing.Tests</c>' own
 /// <c>FixtureRoundTripTests</c> for the equivalent <see cref="System.Drawing.Bitmap"/> conversion assertions.
@@ -13,45 +13,18 @@ namespace TargaSharp.Tests;
 public class FixtureRoundTripTests
 {
     /// <summary>
-    /// Locates the repository's <c>TestWpfApp\Examples</c> directory by walking up from the test
-    /// assembly's output directory until the repo root (identified by <c>TargaSharp.sln</c>) is found.
-    /// </summary>
-    /// <returns>The absolute path to the fixture directory.</returns>
-    /// <exception cref="DirectoryNotFoundException">Thrown when the repo root or fixture directory cannot be located.</exception>
-    private static string GetExamplesDirectory()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "TargaSharp.sln")))
-        {
-            dir = dir.Parent;
-        }
-
-        if (dir is null)
-        {
-            throw new DirectoryNotFoundException("Could not locate repo root (TargaSharp.sln) above " + AppContext.BaseDirectory);
-        }
-
-        var examplesDir = Path.Combine(dir.FullName, "TestWpfApp", "Examples");
-        if (!Directory.Exists(examplesDir))
-        {
-            throw new DirectoryNotFoundException("Could not locate fixture directory at " + examplesDir);
-        }
-
-        return examplesDir;
-    }
-
-    /// <summary>
-    /// Enumerates every .tga fixture file as a separate <see cref="DataTestMethodAttribute"/> case.
+    /// Enumerates every .tga fixture file, linked into this test assembly's output directory under
+    /// <c>Fixtures\</c> (see <c>TargaSharp.Tests.csproj</c>), as a separate <see cref="DynamicDataAttribute"/> case.
     /// </summary>
     /// <returns>A sequence of single-element object arrays, each containing a fixture file path.</returns>
     public static IEnumerable<object[]> GetFixtureFiles()
     {
-        var examplesDir = GetExamplesDirectory();
+        string fixturesDir = Path.Combine(AppContext.BaseDirectory, "Fixtures");
 
         // Windows' filesystem is case-insensitive, so "*.tga" alone would already match "*.TGA",
         // but Distinct() guards against double-matching on case-sensitive file systems too.
-        var files = Directory.GetFiles(examplesDir, "*.tga", SearchOption.TopDirectoryOnly)
-            .Concat(Directory.GetFiles(examplesDir, "*.TGA", SearchOption.TopDirectoryOnly))
+        var files = Directory.GetFiles(fixturesDir, "*.tga", SearchOption.TopDirectoryOnly)
+            .Concat(Directory.GetFiles(fixturesDir, "*.TGA", SearchOption.TopDirectoryOnly))
             .Distinct()
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
 
