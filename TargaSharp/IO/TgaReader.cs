@@ -41,13 +41,13 @@
             file.Header = new TgaHeader(binaryReader.ReadBytes(TgaHeader.Size));
 
             if (file.Header.IdLength > 0)
-                file.ImageOrColorMapArea.ImageID = new TgaString(binaryReader.ReadBytes(file.Header.IdLength));
+                file.ImageArea.ImageId = new TgaString(binaryReader.ReadBytes(file.Header.IdLength));
 
             if (file.Header.ColorMapSpec.ColorMapLength > 0)
             {
                 int cmBytesPerPixel = file.Header.ColorMapSpec.ColorMapEntrySize.BytesPerPixel();
                 int lenBytes = file.Header.ColorMapSpec.ColorMapLength * cmBytesPerPixel;
-                file.ImageOrColorMapArea.ColorMapData = binaryReader.ReadBytes(lenBytes);
+                file.ImageArea.ColorMapData = binaryReader.ReadBytes(lenBytes);
             }
 
             // Read Image Data
@@ -57,13 +57,13 @@
                 int imageDataSize = file.Width * file.Height * bytesPerPixel;
                 if (file.Header.ImageType.IsRunLengthEncoded())
                 {
-                    file.ImageOrColorMapArea.ImageData = RleCodec.Decode(binaryReader, bytesPerPixel, imageDataSize);
+                    file.ImageArea.ImageData = RleCodec.Decode(binaryReader, bytesPerPixel, imageDataSize);
                 }
                 else
                 {
-                    file.ImageOrColorMapArea.ImageData = binaryReader.ReadBytes(imageDataSize);
-                    if (file.ImageOrColorMapArea.ImageData.Length != imageDataSize)
-                        throw new EndOfStreamException($"Image data truncated: expected {imageDataSize} bytes, got {file.ImageOrColorMapArea.ImageData.Length}.");
+                    file.ImageArea.ImageData = binaryReader.ReadBytes(imageDataSize);
+                    if (file.ImageArea.ImageData.Length != imageDataSize)
+                        throw new EndOfStreamException($"Image data truncated: expected {imageDataSize} bytes, got {file.ImageArea.ImageData.Length}.");
                 }
             }
 
@@ -82,7 +82,7 @@
                 if (devDirOffset != 0)
                 {
                     stream.Seek(devDirOffset, SeekOrigin.Begin);
-                    file.DevArea = new TgaDevArea();
+                    file.DeveloperArea = new TgaDeveloperArea();
                     uint numberOfTags = binaryReader.ReadUInt16();
 
                     ushort[] tags = new ushort[numberOfTags];
@@ -99,8 +99,8 @@
                     for (int i = 0; i < numberOfTags; i++)
                     {
                         stream.Seek(tagOffsets[i], SeekOrigin.Begin);
-                        var entry = new TgaDevEntry(tags[i], tagOffsets[i], binaryReader.ReadBytes((int)tagSizes[i]));
-                        file.DevArea.Entries.Add(entry);
+                        var entry = new TgaDeveloperEntry(tags[i], tagOffsets[i], binaryReader.ReadBytes((int)tagSizes[i]));
+                        file.DeveloperArea.Entries.Add(entry);
                     }
                 }
 
@@ -112,38 +112,38 @@
 
                     // Per spec the Extension Area Size field must be 495 for a TGA 2.0 extension area.
                     // A reader should only parse what it understands: a declared size smaller than
-                    // TgaExtArea.MinSize is not a (valid or forward-compatible) v2.0 ext area, so skip
+                    // TgaExtensionArea.MinSize is not a (valid or forward-compatible) v2.0 ext area, so skip
                     // parsing it instead of forcing a read past what was actually declared/written.
-                    if (extAreaSize >= TgaExtArea.MinSize)
+                    if (extAreaSize >= TgaExtensionArea.MinSize)
                     {
                         stream.Seek(extAreaOffset, SeekOrigin.Begin);
-                        file.ExtArea = new TgaExtArea(binaryReader.ReadBytes(extAreaSize));
+                        file.ExtensionArea = new TgaExtensionArea(binaryReader.ReadBytes(extAreaSize));
 
-                        if (file.ExtArea.ScanLineOffset > 0)
+                        if (file.ExtensionArea.ScanLineOffset > 0)
                         {
-                            stream.Seek(file.ExtArea.ScanLineOffset, SeekOrigin.Begin);
-                            file.ExtArea.ScanLineTable = new uint[file.Height];
-                            for (int i = 0; i < file.ExtArea.ScanLineTable.Length; i++)
-                                file.ExtArea.ScanLineTable[i] = binaryReader.ReadUInt32();
+                            stream.Seek(file.ExtensionArea.ScanLineOffset, SeekOrigin.Begin);
+                            file.ExtensionArea.ScanLineTable = new uint[file.Height];
+                            for (int i = 0; i < file.ExtensionArea.ScanLineTable.Length; i++)
+                                file.ExtensionArea.ScanLineTable[i] = binaryReader.ReadUInt32();
                         }
 
-                        if (file.ExtArea.PostageStampOffset > 0)
+                        if (file.ExtensionArea.PostageStampOffset > 0)
                         {
-                            stream.Seek(file.ExtArea.PostageStampOffset, SeekOrigin.Begin);
+                            stream.Seek(file.ExtensionArea.PostageStampOffset, SeekOrigin.Begin);
                             byte w = binaryReader.ReadByte();
                             byte h = binaryReader.ReadByte();
                             int imgDataSize = w * h * bytesPerPixel;
                             // Lenient read: a stamp outside the spec's 1..64 range is skipped rather than failing the whole file.
                             if (imgDataSize > 0 && w <= TgaPostageStampImage.MaxSize && h <= TgaPostageStampImage.MaxSize)
-                                file.ExtArea.PostageStampImage = new TgaPostageStampImage(w, h, binaryReader.ReadBytes(imgDataSize));
+                                file.ExtensionArea.PostageStampImage = new TgaPostageStampImage(w, h, binaryReader.ReadBytes(imgDataSize));
                         }
 
-                        if (file.ExtArea.ColorCorrectionTableOffset > 0)
+                        if (file.ExtensionArea.ColorCorrectionTableOffset > 0)
                         {
-                            stream.Seek(file.ExtArea.ColorCorrectionTableOffset, SeekOrigin.Begin);
-                            file.ExtArea.ColorCorrectionTable = new ushort[256 * 4];
-                            for (int i = 0; i < file.ExtArea.ColorCorrectionTable.Length; i++)
-                                file.ExtArea.ColorCorrectionTable[i] = binaryReader.ReadUInt16();
+                            stream.Seek(file.ExtensionArea.ColorCorrectionTableOffset, SeekOrigin.Begin);
+                            file.ExtensionArea.ColorCorrectionTable = new ushort[256 * 4];
+                            for (int i = 0; i < file.ExtensionArea.ColorCorrectionTable.Length; i++)
+                                file.ExtensionArea.ColorCorrectionTable[i] = binaryReader.ReadUInt16();
                         }
                     }
                 }

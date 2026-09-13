@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Title>TargaSharp</Title>
     <Authors>Patrick DeSomma</Authors>
     <Description>.NET 6/8/10 library for reading and writing .tga image files.</Description>
@@ -14,7 +14,7 @@
     <RepositoryUrl>https://github.com/pdesomma/TargaSharp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>tga;targa</PackageTags>
-    <PackageReleaseNotes>First release</PackageReleaseNotes>
+    <PackageReleaseNotes>0.2.0: records, validation, typed exceptions, TargaSharp.Drawing split, naming cleanup. Breaking changes from 0.1.0.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>

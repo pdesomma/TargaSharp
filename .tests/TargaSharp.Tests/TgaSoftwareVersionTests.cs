@@ -3,23 +3,23 @@
 namespace TargaSharp.Tests;
 
 /// <summary>
-/// Tests for <see cref="TgaSoftVersion"/>.
+/// Tests for <see cref="TgaSoftwareVersion"/>.
 /// </summary>
 [TestClass]
-public class TgaSoftVersionTests
+public class TgaSoftwareVersionTests
 {
     [TestMethod]
     public void Ctor_NullBytes_ThrowsArgumentNullException()
     {
-        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaSoftVersion((byte[])null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaSoftwareVersion((byte[])null!));
     }
 
     [TestMethod]
     public void Ctor_WrongLength_ThrowsArgumentOutOfRangeException()
     {
-        byte[] bytes = new byte[TgaSoftVersion.Size - 1];
+        byte[] bytes = new byte[TgaSoftwareVersion.Size - 1];
 
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaSoftVersion(bytes));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaSoftwareVersion(bytes));
     }
 
     [TestMethod]
@@ -27,8 +27,8 @@ public class TgaSoftVersionTests
     {
         byte[] bytes = [117, 0, (byte)'b'];
 
-        var original = new TgaSoftVersion(bytes);
-        var roundTripped = new TgaSoftVersion(original.ToBytes());
+        var original = new TgaSoftwareVersion(bytes);
+        var roundTripped = new TgaSoftwareVersion(original.ToBytes());
 
         Assert.IsTrue(roundTripped.Equals(original));
     }

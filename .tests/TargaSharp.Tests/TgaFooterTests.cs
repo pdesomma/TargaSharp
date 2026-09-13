@@ -19,7 +19,7 @@ public class TgaFooterTests
     private static byte[] BuildValidFooterBytes(uint extOff = 1u, uint devDirOff = 2u) =>
         BitConverter.GetBytes(extOff)
             .Concat(BitConverter.GetBytes(devDirOff))
-            .Concat(Encoding.ASCII.GetBytes(TgaString.XFileSignatuteConst))
+            .Concat(Encoding.ASCII.GetBytes(TgaString.XFileSignatureText))
             .Concat([(byte)'.', (byte)0])
             .ToArray();
 

@@ -8,8 +8,8 @@
     {
         /// <summary>
         /// Determines whether the image type is run-length encoded
-        /// (<see cref="TgaImageType.RLE_ColorMapped"/>, <see cref="TgaImageType.RLE_TrueColor"/>
-        /// or <see cref="TgaImageType.RLE_BlackWhite"/>, spec values 9-11).
+        /// (<see cref="TgaImageType.RleColorMapped"/>, <see cref="TgaImageType.RleTrueColor"/>
+        /// or <see cref="TgaImageType.RleGrayscale"/>, spec values 9-11).
         /// </summary>
         /// <param name="imageType">The image type to test.</param>
         /// <returns><see langword="true" /> if the image type is one of the three RLE variants; otherwise, <see langword="false" />.</returns>
@@ -21,30 +21,30 @@
 
         /// <summary>
         /// Determines whether the image type stores color-mapped pixel data
-        /// (<see cref="TgaImageType.Uncompressed_ColorMapped"/> or <see cref="TgaImageType.RLE_ColorMapped"/>, spec values 1 or 9).
+        /// (<see cref="TgaImageType.UncompressedColorMapped"/> or <see cref="TgaImageType.RleColorMapped"/>, spec values 1 or 9).
         /// </summary>
         /// <param name="imageType">The image type to test.</param>
         /// <returns><see langword="true" /> if the image type is color-mapped; otherwise, <see langword="false" />.</returns>
         public static bool IsColorMapped(this TgaImageType imageType)
-            => imageType is TgaImageType.Uncompressed_ColorMapped or TgaImageType.RLE_ColorMapped;
+            => imageType is TgaImageType.UncompressedColorMapped or TgaImageType.RleColorMapped;
 
         /// <summary>
         /// Determines whether the image type stores true-color pixel data
-        /// (<see cref="TgaImageType.Uncompressed_TrueColor"/> or <see cref="TgaImageType.RLE_TrueColor"/>, spec values 2 or 10).
+        /// (<see cref="TgaImageType.UncompressedTrueColor"/> or <see cref="TgaImageType.RleTrueColor"/>, spec values 2 or 10).
         /// </summary>
         /// <param name="imageType">The image type to test.</param>
         /// <returns><see langword="true" /> if the image type is true-color; otherwise, <see langword="false" />.</returns>
         public static bool IsTrueColor(this TgaImageType imageType)
-            => imageType is TgaImageType.Uncompressed_TrueColor or TgaImageType.RLE_TrueColor;
+            => imageType is TgaImageType.UncompressedTrueColor or TgaImageType.RleTrueColor;
 
         /// <summary>
         /// Determines whether the image type stores black-and-white (grayscale) pixel data
-        /// (<see cref="TgaImageType.Uncompressed_BlackWhite"/> or <see cref="TgaImageType.RLE_BlackWhite"/>, spec values 3 or 11).
+        /// (<see cref="TgaImageType.UncompressedGrayscale"/> or <see cref="TgaImageType.RleGrayscale"/>, spec values 3 or 11).
         /// </summary>
         /// <param name="imageType">The image type to test.</param>
         /// <returns><see langword="true" /> if the image type is black-and-white; otherwise, <see langword="false" />.</returns>
         public static bool IsGrayscale(this TgaImageType imageType)
-            => imageType is TgaImageType.Uncompressed_BlackWhite or TgaImageType.RLE_BlackWhite;
+            => imageType is TgaImageType.UncompressedGrayscale or TgaImageType.RleGrayscale;
 
         /// <summary>
         /// Determines whether the image type is one of the seven values currently defined by the
@@ -53,8 +53,8 @@
         /// <param name="imageType">The image type to test.</param>
         /// <returns><see langword="true" /> if the image type is a spec-defined value; otherwise, <see langword="false" />.</returns>
         public static bool IsKnown(this TgaImageType imageType)
-            => imageType is TgaImageType.NoImageData or TgaImageType.Uncompressed_ColorMapped or TgaImageType.Uncompressed_TrueColor
-                or TgaImageType.Uncompressed_BlackWhite or TgaImageType.RLE_ColorMapped or TgaImageType.RLE_TrueColor or TgaImageType.RLE_BlackWhite;
+            => imageType is TgaImageType.NoImageData or TgaImageType.UncompressedColorMapped or TgaImageType.UncompressedTrueColor
+                or TgaImageType.UncompressedGrayscale or TgaImageType.RleColorMapped or TgaImageType.RleTrueColor or TgaImageType.RleGrayscale;
 
         /// <summary>
         /// Determines whether the image type falls in the range reserved by Truevision for general

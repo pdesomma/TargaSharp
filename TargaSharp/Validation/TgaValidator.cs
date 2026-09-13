@@ -38,7 +38,7 @@
             ValidateImageData(file, errors);
             ValidateImageId(file, errors);
 
-            ValidateDevArea(file, errors);
+            ValidateDeveloperArea(file, errors);
 
             ValidateDateTimeStamp(file, errors);
             ValidateJobTime(file, errors);
@@ -47,7 +47,7 @@
             ValidateScanLineTable(file, errors);
             ValidateColorCorrectionTable(file, errors);
             ValidatePostageStampImage(file, errors);
-            ValidateSoftVersion(file, errors);
+            ValidateSoftwareVersion(file, errors);
 
             return errors;
         }
@@ -94,13 +94,13 @@
         }
 
         /// <summary>
-        /// Color-mapped image types (<see cref="TgaImageType.Uncompressed_ColorMapped"/>,
-        /// <see cref="TgaImageType.RLE_ColorMapped"/>) require a color map to be present.
+        /// Color-mapped image types (<see cref="TgaImageType.UncompressedColorMapped"/>,
+        /// <see cref="TgaImageType.RleColorMapped"/>) require a color map to be present.
         /// </summary>
         private static void ValidateColorMappedImageTypeHasColorMap(TgaFile file, List<TgaValidationError> errors)
         {
             var imageType = file.Header.ImageType;
-            bool isColorMapped = imageType is TgaImageType.Uncompressed_ColorMapped or TgaImageType.RLE_ColorMapped;
+            bool isColorMapped = imageType is TgaImageType.UncompressedColorMapped or TgaImageType.RleColorMapped;
 
             if (isColorMapped && file.Header.ColorMapType != TgaColorMapType.ColorMap)
                 errors.Add(new TgaValidationError("Header.ColorMapType", $"ColorMapType must be ColorMap when ImageType is {imageType}."));
@@ -113,8 +113,8 @@
         private static void ValidateTrueColorImageTypeHasNoColorMap(TgaFile file, List<TgaValidationError> errors)
         {
             var imageType = file.Header.ImageType;
-            bool isTrueColorOrGrayscale = imageType is TgaImageType.Uncompressed_TrueColor or TgaImageType.Uncompressed_BlackWhite
-                or TgaImageType.RLE_TrueColor or TgaImageType.RLE_BlackWhite;
+            bool isTrueColorOrGrayscale = imageType is TgaImageType.UncompressedTrueColor or TgaImageType.UncompressedGrayscale
+                or TgaImageType.RleTrueColor or TgaImageType.RleGrayscale;
 
             if (isTrueColorOrGrayscale && file.Header.ColorMapType != TgaColorMapType.NoColorMap)
                 errors.Add(new TgaValidationError("Header.ColorMapType", $"ColorMapType must be NoColorMap when ImageType is {imageType}."));
@@ -135,7 +135,7 @@
         /// <summary>
         /// Spec Field 5.6: the number of attribute (alpha) bits per pixel must be consistent with
         /// <see cref="TgaImageSpec.PixelDepth"/> (32bpp: 0 or 8; 24bpp: 0; 16bpp true-color: 0 or 1
-        /// (this implementation's 5-5-5-1 layout, see <see cref="TgaImgOrColMap.ImageData"/>);
+        /// (this implementation's 5-5-5-1 layout, see <see cref="TgaImageArea.ImageData"/>);
         /// 16bpp black-and-white: 0 or 8 (a distinct, equally common 8-bit-intensity + 8-bit-alpha
         /// layout - see real-world fixtures <c>monochrome16_top_left*.tga</c>, which are not
         /// representable in the 5-5-5-1 layout); 8bpp: 0).
@@ -143,7 +143,7 @@
         private static void ValidateAlphaChannelBits(TgaFile file, List<TgaValidationError> errors)
         {
             byte alphaBits = file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits;
-            bool isBlackAndWhite = file.Header.ImageType is TgaImageType.Uncompressed_BlackWhite or TgaImageType.RLE_BlackWhite;
+            bool isBlackAndWhite = file.Header.ImageType is TgaImageType.UncompressedGrayscale or TgaImageType.RleGrayscale;
 
             switch (file.Header.ImageSpec.PixelDepth)
             {
@@ -171,23 +171,23 @@
         /// </summary>
         private static void ValidateColorMapData(TgaFile file, List<TgaValidationError> errors)
         {
-            var colorMapData = file.ImageOrColorMapArea.ColorMapData;
+            var colorMapData = file.ImageArea.ColorMapData;
 
             if (file.Header.ColorMapType == TgaColorMapType.ColorMap)
             {
                 int expected = file.Header.ColorMapSpec.ColorMapLength * file.Header.ColorMapSpec.ColorMapEntrySize.BytesPerPixel();
                 int actual = colorMapData?.Length ?? 0;
                 if (actual != expected)
-                    errors.Add(new TgaValidationError("ImageOrColorMapArea.ColorMapData", $"ColorMapData.Length must be {expected} (ColorMapLength * bytes-per-entry) but was {actual}."));
+                    errors.Add(new TgaValidationError("ImageArea.ColorMapData", $"ColorMapData.Length must be {expected} (ColorMapLength * bytes-per-entry) but was {actual}."));
             }
             else if (colorMapData is { Length: > 0 })
-                errors.Add(new TgaValidationError("ImageOrColorMapArea.ColorMapData", "ColorMapData must be null or empty when ColorMapType is NoColorMap."));
+                errors.Add(new TgaValidationError("ImageArea.ColorMapData", "ColorMapData must be null or empty when ColorMapType is NoColorMap."));
         }
 
         /// <summary>
         /// Spec Field 8: (Width * Height) pixels of <see cref="TgaImageSpec.PixelDepth"/> size, or
         /// absent entirely for <see cref="TgaImageType.NoImageData"/>. RLE image types are stored
-        /// decoded in <see cref="TgaImgOrColMap.ImageData"/> (re-encoded only when written), so the
+        /// decoded in <see cref="TgaImageArea.ImageData"/> (re-encoded only when written), so the
         /// same raw-size rule applies to every image type.
         /// </summary>
         private static void ValidateImageData(TgaFile file, List<TgaValidationError> errors)
@@ -195,10 +195,10 @@
             int expected = file.Header.ImageType == TgaImageType.NoImageData
                 ? 0
                 : file.Header.ImageSpec.ImageWidth * file.Header.ImageSpec.ImageHeight * file.Header.ImageSpec.PixelDepth.BytesPerPixel();
-            int actual = file.ImageOrColorMapArea.ImageData?.Length ?? 0;
+            int actual = file.ImageArea.ImageData?.Length ?? 0;
 
             if (actual != expected)
-                errors.Add(new TgaValidationError("ImageOrColorMapArea.ImageData", $"ImageData.Length must be {expected} (Width * Height * bytes-per-pixel, or 0 when ImageType is NoImageData) but was {actual}."));
+                errors.Add(new TgaValidationError("ImageArea.ImageData", $"ImageData.Length must be {expected} (Width * Height * bytes-per-pixel, or 0 when ImageType is NoImageData) but was {actual}."));
         }
 
         /// <summary>
@@ -206,32 +206,32 @@
         /// </summary>
         private static void ValidateImageId(TgaFile file, List<TgaValidationError> errors)
         {
-            var imageId = file.ImageOrColorMapArea.ImageID;
+            var imageId = file.ImageArea.ImageId;
             if (imageId is null) return;
 
             int length = imageId.OriginalString.Length + (imageId.UseEndingChar ? 1 : 0);
             if (length > byte.MaxValue)
-                errors.Add(new TgaValidationError("ImageOrColorMapArea.ImageID", $"ImageID length ({length}) exceeds the {byte.MaxValue} byte maximum."));
+                errors.Add(new TgaValidationError("ImageArea.ImageId", $"ImageId length ({length}) exceeds the {byte.MaxValue} byte maximum."));
         }
 
         /// <summary>
         /// Spec Field 9 (Developer Area Tag): tags &gt;= 32768 are reserved for Truevision, and no
         /// tag may appear twice in the directory.
         /// </summary>
-        private static void ValidateDevArea(TgaFile file, List<TgaValidationError> errors)
+        private static void ValidateDeveloperArea(TgaFile file, List<TgaValidationError> errors)
         {
-            if (file.DevArea is null) return;
+            if (file.DeveloperArea is null) return;
 
             var seenTags = new HashSet<ushort>();
-            for (int i = 0; i < file.DevArea.Count; i++)
+            for (int i = 0; i < file.DeveloperArea.Count; i++)
             {
-                ushort tag = file.DevArea[i].Tag;
+                ushort tag = file.DeveloperArea[i].Tag;
 
                 if (tag >= MinReservedDevTag)
-                    errors.Add(new TgaValidationError($"DevArea.Entries[{i}].Tag", $"Tag {tag} is reserved for Truevision (valid developer range is 0-{MinReservedDevTag - 1})."));
+                    errors.Add(new TgaValidationError($"DeveloperArea.Entries[{i}].Tag", $"Tag {tag} is reserved for Truevision (valid developer range is 0-{MinReservedDevTag - 1})."));
 
                 if (!seenTags.Add(tag))
-                    errors.Add(new TgaValidationError($"DevArea.Entries[{i}].Tag", $"Duplicate Tag {tag} in DevArea."));
+                    errors.Add(new TgaValidationError($"DeveloperArea.Entries[{i}].Tag", $"Duplicate Tag {tag} in DeveloperArea."));
             }
         }
 
@@ -241,22 +241,22 @@
         /// </summary>
         private static void ValidateDateTimeStamp(TgaFile file, List<TgaValidationError> errors)
         {
-            var dateTime = file.ExtArea?.DateTimeStamp;
+            var dateTime = file.ExtensionArea?.DateTimeStamp;
             if (dateTime is null) return;
 
             bool isAllZero = dateTime is { Month: 0, Day: 0, Year: 0, Hour: 0, Minute: 0, Second: 0 };
             if (isAllZero) return;
 
             if (dateTime.Month is < 1 or > 12)
-                errors.Add(new TgaValidationError("ExtArea.DateTimeStamp.Month", $"Month must be 1-12 (was {dateTime.Month})."));
+                errors.Add(new TgaValidationError("ExtensionArea.DateTimeStamp.Month", $"Month must be 1-12 (was {dateTime.Month})."));
             if (dateTime.Day is < 1 or > 31)
-                errors.Add(new TgaValidationError("ExtArea.DateTimeStamp.Day", $"Day must be 1-31 (was {dateTime.Day})."));
+                errors.Add(new TgaValidationError("ExtensionArea.DateTimeStamp.Day", $"Day must be 1-31 (was {dateTime.Day})."));
             if (dateTime.Hour > 23)
-                errors.Add(new TgaValidationError("ExtArea.DateTimeStamp.Hour", $"Hour must be 0-23 (was {dateTime.Hour})."));
+                errors.Add(new TgaValidationError("ExtensionArea.DateTimeStamp.Hour", $"Hour must be 0-23 (was {dateTime.Hour})."));
             if (dateTime.Minute > 59)
-                errors.Add(new TgaValidationError("ExtArea.DateTimeStamp.Minute", $"Minute must be 0-59 (was {dateTime.Minute})."));
+                errors.Add(new TgaValidationError("ExtensionArea.DateTimeStamp.Minute", $"Minute must be 0-59 (was {dateTime.Minute})."));
             if (dateTime.Second > 59)
-                errors.Add(new TgaValidationError("ExtArea.DateTimeStamp.Second", $"Second must be 0-59 (was {dateTime.Second})."));
+                errors.Add(new TgaValidationError("ExtensionArea.DateTimeStamp.Second", $"Second must be 0-59 (was {dateTime.Second})."));
         }
 
         /// <summary>
@@ -264,13 +264,13 @@
         /// </summary>
         private static void ValidateJobTime(TgaFile file, List<TgaValidationError> errors)
         {
-            var jobTime = file.ExtArea?.JobTime;
+            var jobTime = file.ExtensionArea?.JobTime;
             if (jobTime is null) return;
 
             if (jobTime.Minutes > 59)
-                errors.Add(new TgaValidationError("ExtArea.JobTime.Minutes", $"Minutes must be 0-59 (was {jobTime.Minutes})."));
+                errors.Add(new TgaValidationError("ExtensionArea.JobTime.Minutes", $"Minutes must be 0-59 (was {jobTime.Minutes})."));
             if (jobTime.Seconds > 59)
-                errors.Add(new TgaValidationError("ExtArea.JobTime.Seconds", $"Seconds must be 0-59 (was {jobTime.Seconds})."));
+                errors.Add(new TgaValidationError("ExtensionArea.JobTime.Seconds", $"Seconds must be 0-59 (was {jobTime.Seconds})."));
         }
 
         /// <summary>
@@ -279,12 +279,12 @@
         /// </summary>
         private static void ValidateGammaValue(TgaFile file, List<TgaValidationError> errors)
         {
-            var gammaValue = file.ExtArea?.GammaValue;
+            var gammaValue = file.ExtensionArea?.GammaValue;
             if (gammaValue is null || gammaValue.IsUnspecified) return;
 
             float value = gammaValue.Numerator / (float)gammaValue.Denominator;
             if (value is < 0f or > 10f)
-                errors.Add(new TgaValidationError("ExtArea.GammaValue", $"GammaValue must be 0.0-10.0 when specified (was {value})."));
+                errors.Add(new TgaValidationError("ExtensionArea.GammaValue", $"GammaValue must be 0.0-10.0 when specified (was {value})."));
         }
 
         /// <summary>
@@ -292,11 +292,11 @@
         /// </summary>
         private static void ValidateAttributesType(TgaFile file, List<TgaValidationError> errors)
         {
-            if (file.ExtArea is null) return;
+            if (file.ExtensionArea is null) return;
 
-            byte attributesType = (byte)file.ExtArea.AttributesType;
+            byte attributesType = (byte)file.ExtensionArea.AttributesType;
             if (attributesType > MaxAttributesType)
-                errors.Add(new TgaValidationError("ExtArea.AttributesType", $"AttributesType {attributesType} is reserved (5-127) or unassigned (128-255); valid values are 0-{MaxAttributesType}."));
+                errors.Add(new TgaValidationError("ExtensionArea.AttributesType", $"AttributesType {attributesType} is reserved (5-127) or unassigned (128-255); valid values are 0-{MaxAttributesType}."));
         }
 
         /// <summary>
@@ -305,11 +305,11 @@
         /// </summary>
         private static void ValidateScanLineTable(TgaFile file, List<TgaValidationError> errors)
         {
-            var scanLineTable = file.ExtArea?.ScanLineTable;
+            var scanLineTable = file.ExtensionArea?.ScanLineTable;
             if (scanLineTable is null) return;
 
             if (scanLineTable.Length != file.Height)
-                errors.Add(new TgaValidationError("ExtArea.ScanLineTable", $"ScanLineTable.Length ({scanLineTable.Length}) must equal Height ({file.Height})."));
+                errors.Add(new TgaValidationError("ExtensionArea.ScanLineTable", $"ScanLineTable.Length ({scanLineTable.Length}) must equal Height ({file.Height})."));
         }
 
         /// <summary>
@@ -317,11 +317,11 @@
         /// </summary>
         private static void ValidateColorCorrectionTable(TgaFile file, List<TgaValidationError> errors)
         {
-            var colorCorrectionTable = file.ExtArea?.ColorCorrectionTable;
+            var colorCorrectionTable = file.ExtensionArea?.ColorCorrectionTable;
             if (colorCorrectionTable is null) return;
 
             if (colorCorrectionTable.Length != 1024)
-                errors.Add(new TgaValidationError("ExtArea.ColorCorrectionTable", $"ColorCorrectionTable.Length ({colorCorrectionTable.Length}) must be 1024 (256 entries x 4 shorts)."));
+                errors.Add(new TgaValidationError("ExtensionArea.ColorCorrectionTable", $"ColorCorrectionTable.Length ({colorCorrectionTable.Length}) must be 1024 (256 entries x 4 shorts)."));
         }
 
         /// <summary>
@@ -330,12 +330,12 @@
         /// </summary>
         private static void ValidatePostageStampImage(TgaFile file, List<TgaValidationError> errors)
         {
-            var postageStampImage = file.ExtArea?.PostageStampImage;
+            var postageStampImage = file.ExtensionArea?.PostageStampImage;
             if (postageStampImage is null) return;
 
             int expected = postageStampImage.Width * postageStampImage.Height * file.Header.ImageSpec.PixelDepth.BytesPerPixel();
             if (postageStampImage.Data.Length != expected)
-                errors.Add(new TgaValidationError("ExtArea.PostageStampImage.Data", $"Data.Length must be {expected} (Width * Height * bytes-per-pixel) but was {postageStampImage.Data.Length}."));
+                errors.Add(new TgaValidationError("ExtensionArea.PostageStampImage.Data", $"Data.Length must be {expected} (Width * Height * bytes-per-pixel) but was {postageStampImage.Data.Length}."));
         }
 
         /// <summary>
@@ -345,13 +345,13 @@
         /// of writing a space, matching the '\0' blank-fill convention this library itself uses
         /// elsewhere (see <see cref="TgaString.DefaultBlankSpaceChar"/>).
         /// </summary>
-        private static void ValidateSoftVersion(TgaFile file, List<TgaValidationError> errors)
+        private static void ValidateSoftwareVersion(TgaFile file, List<TgaValidationError> errors)
         {
-            var softVersion = file.ExtArea?.SoftVersion;
-            if (softVersion is null) return;
+            var softwareVersion = file.ExtensionArea?.SoftwareVersion;
+            if (softwareVersion is null) return;
 
-            if (softVersion.VersionLetter is not (' ' or '\0') && !char.IsLetter(softVersion.VersionLetter))
-                errors.Add(new TgaValidationError("ExtArea.SoftVersion.VersionLetter", $"VersionLetter must be ' ', NUL or a letter (was '{softVersion.VersionLetter}')."));
+            if (softwareVersion.VersionLetter is not (' ' or '\0') && !char.IsLetter(softwareVersion.VersionLetter))
+                errors.Add(new TgaValidationError("ExtensionArea.SoftwareVersion.VersionLetter", $"VersionLetter must be ' ', NUL or a letter (was '{softwareVersion.VersionLetter}')."));
         }
     }
 }

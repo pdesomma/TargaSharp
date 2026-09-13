@@ -3,18 +3,18 @@
 namespace TargaSharp.Tests;
 
 /// <summary>
-/// Tests for <see cref="TgaDevArea"/>.
+/// Tests for <see cref="TgaDeveloperArea"/>.
 /// </summary>
 [TestClass]
-public class TgaDevAreaTests
+public class TgaDeveloperAreaTests
 {
     [TestMethod]
     public void ToBytes_TwoEntries_FirstTwoBytesAreLittleEndianCount()
     {
-        var area = new TgaDevArea(new List<TgaDevEntry>
+        var area = new TgaDeveloperArea(new List<TgaDeveloperEntry>
         {
-            new TgaDevEntry(1, 0, Array.Empty<byte>()),
-            new TgaDevEntry(2, 0, Array.Empty<byte>()),
+            new TgaDeveloperEntry(1, 0, Array.Empty<byte>()),
+            new TgaDeveloperEntry(2, 0, Array.Empty<byte>()),
         });
 
         byte[] bytes = area.ToBytes();
@@ -26,11 +26,11 @@ public class TgaDevAreaTests
     [TestMethod]
     public void ToBytes_MoreThanUshortMaxEntries_ThrowsInvalidOperationException()
     {
-        var entries = new List<TgaDevEntry>(ushort.MaxValue + 1);
+        var entries = new List<TgaDeveloperEntry>(ushort.MaxValue + 1);
         for (int i = 0; i <= ushort.MaxValue; i++)
-            entries.Add(new TgaDevEntry((ushort)i, 0, Array.Empty<byte>()));
+            entries.Add(new TgaDeveloperEntry((ushort)i, 0, Array.Empty<byte>()));
 
-        var area = new TgaDevArea(entries);
+        var area = new TgaDeveloperArea(entries);
 
         Assert.ThrowsExactly<InvalidOperationException>(() => area.ToBytes());
     }

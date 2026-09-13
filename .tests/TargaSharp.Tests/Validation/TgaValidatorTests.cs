@@ -24,9 +24,9 @@ public class TgaValidatorTests
     /// </summary>
     private static TgaFile CreateValidColorMappedBaseline()
     {
-        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp8, TgaImageType.Uncompressed_ColorMapped);
+        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp8, TgaImageType.UncompressedColorMapped);
         file.Header.ColorMapSpec.ColorMapLength = 2;
-        file.ImageOrColorMapArea.ColorMapData = new byte[2 * TgaColorMapEntrySize.R8G8B8.BytesPerPixel()];
+        file.ImageArea.ColorMapData = new byte[2 * TgaColorMapEntrySize.R8G8B8.BytesPerPixel()];
         return file;
     }
 
@@ -65,7 +65,7 @@ public class TgaValidatorTests
         file.Header.ImageSpec.PixelDepth = (TgaPixelDepth)5;
         // Keep ImageData consistent with the mutated depth's bytes-per-pixel so only the PixelDepth
         // rule (not the ImageData-length rule) is violated.
-        file.ImageOrColorMapArea.ImageData = new byte[file.Width * file.Height * 1];
+        file.ImageArea.ImageData = new byte[file.Width * file.Height * 1];
 
         var errors = Validator.Validate(file);
 
@@ -129,7 +129,7 @@ public class TgaValidatorTests
         var file = CreateValidColorMappedBaseline();
         file.Header.ColorMapSpec.ColorMapEntrySize = (TgaColorMapEntrySize)5;
         // Keep ColorMapData consistent with the mutated entry size so only the EntrySize rule fires.
-        file.ImageOrColorMapArea.ColorMapData = new byte[file.Header.ColorMapSpec.ColorMapLength * 1];
+        file.ImageArea.ColorMapData = new byte[file.Header.ColorMapSpec.ColorMapLength * 1];
 
         var errors = Validator.Validate(file);
 
@@ -143,7 +143,7 @@ public class TgaValidatorTests
         var file = CreateValidColorMappedBaseline();
         file.Header.ColorMapSpec.ColorMapLength = 0;
         // Keep ColorMapData consistent (0 entries = 0 bytes) so only the ColorMapLength rule fires.
-        file.ImageOrColorMapArea.ColorMapData = [];
+        file.ImageArea.ColorMapData = [];
 
         var errors = Validator.Validate(file);
 
@@ -158,7 +158,7 @@ public class TgaValidatorTests
     [TestMethod]
     public void Validate_ColorMappedImageTypeWithoutColorMap_ReturnsSingleError()
     {
-        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp8, TgaImageType.Uncompressed_ColorMapped);
+        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp8, TgaImageType.UncompressedColorMapped);
         file.Header.ColorMapType = TgaColorMapType.NoColorMap;
         file.Header.ColorMapSpec.ColorMapEntrySize = TgaColorMapEntrySize.Other;
 
@@ -175,7 +175,7 @@ public class TgaValidatorTests
         file.Header.ColorMapType = TgaColorMapType.ColorMap;
         file.Header.ColorMapSpec.ColorMapEntrySize = TgaColorMapEntrySize.R8G8B8;
         file.Header.ColorMapSpec.ColorMapLength = 2;
-        file.ImageOrColorMapArea.ColorMapData = new byte[2 * TgaColorMapEntrySize.R8G8B8.BytesPerPixel()];
+        file.ImageArea.ColorMapData = new byte[2 * TgaColorMapEntrySize.R8G8B8.BytesPerPixel()];
 
         var errors = Validator.Validate(file);
 
@@ -202,7 +202,7 @@ public class TgaValidatorTests
     [TestMethod]
     public void Validate_32BppWithInvalidAlphaBits_ReturnsSingleError()
     {
-        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp32, TgaImageType.Uncompressed_TrueColor);
+        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp32, TgaImageType.UncompressedTrueColor);
         file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits = 3;
 
         var errors = Validator.Validate(file);
@@ -226,7 +226,7 @@ public class TgaValidatorTests
     [TestMethod]
     public void Validate_16BppTrueColorWithInvalidAlphaBits_ReturnsSingleError()
     {
-        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp16, TgaImageType.Uncompressed_TrueColor);
+        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp16, TgaImageType.UncompressedTrueColor);
         file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits = 3;
 
         var errors = Validator.Validate(file);
@@ -238,7 +238,7 @@ public class TgaValidatorTests
     [TestMethod]
     public void Validate_16BppBlackAndWhiteWithInvalidAlphaBits_ReturnsSingleError()
     {
-        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp16, TgaImageType.Uncompressed_BlackWhite);
+        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp16, TgaImageType.UncompressedGrayscale);
         file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits = 3;
 
         var errors = Validator.Validate(file);
@@ -255,7 +255,7 @@ public class TgaValidatorTests
     [TestMethod]
     public void Validate_16BppBlackAndWhiteWithEightAlphaBits_ReturnsNoError()
     {
-        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp16, TgaImageType.Uncompressed_BlackWhite);
+        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp16, TgaImageType.UncompressedGrayscale);
         file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits = 8;
 
         var errors = Validator.Validate(file);
@@ -277,54 +277,54 @@ public class TgaValidatorTests
 
     #endregion
 
-    #region ColorMapData / ImageData / ImageID
+    #region ColorMapData / ImageData / ImageId
 
     [TestMethod]
     public void Validate_ColorMapDataWrongLength_ReturnsSingleError()
     {
         var file = CreateValidColorMappedBaseline();
-        file.ImageOrColorMapArea.ColorMapData = new byte[5];
+        file.ImageArea.ColorMapData = new byte[5];
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ImageOrColorMapArea.ColorMapData", errors[0].Path);
+        Assert.AreEqual("ImageArea.ColorMapData", errors[0].Path);
     }
 
     [TestMethod]
     public void Validate_NoColorMapWithNonEmptyColorMapData_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ImageOrColorMapArea.ColorMapData = new byte[3];
+        file.ImageArea.ColorMapData = new byte[3];
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ImageOrColorMapArea.ColorMapData", errors[0].Path);
+        Assert.AreEqual("ImageArea.ColorMapData", errors[0].Path);
     }
 
     [TestMethod]
     public void Validate_ImageDataWrongLength_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ImageOrColorMapArea.ImageData = new byte[10];
+        file.ImageArea.ImageData = new byte[10];
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ImageOrColorMapArea.ImageData", errors[0].Path);
+        Assert.AreEqual("ImageArea.ImageData", errors[0].Path);
     }
 
     [TestMethod]
     public void Validate_NoImageDataWithLeftoverImageData_ReturnsSingleError()
     {
         var file = new TgaFile(0, 0);
-        file.ImageOrColorMapArea.ImageData = new byte[5];
+        file.ImageArea.ImageData = new byte[5];
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ImageOrColorMapArea.ImageData", errors[0].Path);
+        Assert.AreEqual("ImageArea.ImageData", errors[0].Path);
     }
 
     [TestMethod]
@@ -332,12 +332,12 @@ public class TgaValidatorTests
     {
         var file = CreateValidBaseline();
         string tooLong = new string('a', 256);
-        file.ImageOrColorMapArea.ImageID = new TgaString(tooLong, tooLong.Length);
+        file.ImageArea.ImageId = new TgaString(tooLong, tooLong.Length);
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ImageOrColorMapArea.ImageID", errors[0].Path);
+        Assert.AreEqual("ImageArea.ImageId", errors[0].Path);
     }
 
     [TestMethod]
@@ -345,7 +345,7 @@ public class TgaValidatorTests
     {
         var file = CreateValidBaseline();
         string maxLength = new string('a', 255);
-        file.ImageOrColorMapArea.ImageID = new TgaString(maxLength, maxLength.Length);
+        file.ImageArea.ImageId = new TgaString(maxLength, maxLength.Length);
 
         var errors = Validator.Validate(file);
 
@@ -354,37 +354,37 @@ public class TgaValidatorTests
 
     #endregion
 
-    #region DevArea
+    #region DeveloperArea
 
     [TestMethod]
-    public void Validate_DevAreaTagReservedForTruevision_ReturnsSingleError()
+    public void Validate_DeveloperAreaTagReservedForTruevision_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.DevArea = new TgaDevArea([new TgaDevEntry(40000, 0, [1])]);
+        file.DeveloperArea = new TgaDeveloperArea([new TgaDeveloperEntry(40000, 0, [1])]);
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("DevArea.Entries[0].Tag", errors[0].Path);
+        Assert.AreEqual("DeveloperArea.Entries[0].Tag", errors[0].Path);
     }
 
     [TestMethod]
-    public void Validate_DevAreaDuplicateTags_ReturnsSingleError()
+    public void Validate_DeveloperAreaDuplicateTags_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.DevArea = new TgaDevArea([new TgaDevEntry(100, 0, [1]), new TgaDevEntry(100, 0, [2])]);
+        file.DeveloperArea = new TgaDeveloperArea([new TgaDeveloperEntry(100, 0, [1]), new TgaDeveloperEntry(100, 0, [2])]);
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("DevArea.Entries[1].Tag", errors[0].Path);
+        Assert.AreEqual("DeveloperArea.Entries[1].Tag", errors[0].Path);
     }
 
     [TestMethod]
-    public void Validate_DevAreaWithDistinctDeveloperTags_ReturnsNoError()
+    public void Validate_DeveloperAreaWithDistinctDeveloperTags_ReturnsNoError()
     {
         var file = CreateValidBaseline();
-        file.DevArea = new TgaDevArea([new TgaDevEntry(1, 0, [1]), new TgaDevEntry(2, 0, [2])]);
+        file.DeveloperArea = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [1]), new TgaDeveloperEntry(2, 0, [2])]);
 
         var errors = Validator.Validate(file);
 
@@ -399,7 +399,7 @@ public class TgaValidatorTests
     public void Validate_DateTimeStampAllZero_ReturnsNoError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.DateTimeStamp = new TgaDateTime(0, 0, 0, 0, 0, 0);
+        file.ExtensionArea!.DateTimeStamp = new TgaDateTime(0, 0, 0, 0, 0, 0);
 
         var errors = Validator.Validate(file);
 
@@ -410,60 +410,60 @@ public class TgaValidatorTests
     public void Validate_DateTimeStampMonthOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.DateTimeStamp = new TgaDateTime(0, 15, 2024, 10, 30, 15);
+        file.ExtensionArea!.DateTimeStamp = new TgaDateTime(0, 15, 2024, 10, 30, 15);
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.DateTimeStamp.Month", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.DateTimeStamp.Month", errors[0].Path);
     }
 
     [TestMethod]
     public void Validate_DateTimeStampDayOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.DateTimeStamp = new TgaDateTime(6, 32, 2024, 10, 30, 15);
+        file.ExtensionArea!.DateTimeStamp = new TgaDateTime(6, 32, 2024, 10, 30, 15);
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.DateTimeStamp.Day", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.DateTimeStamp.Day", errors[0].Path);
     }
 
     [TestMethod]
     public void Validate_DateTimeStampHourOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.DateTimeStamp = new TgaDateTime(6, 15, 2024, 24, 30, 15);
+        file.ExtensionArea!.DateTimeStamp = new TgaDateTime(6, 15, 2024, 24, 30, 15);
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.DateTimeStamp.Hour", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.DateTimeStamp.Hour", errors[0].Path);
     }
 
     [TestMethod]
     public void Validate_DateTimeStampMinuteOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.DateTimeStamp = new TgaDateTime(6, 15, 2024, 10, 60, 15);
+        file.ExtensionArea!.DateTimeStamp = new TgaDateTime(6, 15, 2024, 10, 60, 15);
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.DateTimeStamp.Minute", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.DateTimeStamp.Minute", errors[0].Path);
     }
 
     [TestMethod]
     public void Validate_DateTimeStampSecondOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.DateTimeStamp = new TgaDateTime(6, 15, 2024, 10, 30, 60);
+        file.ExtensionArea!.DateTimeStamp = new TgaDateTime(6, 15, 2024, 10, 30, 60);
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.DateTimeStamp.Second", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.DateTimeStamp.Second", errors[0].Path);
     }
 
     #endregion
@@ -474,24 +474,24 @@ public class TgaValidatorTests
     public void Validate_JobTimeMinutesOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.JobTime = new TgaTime(5, 60, 10);
+        file.ExtensionArea!.JobTime = new TgaTime(5, 60, 10);
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.JobTime.Minutes", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.JobTime.Minutes", errors[0].Path);
     }
 
     [TestMethod]
     public void Validate_JobTimeSecondsOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.JobTime = new TgaTime(5, 10, 60);
+        file.ExtensionArea!.JobTime = new TgaTime(5, 10, 60);
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.JobTime.Seconds", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.JobTime.Seconds", errors[0].Path);
     }
 
     #endregion
@@ -502,19 +502,19 @@ public class TgaValidatorTests
     public void Validate_GammaValueOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.GammaValue = new TgaFraction(150, 10); // 15.0
+        file.ExtensionArea!.GammaValue = new TgaFraction(150, 10); // 15.0
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.GammaValue", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.GammaValue", errors[0].Path);
     }
 
     [TestMethod]
     public void Validate_GammaValueInRange_ReturnsNoError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.GammaValue = new TgaFraction(15, 10); // 1.5
+        file.ExtensionArea!.GammaValue = new TgaFraction(15, 10); // 1.5
 
         var errors = Validator.Validate(file);
 
@@ -529,12 +529,12 @@ public class TgaValidatorTests
     public void Validate_AttributesTypeUnassigned_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.AttributesType = (TgaAttributeType)200;
+        file.ExtensionArea!.AttributesType = (TgaAttributeType)200;
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.AttributesType", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.AttributesType", errors[0].Path);
     }
 
     #endregion
@@ -545,19 +545,19 @@ public class TgaValidatorTests
     public void Validate_ScanLineTableLengthMismatch_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.ScanLineTable = new uint[3]; // Height is 4
+        file.ExtensionArea!.ScanLineTable = new uint[3]; // Height is 4
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.ScanLineTable", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.ScanLineTable", errors[0].Path);
     }
 
     [TestMethod]
     public void Validate_ScanLineTableLengthMatchesHeight_ReturnsNoError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.ScanLineTable = new uint[4]; // Height is 4
+        file.ExtensionArea!.ScanLineTable = new uint[4]; // Height is 4
 
         var errors = Validator.Validate(file);
 
@@ -568,47 +568,47 @@ public class TgaValidatorTests
     public void Validate_ColorCorrectionTableWrongLength_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.ColorCorrectionTable = new ushort[10];
+        file.ExtensionArea!.ColorCorrectionTable = new ushort[10];
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.ColorCorrectionTable", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.ColorCorrectionTable", errors[0].Path);
     }
 
     [TestMethod]
     public void Validate_PostageStampImageDataWrongLength_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.PostageStampImage = new TgaPostageStampImage(4, 4, new byte[10]); // expects 4*4*3 = 48
+        file.ExtensionArea!.PostageStampImage = new TgaPostageStampImage(4, 4, new byte[10]); // expects 4*4*3 = 48
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.PostageStampImage.Data", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.PostageStampImage.Data", errors[0].Path);
     }
 
     #endregion
 
-    #region SoftVersion
+    #region SoftwareVersion
 
     [TestMethod]
-    public void Validate_SoftVersionLetterIsDigit_ReturnsSingleError()
+    public void Validate_SoftwareVersionLetterIsDigit_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.SoftVersion.VersionLetter = '5';
+        file.ExtensionArea!.SoftwareVersion.VersionLetter = '5';
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtArea.SoftVersion.VersionLetter", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.SoftwareVersion.VersionLetter", errors[0].Path);
     }
 
     [TestMethod]
-    public void Validate_SoftVersionLetterIsALetter_ReturnsNoError()
+    public void Validate_SoftwareVersionLetterIsALetter_ReturnsNoError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.SoftVersion.VersionLetter = 'b';
+        file.ExtensionArea!.SoftwareVersion.VersionLetter = 'b';
 
         var errors = Validator.Validate(file);
 
@@ -622,10 +622,10 @@ public class TgaValidatorTests
     /// <c>Alpha Straight.tga</c> fixtures - so it must NOT be flagged.
     /// </summary>
     [TestMethod]
-    public void Validate_SoftVersionLetterIsNul_ReturnsNoError()
+    public void Validate_SoftwareVersionLetterIsNul_ReturnsNoError()
     {
         var file = CreateValidBaseline();
-        file.ExtArea!.SoftVersion.VersionLetter = '\0';
+        file.ExtensionArea!.SoftwareVersion.VersionLetter = '\0';
 
         var errors = Validator.Validate(file);
 

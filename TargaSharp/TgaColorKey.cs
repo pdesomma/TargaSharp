@@ -48,8 +48,8 @@
         /// <summary>
         /// Make <see cref="TgaColorKey"/> from <see cref="int"/>.
         /// </summary>
-        /// <param name="ARGB">32bit ARGB integer color value.</param>
-        public TgaColorKey(int ARGB) : this((byte)((ARGB >> 24) & 0xFF), (byte)((ARGB >> 16) & 0xFF), (byte)((ARGB >> 8) & 0xFF), (byte)(ARGB & 0xFF)) { }
+        /// <param name="argb">32bit ARGB integer color value.</param>
+        public TgaColorKey(int argb) : this((byte)((argb >> 24) & 0xFF), (byte)((argb >> 16) & 0xFF), (byte)((argb >> 8) & 0xFF), (byte)(argb & 0xFF)) { }
 
 
         /// <summary>

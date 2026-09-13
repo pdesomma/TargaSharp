@@ -78,7 +78,7 @@
         /// <summary>
         /// Attempts to parse <paramref name="bytes"/> as a TGA v2.0 File Footer. Validates the fixed
         /// spec constants that make up the footer alongside the two offsets - the
-        /// <see cref="TgaString.XFileSignatuteConst"/> signature (Field 30), the '.' reserved
+        /// <see cref="TgaString.XFileSignatureText"/> signature (Field 30), the '.' reserved
         /// character (Field 31) and the binary-zero string terminator (Field 32) - since a file is
         /// only assumed to be in the New TGA format when all three match.
         /// </summary>
@@ -91,8 +91,8 @@
             if (bytes is null || bytes.Length != Size)
                 return false;
 
-            for (int i = 0; i < TgaString.XFileSignatuteConst.Length; i++)
-                if (bytes[8 + i] != (byte)TgaString.XFileSignatuteConst[i])
+            for (int i = 0; i < TgaString.XFileSignatureText.Length; i++)
+                if (bytes[8 + i] != (byte)TgaString.XFileSignatureText[i])
                     return false;
 
             if (bytes[24] != (byte)'.')
@@ -118,7 +118,7 @@
         public byte[] ToBytes() => new TgaByteBuilder(Size)
             .Add(ExtensionAreaOffset)
             .Add(DeveloperDirectoryOffset)
-            .Add(TgaString.XFileSignatute.ToBytes())
+            .Add(TgaString.XFileSignature.ToBytes())
             .Add(TgaString.DotSymbol.ToBytes())
             .Add(TgaString.ZeroTerminator.ToBytes())
             .ToArray();

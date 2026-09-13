@@ -15,11 +15,11 @@
     public enum TgaImageType : byte
     {
         NoImageData = 0,
-        Uncompressed_ColorMapped = 1,
-        Uncompressed_TrueColor,
-        Uncompressed_BlackWhite,
-        RLE_ColorMapped = 9,
-        RLE_TrueColor,
-        RLE_BlackWhite
+        UncompressedColorMapped = 1,
+        UncompressedTrueColor,
+        UncompressedGrayscale,
+        RleColorMapped = 9,
+        RleTrueColor,
+        RleGrayscale
     }
 }

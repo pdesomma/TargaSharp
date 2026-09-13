@@ -3,26 +3,26 @@
     /// <summary>
     /// Developer Area
     /// </summary> 
-    public sealed record TgaDevArea : ICloneable
+    public sealed record TgaDeveloperArea : ICloneable
     {
         /// <summary>
-        /// Create a new instnace of the <see cref="TgaDevArea"/> class.
+        /// Create a new instnace of the <see cref="TgaDeveloperArea"/> class.
         /// </summary>
-        public TgaDevArea() { }
+        public TgaDeveloperArea() { }
 
         /// <summary>
-        /// Create a new instance of the <see cref="TgaDevArea"/> class.
+        /// Create a new instance of the <see cref="TgaDeveloperArea"/> class.
         /// </summary>
         /// <param name="entries"></param>
         /// <exception cref="ArgumentNullException"></exception>
-        public TgaDevArea(List<TgaDevEntry> entries)
+        public TgaDeveloperArea(List<TgaDeveloperEntry> entries)
         {
             if (entries == null) throw new ArgumentNullException(nameof(entries) + " = null!");
             Entries = entries;
         }
 
 
-        public TgaDevEntry this[int index]
+        public TgaDeveloperEntry this[int index]
         {
             get { return Entries[index]; }
             set { Entries[index] = value; }
@@ -37,23 +37,23 @@
         /// <summary>
         /// Developer Data - Field 9 (variable):
         /// </summary>
-        public List<TgaDevEntry> Entries { get; set; } = new List<TgaDevEntry>();
+        public List<TgaDeveloperEntry> Entries { get; set; } = new List<TgaDeveloperEntry>();
 
 
 
 
         /// <summary>
-        /// Make full copy of <see cref="TgaDevArea"/>. Named <c>Copy</c> rather than <c>Clone</c>
+        /// Make full copy of <see cref="TgaDeveloperArea"/>. Named <c>Copy</c> rather than <c>Clone</c>
         /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
-        /// <returns>Full independent copy of <see cref="TgaDevArea"/>.</returns>
-        public TgaDevArea Copy() => this with { Entries = new List<TgaDevEntry>(Entries.Select(x => x.Copy())) };
+        /// <returns>Full independent copy of <see cref="TgaDeveloperArea"/>.</returns>
+        public TgaDeveloperArea Copy() => this with { Entries = new List<TgaDeveloperEntry>(Entries.Select(x => x.Copy())) };
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();
 
         /// <inheritdoc />
-        public bool Equals(TgaDevArea? other)
+        public bool Equals(TgaDeveloperArea? other)
         {
             if (other is null) return false;
             return ReferenceEquals(Entries, other.Entries) || (Entries is not null && other.Entries is not null && Entries.SequenceEqual(other.Entries));
@@ -72,7 +72,7 @@
         }
 
         /// <summary>
-        /// Convert <see cref="TgaDevArea"/> (without Fields Data, only Directory!) to byte array.
+        /// Convert <see cref="TgaDeveloperArea"/> (without Fields Data, only Directory!) to byte array.
         /// </summary>
         /// <returns>Byte array, Len = (NUMBER_OF_TAGS_IN_THE_DIRECTORY * 10) + 2 bytes in size.
         /// The "+ 2" includes the 2 bytes for the number of tags in the directory.</returns>
@@ -85,7 +85,7 @@
                 throw new InvalidOperationException($"{nameof(Entries)}.Count ({Entries.Count}) exceeds the TGA spec limit of {ushort.MaxValue} tags in the Developer Directory.");
 
             ushort numEntries = (ushort)Entries.Count;
-            var devDir = new TgaByteBuilder(sizeof(ushort) + Entries.Count * TgaDevEntry.Size).Add(numEntries);
+            var devDir = new TgaByteBuilder(sizeof(ushort) + Entries.Count * TgaDeveloperEntry.Size).Add(numEntries);
             for (int i = 0; i < Entries.Count; i++)
             {
                 devDir.Add(Entries[i].Tag);

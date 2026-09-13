@@ -36,8 +36,8 @@ public class TgaDrawingTests
         var tga = TgaDrawing.FromBitmap(bmp, colorMap2BytesEntry: true);
 
         Assert.AreEqual(TgaColorMapEntrySize.A1R5G5B5, tga.Header.ColorMapSpec.ColorMapEntrySize);
-        Assert.IsNotNull(tga.ImageOrColorMapArea.ColorMapData);
-        byte[] colorMapData = tga.ImageOrColorMapArea.ColorMapData;
+        Assert.IsNotNull(tga.ImageArea.ColorMapData);
+        byte[] colorMapData = tga.ImageArea.ColorMapData;
 
         // Each packed A1R5G5B5 entry is 2 bytes, little-endian; the alpha bit is bit 15, i.e. bit 7 of
         // the high byte (byte[1] & 0x80).
