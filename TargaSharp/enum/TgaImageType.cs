@@ -14,12 +14,39 @@
     /// </summary>
     public enum TgaImageType : byte
     {
+        /// <summary>
+        /// The file contains no image data.
+        /// </summary>
         NoImageData = 0,
+
+        /// <summary>
+        /// An uncompressed, color-mapped image.
+        /// </summary>
         UncompressedColorMapped = 1,
+
+        /// <summary>
+        /// An uncompressed, true-color image.
+        /// </summary>
         UncompressedTrueColor,
+
+        /// <summary>
+        /// An uncompressed, black-and-white (grayscale) image.
+        /// </summary>
         UncompressedGrayscale,
+
+        /// <summary>
+        /// A run-length encoded, color-mapped image.
+        /// </summary>
         RleColorMapped = 9,
+
+        /// <summary>
+        /// A run-length encoded, true-color image.
+        /// </summary>
         RleTrueColor,
+
+        /// <summary>
+        /// A run-length encoded, black-and-white (grayscale) image.
+        /// </summary>
         RleGrayscale
     }
 }

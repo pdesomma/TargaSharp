@@ -7,9 +7,24 @@ namespace TargaSharp
     /// </summary>
     public sealed record TgaString : ICloneable
     {
+        /// <summary>
+        /// The TGA File Format Version 2.0 signature text written at the end of the file, before the footer's fixed suffix.
+        /// </summary>
         public const string XFileSignatureText = "TRUEVISION-XFILE";
+
+        /// <summary>
+        /// The dot (period) symbol used by <see cref="DotSymbol"/>.
+        /// </summary>
         public const string DotSymbolConst = ".";
+
+        /// <summary>
+        /// The default character reserved as the mandatory ending character when <see cref="UseEndingChar"/> is <see langword="true"/>.
+        /// </summary>
         public const char DefaultEndingChar = '\0';
+
+        /// <summary>
+        /// The default character used to fill unused space in a fixed-width string field.
+        /// </summary>
         public const char DefaultBlankSpaceChar = '\0';
 
         /// <summary>
@@ -56,7 +71,7 @@ namespace TargaSharp
         /// <summary>
         /// Create a new instance of the <see cref="TgaString"/> class.
         /// </summary>
-        /// <param name="useEnding"></param>
+        /// <param name="useEnding">Whether to reserve a mandatory ending character (see <see cref="UseEndingChar"/>).</param>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="useEnding"/>
         /// is <see langword="true"/>, since the default <see cref="Length"/> of 0 cannot hold the
         /// mandatory ending character.</exception>
@@ -69,9 +84,9 @@ namespace TargaSharp
         /// <summary>
         /// Create a new instance of the <see cref="TgaString"/> class.
         /// </summary>
-        /// <param name="bytes"></param>
-        /// <param name="useEnding"></param>
-        /// <exception cref="ArgumentNullException"></exception>
+        /// <param name="bytes">Raw ASCII bytes read from a TGA file field.</param>
+        /// <param name="useEnding">Whether the last byte is a mandatory ending character (see <see cref="UseEndingChar"/>).</param>
+        /// <exception cref="ArgumentNullException"><paramref name="bytes"/> is <see langword="null"/>.</exception>
         /// <remarks>
         /// This is the file-reader path: bytes read from disk are decoded leniently with
         /// <see cref="Encoding.ASCII"/> (which maps code points >= 128 to '?') instead of
@@ -103,8 +118,8 @@ namespace TargaSharp
         /// <summary>
         /// Create a new instance of the <see cref="TgaString"/> class.
         /// </summary>
-        /// <param name="length"></param>
-        /// <param name="useEnding"></param>
+        /// <param name="length">The total field length in bytes (see <see cref="Length"/>).</param>
+        /// <param name="useEnding">Whether to reserve a mandatory ending character (see <see cref="UseEndingChar"/>).</param>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="length"/> is
         /// less than <c>(useEnding ? 1 : 0)</c>, since it would leave no room for the mandatory
         /// ending character.</exception>
@@ -118,11 +133,11 @@ namespace TargaSharp
         /// <summary>
         /// Create a new instance of the <see cref="TgaString"/> class.
         /// </summary>
-        /// <param name="str"></param>
-        /// <param name="length"></param>
-        /// <param name="useEnding"></param>
-        /// <param name="blankSpaceChar"></param>
-        /// <exception cref="ArgumentNullException"></exception>
+        /// <param name="str">The decoded ASCII string content (see <see cref="OriginalString"/>).</param>
+        /// <param name="length">The total field length in bytes (see <see cref="Length"/>).</param>
+        /// <param name="useEnding">Whether to reserve a mandatory ending character (see <see cref="UseEndingChar"/>).</param>
+        /// <param name="blankSpaceChar">The character used to fill unused space (see <see cref="BlankSpaceChar"/>).</param>
+        /// <exception cref="ArgumentNullException"><paramref name="str"/> is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentException">Thrown when <paramref name="str"/> contains a
         /// non-ASCII character.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="length"/> is
@@ -138,6 +153,13 @@ namespace TargaSharp
             Validate();
         }
 
+        /// <summary>
+        /// Concatenates the byte-encoded representations of two <see cref="TgaString"/> instances into a new one.
+        /// </summary>
+        /// <param name="item1">The first <see cref="TgaString"/>.</param>
+        /// <param name="item2">The second <see cref="TgaString"/>.</param>
+        /// <returns>A new <see cref="TgaString"/> whose bytes are <paramref name="item1"/>'s bytes followed by <paramref name="item2"/>'s bytes.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="item1"/> or <paramref name="item2"/> is <see langword="null"/>.</exception>
         public static TgaString operator +(TgaString item1, TgaString item2)
         {
             if (item1 is null || item2 is null) throw new ArgumentNullException();
@@ -185,6 +207,9 @@ namespace TargaSharp
             }
         }
 
+        /// <summary>
+        /// Gets or sets the character used to fill unused space in the fixed-width string field.
+        /// </summary>
         public char BlankSpaceChar { get; set; } = DefaultBlankSpaceChar;
 
         /// <summary>
@@ -204,7 +229,7 @@ namespace TargaSharp
         }
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaString"/>. Named <c>Copy</c> rather than
+        /// Make full independent copy of <see cref="TgaString"/>. Named <c>Copy</c> rather than
         /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaString"/></returns>
@@ -241,9 +266,9 @@ namespace TargaSharp
         /// </summary>
         /// <param name="str">Input string.</param>
         /// <param name="length">Length of output ASCII string with Ending char (if used).</param>
-        /// <param name="useEnding">Add <see cref="EndingChr"/> to string or not?</param>
+        /// <param name="useEnding">Add <see cref="DefaultEndingChar"/> to string or not?</param>
         /// <param name="blankSpaceChar">Char for filling blank space in string. If this char is '-' (only for example!),
-        /// for string "ABC" with <see cref="Length"/> = 7, with <see cref="UseEnding"/> = true,
+        /// for string "ABC" with <see cref="Length"/> = 7, with <see cref="UseEndingChar"/> = true,
         /// <see cref="DefaultEndingChar"/> is '\0', result string is "ABC---\0".</param>
         /// <returns>Byte array, every byte is ASCII symbol.</returns>
         /// <remarks>

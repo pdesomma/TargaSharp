@@ -1,5 +1,9 @@
 ﻿namespace TargaSharp
 {
+    /// <summary>
+    /// A numerator/denominator ratio used for the TGA extension area's pixel aspect ratio
+    /// (spec field 19) and gamma value (spec field 20) fields.
+    /// </summary>
     public sealed record TgaFraction : ICloneable
     {
         /// <summary>
@@ -23,8 +27,8 @@
         /// <summary>
         /// Make <see cref="TgaFraction"/> from <see cref="Numerator"/> and <see cref="Denominator"/>.
         /// </summary>
-        /// <param name="Numerator">Numerator value.</param>
-        /// <param name="Denominator">Denominator value.</param>
+        /// <param name="numerator">Numerator value.</param>
+        /// <param name="denominator">Denominator value.</param>
         public TgaFraction(ushort numerator = 0, ushort denominator = 0)
         {
             Numerator = numerator;
@@ -70,7 +74,7 @@
 
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaFraction"/>. Named <c>Copy</c> rather than
+        /// Make full independent copy of <see cref="TgaFraction"/>. Named <c>Copy</c> rather than
         /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaFraction"/></returns>

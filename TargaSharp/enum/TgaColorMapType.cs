@@ -13,7 +13,14 @@
     /// </summary>
     public enum TgaColorMapType : byte
     {
+        /// <summary>
+        /// The file does not contain a color map.
+        /// </summary>
         NoColorMap = 0,
+
+        /// <summary>
+        /// The file contains a color map.
+        /// </summary>
         ColorMap = 1
     }
 }

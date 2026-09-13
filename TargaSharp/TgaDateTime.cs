@@ -1,5 +1,9 @@
 ﻿namespace TargaSharp
 {
+    /// <summary>
+    /// A date/time stamp stored in the TGA extension area, expressed as separate month, day,
+    /// year, hour, minute and second fields.
+    /// </summary>
     public sealed record TgaDateTime : ICloneable
     {
         /// <summary>
@@ -96,7 +100,7 @@
 
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaDateTime"/>. Named <c>Copy</c> rather than
+        /// Make full independent copy of <see cref="TgaDateTime"/>. Named <c>Copy</c> rather than
         /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaDateTime"/></returns>

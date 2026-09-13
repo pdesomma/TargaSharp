@@ -7,9 +7,24 @@
     /// </summary>
     public enum TgaImageOrigin : byte
     {
+        /// <summary>
+        /// Pixel data is transferred starting at the bottom-left corner of the image.
+        /// </summary>
         BottomLeft = 0,
+
+        /// <summary>
+        /// Pixel data is transferred starting at the bottom-right corner of the image.
+        /// </summary>
         BottomRight,
+
+        /// <summary>
+        /// Pixel data is transferred starting at the top-left corner of the image.
+        /// </summary>
         TopLeft,
+
+        /// <summary>
+        /// Pixel data is transferred starting at the top-right corner of the image.
+        /// </summary>
         TopRight
     }
 }

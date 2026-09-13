@@ -3,16 +3,39 @@ using TargaSharp.Validation;
 
 namespace TargaSharp
 {
+    /// <summary>
+    /// An in-memory representation of a TGA file: its header, image data, and optional
+    /// developer area, extension area and footer.
+    /// </summary>
     public class TgaFile : ICloneable
     {
+        /// <summary>
+        /// Gets the fixed-size TGA header (fields 1-8).
+        /// </summary>
         public TgaHeader Header { get; internal set; } = new TgaHeader();
+
+        /// <summary>
+        /// Gets the image ID, color map data and pixel data (fields 6-8).
+        /// </summary>
         public TgaImageArea ImageArea { get; internal set; } = new TgaImageArea();
+
+        /// <summary>
+        /// Gets or sets the optional developer area, or <see langword="null"/> when the file has none.
+        /// </summary>
         public TgaDeveloperArea? DeveloperArea { get; internal set; } = null;
+
+        /// <summary>
+        /// Gets or sets the optional TGA 2.0 extension area, or <see langword="null"/> when the file has none.
+        /// </summary>
         public TgaExtensionArea? ExtensionArea { get; internal set; } = null;
+
+        /// <summary>
+        /// Gets or sets the optional TGA 2.0 footer, or <see langword="null"/> when the file is in the original (pre-2.0) format.
+        /// </summary>
         public TgaFooter? Footer { get; internal set; } = null;
 
         /// <summary>
-        /// Create new empty <see cref="TgaFile"/> istance.
+        /// Create new empty <see cref="TgaFile"/> instance.
         /// </summary>
         public TgaFile() { }
 
@@ -26,7 +49,7 @@ namespace TargaSharp
         /// <param name="height">Image Height.</param>
         /// <param name="pixDepth">Image Pixel Depth (bits / pixel), set ColorMap bpp after, if needed!</param>
         /// <param name="imgType">Image Type (is RLE compressed, ColorMapped or GrayScaled).</param>
-        /// <param name="attrBits">Set numder of Attrbute bits (Alpha channel bits), default: 0, 1, 8.</param>
+        /// <param name="attrBits">Set number of Attribute bits (Alpha channel bits), default: 0, 1, 8.</param>
         /// <param name="newFormat">Use new 2.0 TGA XFile format?</param>
         public TgaFile(ushort width, ushort height, TgaPixelDepth pixDepth = TgaPixelDepth.Bpp24, TgaImageType imgType = TgaImageType.UncompressedTrueColor, byte attrBits = 0, bool newFormat = true)
         {
@@ -105,7 +128,7 @@ namespace TargaSharp
 
 
         /// <summary>
-        /// Gets or Sets Image Height (see <see cref="Header.ImageSpec.ImageHeight"/>).
+        /// Gets or Sets Image Height (see <see cref="TgaImageSpec.ImageHeight"/>).
         /// </summary>
         public ushort Height
         {
@@ -113,7 +136,7 @@ namespace TargaSharp
             set { Header.ImageSpec.ImageHeight = value; }
         }
         /// <summary>
-        /// Gets or Sets Image Width (see <see cref="Header.ImageSpec.ImageWidth"/>).
+        /// Gets or Sets Image Width (see <see cref="TgaImageSpec.ImageWidth"/>).
         /// </summary>
         public ushort Width
         {
@@ -123,9 +146,9 @@ namespace TargaSharp
 
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaFile"/>.
+        /// Make full independent copy of <see cref="TgaFile"/>.
         /// </summary>
-        /// <returns>Full independed copy of <see cref="TgaFile"/>.</returns>
+        /// <returns>Full independent copy of <see cref="TgaFile"/>.</returns>
         public TgaFile Clone() => new TgaFile(this);
         /// <inheritdoc />
         object ICloneable.Clone() => Clone();

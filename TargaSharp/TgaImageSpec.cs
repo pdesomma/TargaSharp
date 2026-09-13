@@ -20,18 +20,18 @@
         /// <summary>
         /// Make ImageSpec from values.
         /// </summary>
-        /// <param name="X_Origin">These specify the absolute horizontal coordinate for the lower
+        /// <param name="xOrigin">These specify the absolute horizontal coordinate for the lower
         /// left corner of the image as it is positioned on a display device having an origin at
         /// the lower left of the screen(e.g., the TARGA series).</param>
-        /// <param name="Y_Origin">These specify the absolute vertical coordinate for the lower
+        /// <param name="yOrigin">These specify the absolute vertical coordinate for the lower
         /// left corner of the image as it is positioned on a display device having an origin at
         /// the lower left of the screen(e.g., the TARGA series).</param>
-        /// <param name="ImageWidth">This field specifies the width of the image in pixels.</param>
-        /// <param name="ImageHeight">This field specifies the height of the image in pixels.</param>
-        /// <param name="PixelDepth">This field indicates the number of bits per pixel. This number
+        /// <param name="imageWidth">This field specifies the width of the image in pixels.</param>
+        /// <param name="imageHeight">This field specifies the height of the image in pixels.</param>
+        /// <param name="pixelDepth">This field indicates the number of bits per pixel. This number
         /// includes the Attribute or Alpha channel bits. Common values are 8, 16, 24 and 32 but
         /// other pixel depths could be used.</param>
-        /// <param name="ImageDescriptor">Contains image origin bits and alpha channel bits
+        /// <param name="imageDescriptor">Contains image origin bits and alpha channel bits
         /// (or number of overlay bits).</param>
         public TgaImageSpec(ushort xOrigin, ushort yOrigin, ushort imageWidth, ushort imageHeight, TgaPixelDepth pixelDepth, TgaImageDescriptor imageDescriptor)
         {
@@ -96,12 +96,16 @@
         public ushort YOrigin { get; set; }
 
         /// <summary>
-        /// Make full copy of <see cref="TgaImageDescriptor"/>. Named <c>Copy</c> rather than
+        /// Make full copy of <see cref="TgaImageSpec"/>. Named <c>Copy</c> rather than
         /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>Full independent copy of <see cref="TgaImageSpec"/>.</returns>
         public TgaImageSpec Copy() => this with { ImageDescriptor = ImageDescriptor.Copy() };
 
+        /// <summary>
+        /// Gets <see cref="TgaImageSpec"/> like string.
+        /// </summary>
+        /// <returns>String in "XOrigin=0, YOrigin=1, ImageWidth=2, ImageHeight=3, PixelDepth=4, ImageDescriptor=5" format.</returns>
         public override string ToString()
         {
             return String.Format("{0}={1}, {2}={3}, {4}={5}, {6}={7}, {8}={9}, {10}={11}",

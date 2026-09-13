@@ -14,7 +14,7 @@
         /// Make <see cref="TgaImageArea"/> from arrays.
         /// </summary>
         /// <param name="imageID">This optional field contains identifying information about the image.
-        /// The maximum length for this field is 255 bytes. Refer to <see cref="TgaHeader.IDLength"/>
+        /// The maximum length for this field is 255 bytes. Refer to <see cref="TgaHeader.IdLength"/>
         /// for the length of this field. If field 1 is set to Zero indicating that no Image ID exists
         /// then these bytes are not written to the file.</param>
         /// <param name="colorMapData">Color Map Data, see <see cref="ColorMapData"/> description.</param>
@@ -30,7 +30,7 @@
         /// <summary>
         /// Image ID - Field 6 (variable):
         /// <para>This optional field contains identifying information about the image. The maximum length
-        /// for this field is 255 bytes. Refer to <see cref="TgaHeader.IDLength"/> for the length of this
+        /// for this field is 255 bytes. Refer to <see cref="TgaHeader.IdLength"/> for the length of this
         /// field. If field 1 is set to Zero indicating that no Image ID exists then these bytes are not
         /// written to the file. Can have text inside (ASCII).</para>
         /// </summary>
@@ -78,7 +78,7 @@
         /// Make full copy of <see cref="TgaImageArea"/>. Named <c>Copy</c> rather than <c>Clone</c>
         /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
-        /// <returns>Full independed copy of <see cref="TgaImageArea"/>.</returns>
+        /// <returns>Full independent copy of <see cref="TgaImageArea"/>.</returns>
         public TgaImageArea Copy() => this with { ImageId = ImageId?.Copy(), ColorMapData = (byte[]?)ColorMapData?.Clone(), ImageData = (byte[]?)ImageData?.Clone() };
 
         /// <inheritdoc />
@@ -93,6 +93,10 @@
                 (ReferenceEquals(ImageData, other.ImageData) || (ImageData is not null && other.ImageData is not null && ImageData.AsSpan().SequenceEqual(other.ImageData)));
         }
 
+        /// <summary>
+        /// Gets a hash code derived from <see cref="ImageId"/>, <see cref="ColorMapData"/> and <see cref="ImageData"/>.
+        /// </summary>
+        /// <returns>A hash code for this <see cref="TgaImageArea"/>.</returns>
         public override int GetHashCode()
         {
             unchecked

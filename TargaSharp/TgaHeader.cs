@@ -51,7 +51,7 @@
 
         /// <summary>
         /// ID Length - Field 1 (1 byte):
-        /// This field identifies the number of bytes contained in the <see cref="ImageId"/> Field.
+        /// This field identifies the number of bytes contained in the <see cref="TgaImageArea.ImageId"/> Field.
         /// The maximum number of characters is 255. A value of zero indicates that no Image ID
         /// field is included with the image. This is a derived field: it is computed by
         /// <see cref="TargaSharp.IO.TgaWriter"/> from the Image ID string's length during layout
@@ -82,6 +82,10 @@
         /// <returns>Full independent copy of <see cref="TgaHeader"/>.</returns>
         public TgaHeader Copy() => this with { ImageSpec = ImageSpec.Copy(), ColorMapSpec = ColorMapSpec.Copy() };
 
+        /// <summary>
+        /// Gets <see cref="TgaHeader"/> like string.
+        /// </summary>
+        /// <returns>String in "IdLength=0, ColorMapType=1, ImageType=2, ColorMapSpec=3, ImageSpec=4" format.</returns>
         public override string ToString() => string.Format("{0}={1}, {2}={3}, {4}={5}, {6}={7}, {8}={9}",
                 nameof(IdLength), IdLength,
                 nameof(ColorMapType), ColorMapType,

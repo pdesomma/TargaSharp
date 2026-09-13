@@ -141,7 +141,7 @@ namespace TargaSharp
         }
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaComment"/>. Named <c>Copy</c> rather than
+        /// Make full independent copy of <see cref="TgaComment"/>. Named <c>Copy</c> rather than
         /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaComment"/></returns>

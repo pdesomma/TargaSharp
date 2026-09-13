@@ -23,10 +23,29 @@
     /// </summary>
     public enum TgaAttributeType : byte
     {
+        /// <summary>
+        /// Spec field 23, value 0: no Alpha channel data is included in the file.
+        /// </summary>
         NoAlpha = 0,
+
+        /// <summary>
+        /// Spec field 23, value 1: the Alpha field contains undefined data that can be ignored.
+        /// </summary>
         UndefinedAlphaCanBeIgnored,
+
+        /// <summary>
+        /// Spec field 23, value 2: the Alpha field contains undefined data that should be retained.
+        /// </summary>
         UndefinedAlphaButShouldBeRetained,
+
+        /// <summary>
+        /// Spec field 23, value 3: the Alpha field contains useful Alpha channel data.
+        /// </summary>
         UsefulAlpha,
+
+        /// <summary>
+        /// Spec field 23, value 4: the color components have already been scaled by the Alpha channel value (pre-multiplied Alpha).
+        /// </summary>
         PreMultipliedAlpha
     }
 }
