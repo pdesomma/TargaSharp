@@ -33,6 +33,11 @@
         /// </summary>
         /// <param name="b">ImageDescriptor byte with reserved 7-6 bits, bits 5-4 used for
         /// <see cref="ImageOrigin"/>, 3-0 used as alpha channel bits or number of overlay bits.</param>
+        /// <remarks>
+        /// This is the file-reader path: reserved bits 7-6 are read from bits 5-4 and 3-0 only
+        /// (via the <c>0x30</c>/<c>0x0F</c> masks below), so any stray bits 7-6 set by malformed
+        /// files in the wild are silently ignored rather than throwing.
+        /// </remarks>
         public TgaImageDescriptor(byte b)
         {
             ImageOrigin = (TgaImageOrigin)((b & 0x30) >> 4);
@@ -76,7 +81,12 @@
         /// </summary>
         /// <returns>ImageDescriptor byte with reserved 7-6 bits, bits 5-4 used for imageOrigin,
         /// 3-0 used as alpha channel bits or number of overlay bits.</returns>
-        public byte ToByte() => (byte)(((int)ImageOrigin << 4) | (AlphaChannelBits & 0x0F));
+        /// <remarks>
+        /// <see cref="ImageOrigin"/> is masked to its 2 valid bits (like <see cref="AlphaChannelBits"/>
+        /// already is) so reserved bits 7-6 stay 0 even if the enum somehow holds an out-of-range
+        /// value from an unchecked cast.
+        /// </remarks>
+        public byte ToByte() => (byte)((((int)ImageOrigin & 0x03) << 4) | (AlphaChannelBits & 0x0F));
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();

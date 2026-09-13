@@ -2,6 +2,10 @@
 
 namespace TargaSharp
 {
+    /// <summary>
+    /// TGA Field 12 (Author Comments): 4 fixed-width lines of up to 80 ASCII characters each,
+    /// every line terminated by a NUL byte (81 bytes per line, 324 bytes total).
+    /// </summary>
     public sealed record TgaComment : ICloneable
     {
         /// <summary>
@@ -9,55 +13,131 @@ namespace TargaSharp
         /// </summary>
         public const int Size = 81 * 4;
 
-        const int StrNLen = 80; //80 ASCII chars + 1 '\0' = 81 per SrtN!
-        string origString = String.Empty;
-        char blankSpaceChar = TgaString.DefaultBlankSpaceChar;
+        /// <summary>
+        /// Number of comment lines in the field, per spec.
+        /// </summary>
+        private const int LineCount = 4;
 
-        public TgaComment() { }
+        /// <summary>
+        /// Maximum ASCII characters per line, not counting the mandatory NUL terminator.
+        /// </summary>
+        private const int LineLength = 80;
 
-        public TgaComment(string Str, char BlankSpaceChar = '\0')
+        /// <summary>
+        /// Bytes occupied by one line including its NUL terminator (80 + 1 = 81, per spec "SrtN").
+        /// </summary>
+        private const int SlotLength = LineLength + 1;
+
+        /// <summary>
+        /// Backing storage for <see cref="Lines"/>, always exactly <see cref="LineCount"/> entries.
+        /// </summary>
+        private readonly string[] _lines = { string.Empty, string.Empty, string.Empty, string.Empty };
+
+        /// <summary>
+        /// Backing field for <see cref="BlankSpaceChar"/>.
+        /// </summary>
+        private char _blankSpaceChar = TgaString.DefaultBlankSpaceChar;
+
+        /// <summary>
+        /// Create a new instance of the <see cref="TgaComment"/> class with up to
+        /// <see cref="LineCount"/> lines of text. Missing lines default to empty.
+        /// </summary>
+        /// <param name="lines">Comment lines (0-4 of them), each ASCII and at most
+        /// <see cref="LineLength"/> characters.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="lines"/> or any of
+        /// its elements is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="lines"/> has
+        /// more than <see cref="LineCount"/> elements, or a line exceeds <see cref="LineLength"/>
+        /// characters.</exception>
+        /// <exception cref="ArgumentException">Thrown when a line contains a non-ASCII character.</exception>
+        public TgaComment(params string[] lines)
         {
-            if (Str == null)
-                throw new ArgumentNullException(nameof(Str) + " = null!");
+            ArgumentNullException.ThrowIfNull(lines);
+            if (lines.Length > LineCount)
+                throw new ArgumentOutOfRangeException(nameof(lines), lines.Length, $"At most {LineCount} lines are supported (TGA Field 12).");
 
-            origString = Str;
-            blankSpaceChar = BlankSpaceChar;
+            for (int i = 0; i < lines.Length; i++)
+                SetLine(i, lines[i]);
         }
 
-        public TgaComment(byte[] Bytes)
+        /// <summary>
+        /// Create a new instance of the <see cref="TgaComment"/> class from raw field bytes.
+        /// </summary>
+        /// <param name="bytes">Raw field bytes, must be exactly <see cref="Size"/> long.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="bytes"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="bytes"/>.Length != <see cref="Size"/>.</exception>
+        /// <remarks>
+        /// This is the file-reader path: each 80-character line slot is decoded leniently with
+        /// <see cref="Encoding.ASCII"/> (which maps code points >= 128 to '?') instead of
+        /// throwing, since malformed non-ASCII bytes are known to appear in the wild. Line-length
+        /// and ASCII validation performed by <see cref="SetLine"/> is intentionally skipped here.
+        /// </remarks>
+        public TgaComment(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(Bytes);
-            if (Bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(Bytes), Bytes.Length, $"Length must be {Size}.");
+            ArgumentNullException.ThrowIfNull(bytes);
+            if (bytes.Length != Size)
+                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
 
-            string s = Encoding.ASCII.GetString(Bytes, 0, StrNLen);
-            s += Encoding.ASCII.GetString(Bytes, 81, StrNLen);
-            s += Encoding.ASCII.GetString(Bytes, 162, StrNLen);
-            s += Encoding.ASCII.GetString(Bytes, 243, StrNLen);
-
-            switch (s[s.Length - 1])
+            for (int i = 0; i < LineCount; i++)
             {
-                case '\0':
-                case ' ':
-                    blankSpaceChar = s[s.Length - 1];
-                    origString = s.TrimEnd(new char[] { s[s.Length - 1] });
-                    break;
-                default:
-                    origString = s;
-                    break;
+                string slot = Encoding.ASCII.GetString(bytes, i * SlotLength, LineLength);
+                int nulIndex = slot.IndexOf('\0');
+                _lines[i] = nulIndex >= 0 ? slot.Substring(0, nulIndex) : slot.TrimEnd(' ');
             }
         }
 
-        public string OriginalString
+        /// <summary>
+        /// Copy constructor backing the compiler-synthesized <c>with</c> expression. Declared
+        /// explicitly (rather than relying on the default member-wise copy) so <see cref="_lines"/>
+        /// is deep-copied instead of shared by reference between the original and the copy.
+        /// </summary>
+        /// <param name="original">Instance to copy from.</param>
+        private TgaComment(TgaComment original)
         {
-            get { return origString; }
-            set { origString = value; }
+            _lines = (string[])original._lines.Clone();
+            _blankSpaceChar = original._blankSpaceChar;
         }
 
+        /// <summary>
+        /// Gets the 4 comment lines (indices 0-3), per TGA Field 12. Use <see cref="SetLine"/> to
+        /// change a line.
+        /// </summary>
+        public IReadOnlyList<string> Lines => _lines;
+
+        /// <summary>
+        /// Gets or sets the char used to fill blank space after a line's text and before its NUL terminator.
+        /// </summary>
         public char BlankSpaceChar
         {
-            get { return blankSpaceChar; }
-            set { blankSpaceChar = value; }
+            get => _blankSpaceChar;
+            set => _blankSpaceChar = value;
+        }
+
+        /// <summary>
+        /// Sets one comment line.
+        /// </summary>
+        /// <param name="index">Zero-based line index, must be 0-3.</param>
+        /// <param name="text">Line text, ASCII only, at most <see cref="LineLength"/> characters.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="text"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="index"/> is
+        /// outside 0-3, or <paramref name="text"/> is longer than <see cref="LineLength"/> characters.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="text"/> contains a
+        /// character with code point >= 128 (TGA comment lines are ASCII-only per spec).</exception>
+        public void SetLine(int index, string text)
+        {
+            if (index < 0 || index >= LineCount)
+                throw new ArgumentOutOfRangeException(nameof(index), index, $"index must be in range 0-{LineCount - 1}.");
+
+            ArgumentNullException.ThrowIfNull(text);
+
+            if (text.Length > LineLength)
+                throw new ArgumentOutOfRangeException(nameof(text), text.Length, $"text must be <= {LineLength} characters (TGA Field 12 line width).");
+
+            foreach (char c in text)
+                if (c >= 128)
+                    throw new ArgumentException($"text must be ASCII (all chars < 128); TGA comment lines are ASCII-only per spec. Found '{c}' (0x{(int)c:X2}).", nameof(text));
+
+            _lines[index] = text;
         }
 
         /// <summary>
@@ -80,17 +160,10 @@ namespace TargaSharp
         }
 
         /// <summary>
-        /// Get ASCII-Like string to first string-terminator, example:
-        /// "Some string \0 Some Data \0" - > "Some string".
+        /// Get the 4 lines joined with "\n", trimmed of trailing empty lines.
         /// </summary>
-        /// <returns>String to first string-terminator.</returns>
-        public string GetString()
-        {
-            String Str = Encoding.ASCII.GetString(ToBytes());
-            for (int i = 1; i < 4; i++)
-                Str = Str.Insert((StrNLen + 1) * i + i - 1, "\n");
-            return Str.Replace("\0", String.Empty).TrimEnd(new char[] { '\n' });
-        }
+        /// <returns>Comment lines joined with "\n".</returns>
+        public string GetString() => string.Join("\n", _lines).TrimEnd('\n');
 
         /// <summary>
         /// Convert <see cref="TgaComment"/> to byte array.
@@ -98,30 +171,40 @@ namespace TargaSharp
         /// <returns>Byte array, every byte is ASCII symbol.</returns>
         public byte[] ToBytes()
         {
-            return ToBytes(origString, blankSpaceChar);
+            char[] c = new char[Size];
+
+            for (int line = 0; line < LineCount; line++)
+            {
+                string text = _lines[line];
+                int slotStart = line * SlotLength;
+
+                for (int i = 0; i < LineLength; i++)
+                    c[slotStart + i] = i < text.Length ? text[i] : _blankSpaceChar;
+
+                c[slotStart + LineLength] = TgaString.DefaultEndingChar;
+            }
+
+            return Encoding.ASCII.GetBytes(c);
         }
 
-        /// <summary>
-        /// Convert <see cref="TgaComment"/> to byte array.
-        /// </summary>
-        /// <param name="Str">Input string.</param>
-        /// <param name="BlankSpaceChar">Char for filling blank space in string.</param>
-        /// <returns>Byte array, every byte is ASCII symbol.</returns>
-        public static byte[] ToBytes(string Str, char BlankSpaceChar = '\0')
+        /// <inheritdoc />
+        public bool Equals(TgaComment? other)
         {
-            char[] C = new char[81 * 4];
+            if (other is null) return false;
+            return BlankSpaceChar == other.BlankSpaceChar && _lines.AsSpan().SequenceEqual(other._lines);
+        }
 
-            for (int i = 0; i < C.Length; i++)
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            unchecked
             {
-                if ((i + 82) % 81 == 0)
-                    C[i] = TgaString.DefaultEndingChar;
-                else
-                {
-                    int Index = i - i / 81;
-                    C[i] = (Index < Str.Length ? Str[Index] : BlankSpaceChar);
-                }
+                int hash = 27;
+                hash = (13 * hash) + BlankSpaceChar.GetHashCode();
+                for (int i = 0; i < _lines.Length; i++)
+                    hash = (13 * hash) + _lines[i].GetHashCode();
+                return hash;
             }
-            return Encoding.ASCII.GetBytes(C);
         }
 
         /// <inheritdoc />

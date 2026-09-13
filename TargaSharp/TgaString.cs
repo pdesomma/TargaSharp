@@ -13,6 +13,21 @@ namespace TargaSharp
         public const char DefaultBlankSpaceChar = '\0';
 
         /// <summary>
+        /// Backing field for <see cref="OriginalString"/>.
+        /// </summary>
+        private string _originalString = string.Empty;
+
+        /// <summary>
+        /// Backing field for <see cref="Length"/>.
+        /// </summary>
+        private int _length;
+
+        /// <summary>
+        /// Backing field for <see cref="UseEndingChar"/>.
+        /// </summary>
+        private bool _useEndingChar;
+
+        /// <summary>
         /// Gets a new Empty <see cref="TgaString"/>. A new instance is returned on every access
         /// so callers cannot mutate a shared default.
         /// </summary>
@@ -23,7 +38,7 @@ namespace TargaSharp
         /// <see cref="UseEndingChar"/> = true. A new instance is returned on every access so
         /// callers cannot mutate a shared default.
         /// </summary>
-        public static TgaString ZeroTerminator => new TgaString(true);
+        public static TgaString ZeroTerminator => new TgaString(1, true);
 
         /// <summary>
         /// Gets a new "." <see cref="TgaString"/> with dot (period) symbol. A new instance is
@@ -42,7 +57,14 @@ namespace TargaSharp
         /// Create a new instance of the <see cref="TgaString"/> class.
         /// </summary>
         /// <param name="useEnding"></param>
-        public TgaString(bool useEnding = false) => UseEndingChar = useEnding;
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="useEnding"/>
+        /// is <see langword="true"/>, since the default <see cref="Length"/> of 0 cannot hold the
+        /// mandatory ending character.</exception>
+        public TgaString(bool useEnding = false)
+        {
+            _useEndingChar = useEnding;
+            Validate();
+        }
 
         /// <summary>
         /// Create a new instance of the <see cref="TgaString"/> class.
@@ -50,11 +72,18 @@ namespace TargaSharp
         /// <param name="bytes"></param>
         /// <param name="useEnding"></param>
         /// <exception cref="ArgumentNullException"></exception>
-        public TgaString(byte[] bytes, bool useEnding = false) : this(useEnding)
+        /// <remarks>
+        /// This is the file-reader path: bytes read from disk are decoded leniently with
+        /// <see cref="Encoding.ASCII"/> (which maps code points >= 128 to '?') instead of
+        /// throwing, since malformed non-ASCII bytes are known to appear in the wild. Structural
+        /// invariant validation (see <see cref="Validate"/>) is intentionally skipped here.
+        /// </remarks>
+        public TgaString(byte[] bytes, bool useEnding = false)
         {
             ArgumentNullException.ThrowIfNull(bytes);
 
-            Length = bytes.Length;
+            _useEndingChar = useEnding;
+            _length = bytes.Length;
             string s = Encoding.ASCII.GetString(bytes, 0, bytes.Length - (useEnding ? 1 : 0));
 
             if (s.Length > 0)
@@ -63,10 +92,10 @@ namespace TargaSharp
                     case '\0':
                     case ' ':
                         BlankSpaceChar = s[s.Length - 1];
-                        OriginalString = s.TrimEnd([s[s.Length - 1]]);
+                        _originalString = s.TrimEnd([s[s.Length - 1]]);
                         break;
                     default:
-                        OriginalString = s;
+                        _originalString = s;
                         break;
                 }
         }
@@ -76,9 +105,14 @@ namespace TargaSharp
         /// </summary>
         /// <param name="length"></param>
         /// <param name="useEnding"></param>
-        public TgaString(int length, bool useEnding = false) : this(useEnding)
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="length"/> is
+        /// less than <c>(useEnding ? 1 : 0)</c>, since it would leave no room for the mandatory
+        /// ending character.</exception>
+        public TgaString(int length, bool useEnding = false)
         {
-            Length = length;
+            _useEndingChar = useEnding;
+            _length = length;
+            Validate();
         }
 
         /// <summary>
@@ -89,13 +123,19 @@ namespace TargaSharp
         /// <param name="useEnding"></param>
         /// <param name="blankSpaceChar"></param>
         /// <exception cref="ArgumentNullException"></exception>
-        public TgaString(string str, int length, bool useEnding = false, char blankSpaceChar = DefaultBlankSpaceChar) : this(useEnding)
+        /// <exception cref="ArgumentException">Thrown when <paramref name="str"/> contains a
+        /// non-ASCII character.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="length"/> is
+        /// too small to hold <paramref name="str"/> plus the optional ending character.</exception>
+        public TgaString(string str, int length, bool useEnding = false, char blankSpaceChar = DefaultBlankSpaceChar)
         {
             if (str == null) throw new ArgumentNullException(nameof(str) + " = null!");
 
-            OriginalString = str;
-            Length = length;
+            _useEndingChar = useEnding;
+            _originalString = str;
+            _length = length;
             BlankSpaceChar = blankSpaceChar;
+            Validate();
         }
 
         public static TgaString operator +(TgaString item1, TgaString item2)
@@ -104,13 +144,62 @@ namespace TargaSharp
             return new TgaString(BitConverterHelper.ToBytes(item1.ToBytes(), item2.ToBytes())!);
         }
 
-        public string OriginalString { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the decoded ASCII string content, excluding the fixed-width padding and
+        /// optional ending character. Per TGA spec, fixed-width string fields are ASCII-only, so
+        /// the value must contain no character with code point >= 128, and must fit within
+        /// <see cref="Length"/> minus the optional ending character reserved by
+        /// <see cref="UseEndingChar"/>.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException">Thrown when set to a value containing a non-ASCII
+        /// character.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when the value is too long to fit
+        /// within <see cref="Length"/> (minus the optional ending character).</exception>
+        public string OriginalString
+        {
+            get => _originalString;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _originalString = value;
+                Validate();
+            }
+        }
 
-        public int Length { get; set; }
+        /// <summary>
+        /// Gets or sets the total field length in bytes, including the optional ending character
+        /// reserved by <see cref="UseEndingChar"/>.
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when the value is too small to
+        /// hold <see cref="OriginalString"/> plus the optional ending character.</exception>
+        public int Length
+        {
+            get => _length;
+            set
+            {
+                _length = value;
+                Validate();
+            }
+        }
 
         public char BlankSpaceChar { get; set; } = DefaultBlankSpaceChar;
 
-        public bool UseEndingChar { get; set; }
+        /// <summary>
+        /// Gets or sets whether a mandatory ending character (see <see cref="DefaultEndingChar"/>)
+        /// is reserved as the last byte of the field, per TGA spec fixed-width string field rules.
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when set to <see langword="true"/>
+        /// while <see cref="Length"/> is 0, since there would be no room for the ending character.</exception>
+        public bool UseEndingChar
+        {
+            get => _useEndingChar;
+            set
+            {
+                _useEndingChar = value;
+                Validate();
+            }
+        }
 
         /// <summary>
         /// Make full independed copy of <see cref="TgaString"/>. Named <c>Copy</c> rather than
@@ -155,6 +244,11 @@ namespace TargaSharp
         /// for string "ABC" with <see cref="Length"/> = 7, with <see cref="UseEnding"/> = true,
         /// <see cref="DefaultEndingChar"/> is '\0', result string is "ABC---\0".</param>
         /// <returns>Byte array, every byte is ASCII symbol.</returns>
+        /// <remarks>
+        /// This static overload is a general-purpose utility independent of any
+        /// <see cref="TgaString"/> instance invariants, so it still pads/truncates defensively
+        /// rather than throwing when <paramref name="str"/> is longer than <paramref name="Length"/>.
+        /// </remarks>
         public static byte[] ToBytes(string str, int Length, bool UseEnding = true, char BlankSpaceChar = '\0')
         {
             char[] C = new char[Math.Max(Length, (UseEnding ? 1 : 0))];
@@ -166,6 +260,34 @@ namespace TargaSharp
                 C[C.Length - 1] = DefaultEndingChar;
 
             return Encoding.ASCII.GetBytes(C);
+        }
+
+        /// <summary>
+        /// Validates the structural invariants that span <see cref="OriginalString"/>,
+        /// <see cref="Length"/> and <see cref="UseEndingChar"/> together. Since these are
+        /// independent mutable properties, this is called after every property setter assignment
+        /// and (directly against the backing fields) at the end of every constructor that accepts
+        /// caller-supplied values, so the combination is always checked as a whole. The lenient
+        /// byte-array (file-reader) constructor intentionally does not call this.
+        /// </summary>
+        /// <exception cref="ArgumentException">Thrown when <see cref="OriginalString"/> contains a
+        /// character with code point >= 128 (TGA fixed-width string fields are ASCII-only per spec).</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <see cref="Length"/> is
+        /// negative, or too small to hold both <see cref="OriginalString"/> and the optional
+        /// ending character reserved by <see cref="UseEndingChar"/>.</exception>
+        private void Validate()
+        {
+            foreach (char c in _originalString)
+                if (c >= 128)
+                    throw new ArgumentException($"OriginalString must be ASCII (all chars < 128); TGA fixed-width string fields are ASCII-only per spec. Found '{c}' (0x{(int)c:X2}).", nameof(OriginalString));
+
+            int reserved = _useEndingChar ? 1 : 0;
+
+            if (_length < reserved)
+                throw new ArgumentOutOfRangeException(nameof(Length), _length, $"Length must be >= {reserved} when UseEndingChar = {_useEndingChar} (room is needed for the mandatory ending character), per TGA fixed-width string field rules.");
+
+            if (_originalString.Length > _length - reserved)
+                throw new ArgumentOutOfRangeException(nameof(Length), _length, $"OriginalString.Length ({_originalString.Length}) must be <= Length - (UseEndingChar ? 1 : 0) ({_length - reserved}), per TGA fixed-width string field rules.");
         }
 
         /// <inheritdoc />
