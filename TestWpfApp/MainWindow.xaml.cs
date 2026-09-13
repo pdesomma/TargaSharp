@@ -119,14 +119,11 @@ namespace TestWpfApp
             byte[] ImageData2 = new byte[bitmap.Width * bitmap.Height];
             for (long i = 0; i < ImageData2.LongLength; i++)
                 ImageData2[i] = ImageData[i * 2 + 1];
-            ImageData = null;
 
             Bitmap BmpOut = new Bitmap(bitmap.Width, bitmap.Height, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
             BmpData = BmpOut.LockBits(Re, ImageLockMode.WriteOnly, BmpOut.PixelFormat);
             Marshal.Copy(ImageData2, 0, BmpData.Scan0, ImageData2.Length);
             BmpOut.UnlockBits(BmpData);
-            ImageData2 = null;
-            BmpData = null;
 
             ColorPalette GrayPalette = BmpOut.Palette;
             System.Drawing.Color[] GrayColors = GrayPalette.Entries;

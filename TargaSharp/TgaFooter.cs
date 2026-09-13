@@ -1,4 +1,6 @@
-﻿namespace TargaSharp
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace TargaSharp
 {
     /// <summary>
     /// File Footer Area
@@ -85,7 +87,7 @@
         /// <param name="bytes">Bytes array to parse (must be exactly <see cref="Size"/> (26) bytes long).</param>
         /// <param name="footer">The parsed <see cref="TgaFooter"/> on success; otherwise <see langword="null"/>.</param>
         /// <returns><see langword="true"/> if <paramref name="bytes"/> is a valid TGA v2.0 footer; otherwise <see langword="false"/>.</returns>
-        public static bool TryParse(byte[]? bytes, out TgaFooter? footer)
+        public static bool TryParse(byte[]? bytes, [NotNullWhen(true)] out TgaFooter? footer)
         {
             footer = null;
             if (bytes is null || bytes.Length != Size)

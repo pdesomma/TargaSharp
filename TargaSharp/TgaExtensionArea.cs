@@ -24,7 +24,7 @@
         /// <param name="slt">Scan Line Table.</param>
         /// <param name="postageStampImage">Postage Stamp Image.</param>
         /// <param name="cct">Color Correction Table.</param>
-        public TgaExtensionArea(byte[] bytes, uint[] slt = null, TgaPostageStampImage postageStampImage = null, ushort[] cct = null)
+        public TgaExtensionArea(byte[] bytes, uint[]? slt = null, TgaPostageStampImage? postageStampImage = null, ushort[]? cct = null)
         {
             ArgumentNullException.ThrowIfNull(bytes);
             if (bytes.Length < MinSize)

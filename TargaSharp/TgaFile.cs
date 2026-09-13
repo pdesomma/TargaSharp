@@ -202,8 +202,10 @@ namespace TargaSharp
                 return;
             }
 
+            // ToNewFormat guarantees the extension area; the stamp is rebuilt from the main image data.
             ToNewFormat();
-            if (ExtensionArea is not null) ExtensionArea.PostageStampImage ??= new TgaPostageStampImage();
+            TgaPostageStampImage stamp = ExtensionArea!.PostageStampImage ??= new TgaPostageStampImage();
+            byte[] imageData = ImageArea.ImageData ?? throw new InvalidOperationException("ImageArea.ImageData is null; nothing to build a postage stamp from.");
 
             int psWidth = Header.ImageSpec.ImageWidth;
             int psHeight = Header.ImageSpec.ImageHeight;
@@ -217,11 +219,11 @@ namespace TargaSharp
             psWidth = Math.Max(psWidth, 4);
             psHeight = Math.Max(psHeight, 4);
 
-            ExtensionArea.PostageStampImage.Width = (byte)psWidth;
-            ExtensionArea.PostageStampImage.Height = (byte)psHeight;
+            stamp.Width = (byte)psWidth;
+            stamp.Height = (byte)psHeight;
 
-            int bytesPerPixel = (int)Math.Ceiling((double)Header.ImageSpec.PixelDepth / 8.0);
-            ExtensionArea.PostageStampImage.Data = new byte[psWidth * psHeight * bytesPerPixel];
+            int bytesPerPixel = Header.ImageSpec.PixelDepth.BytesPerPixel();
+            stamp.Data = new byte[psWidth * psHeight * bytesPerPixel];
 
             float widthCoef = Width / (float)psWidth;
             float heightCoef = Height / (float)psHeight;
@@ -233,8 +235,8 @@ namespace TargaSharp
 
                 for (int x = 0; x < psWidth; x++)
                 {
-                    Buffer.BlockCopy(ImageArea.ImageData, sourceOffset + (int)(x * widthCoef) * bytesPerPixel,
-                        ExtensionArea.PostageStampImage.Data, stampOffset + x * bytesPerPixel, bytesPerPixel);
+                    Buffer.BlockCopy(imageData, sourceOffset + (int)(x * widthCoef) * bytesPerPixel,
+                        stamp.Data, stampOffset + x * bytesPerPixel, bytesPerPixel);
                 }
             }
         }

@@ -75,8 +75,8 @@
             if (TgaFooter.TryParse(binaryReader.ReadBytes(TgaFooter.Size), out TgaFooter? mbFooter))
             {
                 file.Footer = mbFooter;
-                uint devDirOffset = file.Footer.DeveloperDirectoryOffset;
-                uint extAreaOffset = file.Footer.ExtensionAreaOffset;
+                uint devDirOffset = mbFooter.DeveloperDirectoryOffset;
+                uint extAreaOffset = mbFooter.ExtensionAreaOffset;
 
                 // If Dev Area exist, read it.
                 if (devDirOffset != 0)

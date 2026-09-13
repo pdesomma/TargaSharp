@@ -25,11 +25,11 @@
         /// <param name="tag">TAG ID (0 - 65535). See <see cref="Tag"/>.</param>
         /// <param name="offset">TAG file offset in bytes. See <see cref="Offset"/>.</param>
         /// <param name="data">This is DeveloperEntry Field Data. See <see cref="Data"/>.</param>
-        public TgaDeveloperEntry(ushort tag, uint offset, byte[] data = null)
+        public TgaDeveloperEntry(ushort tag, uint offset, byte[]? data = null)
         {
             Tag = tag;
             Offset = offset;
-            Data = data;
+            Data = data ?? [];
         }
 
         /// <summary>
