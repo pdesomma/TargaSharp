@@ -9,8 +9,7 @@
         /// Writes <paramref name="file"/> to a stream.
         /// </summary>
         /// <param name="file">The <see cref="TgaFile"/> to write.</param>
-        /// <param name="stream">Destination stream. Must support <see cref="Stream.CanWrite"/>
-        /// and <see cref="Stream.CanSeek"/>.</param>
+        /// <param name="stream">Destination stream. Must support <see cref="Stream.CanWrite"/>.</param>
         void Write(TgaFile file, Stream stream);
 
         /// <summary>

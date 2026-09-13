@@ -320,8 +320,8 @@
             var colorCorrectionTable = file.ExtensionArea?.ColorCorrectionTable;
             if (colorCorrectionTable is null) return;
 
-            if (colorCorrectionTable.Length != 1024)
-                errors.Add(new TgaValidationError("ExtensionArea.ColorCorrectionTable", $"ColorCorrectionTable.Length ({colorCorrectionTable.Length}) must be 1024 (256 entries x 4 shorts)."));
+            if (colorCorrectionTable.Length != TgaExtensionArea.ColorCorrectionTableLength)
+                errors.Add(new TgaValidationError("ExtensionArea.ColorCorrectionTable", $"ColorCorrectionTable.Length ({colorCorrectionTable.Length}) must be {TgaExtensionArea.ColorCorrectionTableLength} (256 entries x 4 shorts)."));
         }
 
         /// <summary>
