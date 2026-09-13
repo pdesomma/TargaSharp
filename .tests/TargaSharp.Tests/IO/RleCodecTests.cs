@@ -171,19 +171,125 @@ public class RleCodecTests
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => RleCodec.Encode([1, 2, 3], bytesPerPixel: 1, width: 2, height: 2));
     }
 
-    /// <summary>
-    /// Documents the inherited (pre-split) contract: with <c>bytesPerPixel = 0</c> the per-scanline
-    /// size is 0, so the length check trivially passes for an empty <paramref name="imageData"/>) and
-    /// every row's packet loop never runs - <see cref="RleCodec.Encode"/> returns an empty (not null)
-    /// array rather than throwing.
-    /// </summary>
     [TestMethod]
-    public void Encode_ZeroBytesPerPixelWithEmptyImageData_ReturnsEmptyArray()
+    public void Encode_ZeroBytesPerPixel_ThrowsArgumentOutOfRangeException()
     {
-        byte[]? encoded = RleCodec.Encode([], bytesPerPixel: 0, width: 2, height: 2);
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => RleCodec.Encode([], bytesPerPixel: 0, width: 2, height: 2));
+    }
 
-        Assert.IsNotNull(encoded);
-        Assert.AreEqual(0, encoded.Length);
+    [TestMethod]
+    public void Encode_RowOfIdenticalPixels_ProducesSingleRunPacket()
+    {
+        byte[] encoded = RleCodec.Encode([7, 7, 7, 7], bytesPerPixel: 1, width: 4, height: 1);
+
+        CollectionAssert.AreEqual(new byte[] { 0x83, 7 }, encoded);
+    }
+
+    [TestMethod]
+    public void Encode_RunAtEndOfRow_LastPixelStaysInTheRun()
+    {
+        byte[] encoded = RleCodec.Encode([1, 2, 2, 2], bytesPerPixel: 1, width: 4, height: 1);
+
+        CollectionAssert.AreEqual(new byte[] { 0x00, 1, 0x82, 2 }, encoded);
+    }
+
+    [TestMethod]
+    public void Encode_AllDistinctPixels_ProducesSingleRawPacket()
+    {
+        byte[] encoded = RleCodec.Encode([1, 2, 3, 4], bytesPerPixel: 1, width: 4, height: 1);
+
+        CollectionAssert.AreEqual(new byte[] { 0x03, 1, 2, 3, 4 }, encoded);
+    }
+
+    [TestMethod]
+    public void Encode_RawFollowedByRun_RawPacketEndsWhereRunStarts()
+    {
+        byte[] encoded = RleCodec.Encode([1, 2, 3, 3], bytesPerPixel: 1, width: 4, height: 1);
+
+        CollectionAssert.AreEqual(new byte[] { 0x01, 1, 2, 0x81, 3 }, encoded);
+    }
+
+    [TestMethod]
+    public void Encode_RunThenRaw_RunPacketThenRawPacket()
+    {
+        byte[] encoded = RleCodec.Encode([5, 5, 1, 2], bytesPerPixel: 1, width: 4, height: 1);
+
+        CollectionAssert.AreEqual(new byte[] { 0x81, 5, 0x01, 1, 2 }, encoded);
+    }
+
+    [TestMethod]
+    public void Encode_RunOf129Pixels_SplitsInto128PlusRawSingle()
+    {
+        byte[] row = Enumerable.Repeat((byte)9, 129).ToArray();
+
+        byte[] encoded = RleCodec.Encode(row, bytesPerPixel: 1, width: 129, height: 1);
+
+        CollectionAssert.AreEqual(new byte[] { 0xFF, 9, 0x00, 9 }, encoded);
+    }
+
+    [TestMethod]
+    public void Encode_129DistinctPixels_SplitsInto128PlusOneRawPackets()
+    {
+        byte[] row = Enumerable.Range(0, 129).Select(i => (byte)i).ToArray();
+
+        byte[] encoded = RleCodec.Encode(row, bytesPerPixel: 1, width: 129, height: 1);
+
+        Assert.AreEqual(0x7F, encoded[0]);
+        Assert.AreEqual(0x00, encoded[129]);
+        Assert.AreEqual(128, encoded[130]);
+        Assert.AreEqual(131, encoded.Length);
+    }
+
+    [TestMethod]
+    public void Encode_MultiBytePixels_RunDetectionComparesWholePixel()
+    {
+        // (1,2) (1,2) (1,3): a 2-pixel run of (1,2) then a raw (1,3) - the shared first byte must not fool it.
+        byte[] encoded = RleCodec.Encode([1, 2, 1, 2, 1, 3], bytesPerPixel: 2, width: 3, height: 1);
+
+        CollectionAssert.AreEqual(new byte[] { 0x81, 1, 2, 0x00, 1, 3 }, encoded);
+    }
+
+    [TestMethod]
+    public void Encode_SolidImage_CostsTwoBytesPerRow()
+    {
+        byte[] image = new byte[64 * 64];
+
+        byte[] encoded = RleCodec.Encode(image, bytesPerPixel: 1, width: 64, height: 64);
+
+        Assert.AreEqual(64 * 2, encoded.Length);
+    }
+
+    [TestMethod]
+    public void Encode_RowsAreEncodedIndependently_SameRowsProduceRepeatedPackets()
+    {
+        byte[] encoded = RleCodec.Encode([4, 4, 4, 4, 4, 4], bytesPerPixel: 1, width: 3, height: 2);
+
+        CollectionAssert.AreEqual(new byte[] { 0x82, 4, 0x82, 4 }, encoded);
+    }
+
+    [TestMethod]
+    [DataRow(1)]
+    [DataRow(2)]
+    [DataRow(3)]
+    [DataRow(4)]
+    public void EncodeThenDecode_PseudoRandomImageWithMixedRuns_RoundTrips(int bytesPerPixel)
+    {
+        const int width = 301;
+        const int height = 7;
+        var rng = new Random(12345);
+        byte[] image = new byte[width * height * bytesPerPixel];
+        // Mix short runs and noise so both packet kinds and the 128 cap are exercised.
+        for (int i = 0; i < image.Length; i += bytesPerPixel)
+        {
+            byte v = (byte)(rng.Next(4) == 0 ? rng.Next(256) : 42);
+            for (int b = 0; b < bytesPerPixel; b++) image[i + b] = (byte)(v + b);
+        }
+
+        byte[] encoded = RleCodec.Encode(image, bytesPerPixel, width, height);
+        byte[] decoded = RleCodec.Decode(new BinaryReader(new MemoryStream(encoded)), bytesPerPixel, image.Length);
+
+        CollectionAssert.AreEqual(image, decoded);
+        Assert.IsTrue(encoded.Length < image.Length, "mostly-constant data should compress");
     }
 
     [TestMethod]

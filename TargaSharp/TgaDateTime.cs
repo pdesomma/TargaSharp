@@ -103,6 +103,11 @@
         public TgaDateTime Copy() => this with { };
 
         /// <summary>
+        /// Gets whether every field is zero, which the spec defines as "date/time not set".
+        /// </summary>
+        public bool IsUnset => Month == 0 && Day == 0 && Year == 0 && Hour == 0 && Minute == 0 && Second == 0;
+
+        /// <summary>
         /// Convert <see cref="TgaDateTime"/> to byte array.
         /// </summary>
         /// <returns>Byte array with length = 12.</returns>

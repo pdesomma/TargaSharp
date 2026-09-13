@@ -169,4 +169,59 @@ public class TgaLayoutPlannerTests
 
         Assert.AreEqual(layout.TotalSize, (uint)written.Length);
     }
+
+    [TestMethod]
+    public void Plan_UnsetDateTimeStamp_IsStampedWithCurrentTime()
+    {
+        var file = new TgaFile(2, 2);
+        file.ImageArea.ImageData = new byte[12];
+        file.ExtensionArea!.DateTimeStamp = new TgaDateTime();
+        DateTime before = DateTime.UtcNow.AddSeconds(-1);
+
+        new TgaLayoutPlanner().Plan(file);
+
+        Assert.IsFalse(file.ExtensionArea.DateTimeStamp.IsUnset);
+        Assert.IsTrue(file.ExtensionArea.DateTimeStamp.ToDateTime() >= new DateTime(before.Year, before.Month, before.Day, before.Hour, before.Minute, before.Second));
+    }
+
+    [TestMethod]
+    public void Plan_SetDateTimeStamp_IsPreserved()
+    {
+        var file = new TgaFile(2, 2);
+        file.ImageArea.ImageData = new byte[12];
+        var stamp = new TgaDateTime(new DateTime(1999, 12, 31, 23, 59, 58));
+        file.ExtensionArea!.DateTimeStamp = stamp;
+
+        new TgaLayoutPlanner().Plan(file);
+
+        Assert.AreEqual(stamp, file.ExtensionArea.DateTimeStamp);
+    }
+
+    [TestMethod]
+    public void Plan_SetDateTimeStamp_SurvivesWriteAndReload()
+    {
+        var file = new TgaFile(2, 2);
+        file.ImageArea.ImageData = new byte[12];
+        var stamp = new TgaDateTime(new DateTime(2001, 2, 3, 4, 5, 6));
+        file.ExtensionArea!.DateTimeStamp = stamp;
+
+        TgaFile reloaded = new TgaReader().Read(new TgaWriter().Write(file));
+
+        Assert.AreEqual(stamp, reloaded.ExtensionArea!.DateTimeStamp);
+    }
+
+    [TestMethod]
+    public void Plan_CalledTwice_DateTimeStampIsStable()
+    {
+        var file = new TgaFile(2, 2);
+        file.ImageArea.ImageData = new byte[12];
+        file.ExtensionArea!.DateTimeStamp = new TgaDateTime();
+        var planner = new TgaLayoutPlanner();
+
+        planner.Plan(file);
+        TgaDateTime first = file.ExtensionArea.DateTimeStamp.Copy();
+        planner.Plan(file);
+
+        Assert.AreEqual(first, file.ExtensionArea.DateTimeStamp);
+    }
 }

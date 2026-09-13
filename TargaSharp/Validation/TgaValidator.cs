@@ -244,8 +244,7 @@
             var dateTime = file.ExtensionArea?.DateTimeStamp;
             if (dateTime is null) return;
 
-            bool isAllZero = dateTime is { Month: 0, Day: 0, Year: 0, Hour: 0, Minute: 0, Second: 0 };
-            if (isAllZero) return;
+            if (dateTime.IsUnset) return;
 
             if (dateTime.Month is < 1 or > 12)
                 errors.Add(new TgaValidationError("ExtensionArea.DateTimeStamp.Month", $"Month must be 1-12 (was {dateTime.Month})."));
