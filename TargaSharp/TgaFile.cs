@@ -143,13 +143,6 @@ namespace TargaSharp
         }
 
         /// <summary>
-        /// Check and update all fields with data length and offsets.
-        /// </summary>
-        /// <param name="ErrorStr">Description of the failure, or <see cref="string.Empty"/> on success.</param>
-        /// <returns>Return "true", if all OK or "false", if checking failed.</returns>
-        public bool CheckAndUpdateOffsets(out string ErrorStr) => new TgaWriter().TryComputeLayout(this, out ErrorStr);
-
-        /// <summary>
         /// Runs semantic validation (spec value ranges and cross-field consistency) against this
         /// <see cref="TgaFile"/>, e.g. via <see cref="TgaWriter.Write(TgaFile, Stream)"/> before writing.
         /// </summary>
@@ -157,56 +150,27 @@ namespace TargaSharp
         public IReadOnlyList<TgaValidationError> Validate() => new TgaValidator().Validate(this);
 
         /// <summary>
-        /// Save the <see cref="TgaFile"/> to disk.
+        /// Save the <see cref="TgaFile"/> to disk. Equivalent to <see cref="TgaWriter.Write(TgaFile, string)"/> with a default writer.
         /// </summary>
         /// <param name="filename">Full path to file.</param>
-        /// <returns>Return "true", if all done or "false", if failed.</returns>
-        public bool Save(string filename)
-        {
-            try
-            {
-                new TgaWriter().Write(this, filename);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
+        /// <exception cref="TgaValidationException">This instance fails validation or layout computation.</exception>
+        /// <exception cref="IOException">The file cannot be created or written.</exception>
+        public void Save(string filename) => new TgaWriter().Write(this, filename);
 
         /// <summary>
-        /// Save <see cref="TgaFile"/> to <see cref="Stream"/>.
+        /// Save <see cref="TgaFile"/> to <see cref="Stream"/>. Equivalent to <see cref="TgaWriter.Write(TgaFile, Stream)"/> with a default writer.
         /// </summary>
-        /// <param name="stream">Some stream, it must support: <see cref="Stream.CanWrite"/>.</param>
-        /// <returns>Return "true", if all done or "false", if failed.</returns>
-        public bool Save(Stream stream)
-        {
-            try
-            {
-                new TgaWriter().Write(this, stream);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
+        /// <param name="stream">A writable, seekable stream.</param>
+        /// <exception cref="TgaValidationException">This instance fails validation or layout computation.</exception>
+        /// <exception cref="ArgumentException"><paramref name="stream"/> is not writable or not seekable.</exception>
+        public void Save(Stream stream) => new TgaWriter().Write(this, stream);
 
         /// <summary>
-        /// Convert <see cref="TgaFile"/> to bytes array.
+        /// Convert <see cref="TgaFile"/> to bytes array (equal to the saved file, but in memory).
         /// </summary>
-        /// <returns>Bytes array, (equal to saved file, but in memory) or null (on error).</returns>
-        public byte[]? ToBytes()
-        {
-            try
-            {
-                return new TgaWriter().Write(this);
-            }
-            catch
-            {
-                return null;
-            }
-        }
+        /// <returns>The encoded file bytes.</returns>
+        /// <exception cref="TgaValidationException">This instance fails validation or layout computation.</exception>
+        public byte[] ToBytes() => new TgaWriter().Write(this);
 
         /// <summary>
         /// Convert TGA Image to new XFile format (v2.0).

@@ -101,4 +101,48 @@ public class TgaReaderTests
 
         Assert.ThrowsExactly<FileNotFoundException>(() => reader.Read(path));
     }
+
+    [TestMethod]
+    public void Read_TruncatedStream_ThrowsTgaFormatException()
+    {
+        byte[] bytes = new TgaWriter().Write(CreateSmall24BppFile());
+        byte[] truncated = bytes[..(TgaHeader.Size + 3)];
+
+        var ex = Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(truncated));
+
+        Assert.IsInstanceOfType<TgaException>(ex);
+    }
+
+    [TestMethod]
+    public void Read_StreamShorterThanHeader_ThrowsTgaFormatException()
+    {
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(new byte[5]));
+    }
+
+    [TestMethod]
+    public void Read_NonSeekableStream_ThrowsArgumentException()
+    {
+        using var nonSeekable = new NonSeekableStream();
+
+        Assert.ThrowsExactly<ArgumentException>(() => new TgaReader().Read(nonSeekable));
+    }
+
+    [TestMethod]
+    public void Read_Stream_LeavesStreamOpen()
+    {
+        using var stream = new MemoryStream(new TgaWriter().Write(CreateSmall24BppFile()));
+
+        new TgaReader().Read(stream);
+
+        Assert.IsTrue(stream.CanRead);
+    }
+
+    /// <summary>
+    /// A readable stream that reports <see cref="Stream.CanSeek"/> as false, to exercise the reader's argument check.
+    /// </summary>
+    private sealed class NonSeekableStream : MemoryStream
+    {
+        /// <inheritdoc />
+        public override bool CanSeek => false;
+    }
 }

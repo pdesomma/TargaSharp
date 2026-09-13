@@ -18,7 +18,7 @@ namespace TargaSharp.Drawing
         /// <param name="colorMap2BytesEntry">Is Color Map Entry size equal 15 or 16 Bpp, else - 24 or 32.</param>
         /// <returns>New <see cref="TgaFile"/> built from <paramref name="bmp"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="bmp"/> is <see langword="null"/>.</exception>
-        /// <exception cref="FormatException"><paramref name="bmp"/>'s <see cref="PixelFormat"/> is not supported.</exception>
+        /// <exception cref="NotSupportedException"><paramref name="bmp"/>'s <see cref="PixelFormat"/> is not supported.</exception>
         public static TgaFile FromBitmap(Bitmap bmp, bool useRle = false, bool newFormat = true, bool colorMap2BytesEntry = false)
         {
             ArgumentNullException.ThrowIfNull(bmp);
@@ -40,7 +40,7 @@ namespace TargaSharp.Drawing
                 case PixelFormat.Canonical:
                 case PixelFormat.Format16bppRgb565:
                 default:
-                    throw new FormatException(nameof(PixelFormat) + " is not supported!");
+                    throw new NotSupportedException($"{nameof(PixelFormat)} {bmp.PixelFormat} is not supported.");
 
                 case PixelFormat.Format1bppIndexed:
                 case PixelFormat.Format4bppIndexed:

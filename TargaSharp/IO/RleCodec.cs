@@ -17,14 +17,14 @@
         /// <param name="bytesPerPixel">Number of bytes in one pixel.</param>
         /// <param name="width">Image Width, must be > 0.</param>
         /// <param name="height">Image Height, must be > 0.</param>
-        /// <returns>Bytes array with RLE compressed image data, or null if encoding fails.</returns>
+        /// <returns>Bytes array with RLE compressed image data.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="imageData"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="width"/> or <paramref name="height"/> is &lt;= 0,
         /// or <paramref name="imageData"/>'s length is not exactly <paramref name="width"/> * <paramref name="height"/> * <paramref name="bytesPerPixel"/>.</exception>
-        internal static byte[]? Encode(byte[] imageData, int bytesPerPixel, int width, int height)
+        internal static byte[] Encode(byte[] imageData, int bytesPerPixel, int width, int height)
         {
             if (imageData == null)
-                throw new ArgumentNullException(nameof(imageData) + "in null!");
+                throw new ArgumentNullException(nameof(imageData));
 
             if (width <= 0 || height <= 0)
                 throw new ArgumentOutOfRangeException(nameof(width) + " and " + nameof(height) + " must be > 0!");
@@ -34,56 +34,49 @@
             if (scanLineSize * height != imageData.Length)
                 throw new ArgumentOutOfRangeException("ImageData has wrong Length!");
 
-            try
+            int count = 0;
+            int pos = 0;
+            bool isRle = false;
+            List<byte> encoded = new List<byte>();
+            byte[] rowData = new byte[scanLineSize];
+
+            for (int y = 0; y < height; y++)
             {
-                int count = 0;
-                int pos = 0;
-                bool isRle = false;
-                List<byte> encoded = new List<byte>();
-                byte[] rowData = new byte[scanLineSize];
+                pos = 0;
+                Buffer.BlockCopy(imageData, y * scanLineSize, rowData, 0, scanLineSize);
 
-                for (int y = 0; y < height; y++)
+                while (pos < scanLineSize)
                 {
-                    pos = 0;
-                    Buffer.BlockCopy(imageData, y * scanLineSize, rowData, 0, scanLineSize);
-
-                    while (pos < scanLineSize)
+                    if (pos >= scanLineSize - bytesPerPixel)
                     {
-                        if (pos >= scanLineSize - bytesPerPixel)
+                        encoded.Add(0);
+                        encoded.AddRange(BitConverterHelper.GetElements(rowData, pos, bytesPerPixel));
+                        pos += bytesPerPixel;
+                        break;
+                    }
+
+                    count = 0; //1
+                    isRle = BitConverterHelper.IsElementsEqual(rowData, pos, pos + bytesPerPixel, bytesPerPixel);
+
+                    for (int i = pos + bytesPerPixel; i < Math.Min(pos + 128 * bytesPerPixel, scanLineSize) - bytesPerPixel; i += bytesPerPixel)
+                    {
+                        if (isRle ^ BitConverterHelper.IsElementsEqual(rowData, (isRle ? pos : i), i + bytesPerPixel, bytesPerPixel))
                         {
-                            encoded.Add(0);
-                            encoded.AddRange(BitConverterHelper.GetElements(rowData, pos, bytesPerPixel));
-                            pos += bytesPerPixel;
+                            //count--;
                             break;
                         }
-
-                        count = 0; //1
-                        isRle = BitConverterHelper.IsElementsEqual(rowData, pos, pos + bytesPerPixel, bytesPerPixel);
-
-                        for (int i = pos + bytesPerPixel; i < Math.Min(pos + 128 * bytesPerPixel, scanLineSize) - bytesPerPixel; i += bytesPerPixel)
-                        {
-                            if (isRle ^ BitConverterHelper.IsElementsEqual(rowData, (isRle ? pos : i), i + bytesPerPixel, bytesPerPixel))
-                            {
-                                //count--;
-                                break;
-                            }
-                            else
-                                count++;
-                        }
-
-                        int countBpp = (count + 1) * bytesPerPixel;
-                        encoded.Add((byte)(isRle ? count | 128 : count));
-                        encoded.AddRange(BitConverterHelper.GetElements(rowData, pos, (isRle ? bytesPerPixel : countBpp)));
-                        pos += countBpp;
+                        else
+                            count++;
                     }
-                }
 
-                return encoded.ToArray();
+                    int countBpp = (count + 1) * bytesPerPixel;
+                    encoded.Add((byte)(isRle ? count | 128 : count));
+                    encoded.AddRange(BitConverterHelper.GetElements(rowData, pos, (isRle ? bytesPerPixel : countBpp)));
+                    pos += countBpp;
+                }
             }
-            catch
-            {
-                return null;
-            }
+
+            return encoded.ToArray();
         }
 
         /// <summary>
