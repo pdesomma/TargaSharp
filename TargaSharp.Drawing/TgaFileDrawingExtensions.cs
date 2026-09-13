@@ -145,9 +145,9 @@ namespace TargaSharp.Drawing
 
             #region Bitmap width must by aligned (align value = 32 bits = 4 bytes)!
             byte[] imageData;
-            int bytesPerPixel = (int)Math.Ceiling((double)tga.Header.ImageSpec.PixelDepth / 8.0);
+            int bytesPerPixel = tga.Header.ImageSpec.PixelDepth.BytesPerPixel();
             int strideBytes = bmp.Width * bytesPerPixel;
-            int paddingBytes = (int)Math.Ceiling(strideBytes / 4.0) * 4 - strideBytes;
+            int paddingBytes = TgaColorMapDrawing.RowPadding(strideBytes);
 
             byte[] sourceData = (postageStampImage ? tga.ExtensionArea!.PostageStampImage!.Data : tga.ImageArea.ImageData)!;
 

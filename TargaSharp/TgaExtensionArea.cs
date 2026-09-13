@@ -16,6 +16,11 @@
         public const int ColorCorrectionTableLength = 256 * 4;
 
         /// <summary>
+        /// Byte length of the Author Name, Job Name/ID and Software ID fields: 40 characters plus a NUL terminator (spec fields 11, 15, 17).
+        /// </summary>
+        public const int NameFieldLength = 41;
+
+        /// <summary>
         /// Make <see cref="TgaExtensionArea"/> from bytes. Warning: <see cref="ScanLineTable"/>,
         /// <see cref="PostageStampImage"/>, <see cref="ColorCorrectionTable"/> not included,
         /// because thea are can be not in the Extension Area of TGA file!
@@ -31,12 +36,12 @@
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be >= {MinSize}.");
 
             ExtensionSize = TgaBinary.ReadUInt16(bytes, 0);
-            AuthorName = new TgaString(bytes.AsSpan(2, 41).ToArray(), true);
+            AuthorName = new TgaString(bytes.AsSpan(2, NameFieldLength).ToArray(), true);
             AuthorComments = new TgaComment(bytes.AsSpan(43, TgaComment.Size).ToArray());
             DateTimeStamp = new TgaDateTime(bytes.AsSpan(367, TgaDateTime.Size).ToArray());
-            JobNameOrId = new TgaString(bytes.AsSpan(379, 41).ToArray(), true);
+            JobNameOrId = new TgaString(bytes.AsSpan(379, NameFieldLength).ToArray(), true);
             JobTime = new TgaTime(bytes.AsSpan(420, TgaTime.Size).ToArray());
-            SoftwareId = new TgaString(bytes.AsSpan(426, 41).ToArray(), true);
+            SoftwareId = new TgaString(bytes.AsSpan(426, NameFieldLength).ToArray(), true);
             SoftwareVersion = new TgaSoftwareVersion(bytes.AsSpan(467, TgaSoftwareVersion.Size).ToArray());
             KeyColor = new TgaColorKey(bytes.AsSpan(470, TgaColorKey.Size).ToArray());
             PixelAspectRatio = new TgaFraction(bytes.AsSpan(474, TgaFraction.Size).ToArray());
@@ -79,7 +84,7 @@
         /// used, you may fill it with nulls or a series of blanks(spaces) terminated by a null.
         /// The 41st byte must always be a null.
         /// </summary>
-        public TgaString AuthorName { get; set; } = new TgaString(41, true);
+        public TgaString AuthorName { get; set; } = new TgaString(NameFieldLength, true);
 
         /// <summary>
         /// Author Comments - Field 12 (324 Bytes):
@@ -122,7 +127,7 @@
         /// (i.e., CITY023). If the field is not used, you may fill it with a null terminated series
         /// of blanks (spaces) or nulls. In any case, the 41st byte must be a null.
         /// </summary>
-        public TgaString JobNameOrId { get; set; } = new TgaString(41, true);
+        public TgaString JobNameOrId { get; set; } = new TgaString(NameFieldLength, true);
 
         /// <summary>
         /// Job Time - Field 15 (6 Bytes):
@@ -145,7 +150,7 @@
         /// a particular image was created.If the field is not used, you may fill it with a
         /// null terminated series of blanks (spaces) or nulls. The 41st byte must always be a null.
         /// </summary>
-        public TgaString SoftwareId { get; set; } = new TgaString(41, true);
+        public TgaString SoftwareId { get; set; } = new TgaString(NameFieldLength, true);
 
         /// <summary>
         /// Software Version - Field 17 (3 Bytes):
@@ -412,12 +417,12 @@
         /// <returns>Byte array.</returns>
         public byte[] ToBytes()
         {
-            AuthorName ??= new TgaString(41, true);
+            AuthorName ??= new TgaString(NameFieldLength, true);
             AuthorComments ??= new TgaComment();
             DateTimeStamp ??= new TgaDateTime(DateTime.UtcNow);
-            JobNameOrId ??= new TgaString(41, true);
+            JobNameOrId ??= new TgaString(NameFieldLength, true);
             JobTime ??= new TgaTime();
-            SoftwareId ??= new TgaString(41, true);
+            SoftwareId ??= new TgaString(NameFieldLength, true);
             SoftwareVersion ??= new TgaSoftwareVersion();
             KeyColor ??= new TgaColorKey();
             PixelAspectRatio ??= new TgaFraction();

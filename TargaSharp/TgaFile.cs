@@ -39,7 +39,7 @@ namespace TargaSharp
             }
             else
             {
-                int bytesPerPixel = (int)Math.Ceiling((double)pixDepth / 8.0);
+                int bytesPerPixel = pixDepth.BytesPerPixel();
                 ImageArea.ImageData = new byte[width * height * bytesPerPixel];
 
                 if (imgType == TgaImageType.UncompressedColorMapped || imgType == TgaImageType.RleColorMapped)
@@ -137,8 +137,9 @@ namespace TargaSharp
         /// <param name="vertical">Flip vertical.</param>
         public void Flip(bool horizontal = false, bool vertical = false)
         {
+            // TgaImageOrigin bit 0 = right (vs left), bit 1 = top (vs bottom); a flip toggles the matching bit.
             int newOrigin = (int)Header.ImageSpec.ImageDescriptor.ImageOrigin;
-            newOrigin = newOrigin ^ ((vertical ? 0x20 : 0) | (horizontal ? 0x10 : 0));
+            newOrigin ^= (horizontal ? 0b01 : 0) | (vertical ? 0b10 : 0);
             Header.ImageSpec.ImageDescriptor.ImageOrigin = (TgaImageOrigin)newOrigin;
         }
 
@@ -210,11 +211,11 @@ namespace TargaSharp
             int psWidth = Header.ImageSpec.ImageWidth;
             int psHeight = Header.ImageSpec.ImageHeight;
 
-            if (Width > 64 || Height > 64)
+            if (Width > TgaPostageStampImage.MaxSize || Height > TgaPostageStampImage.MaxSize)
             {
                 float aspectRatio = Width / (float)Height;
-                psWidth = (byte)(64f * (aspectRatio < 1f ? aspectRatio : 1f));
-                psHeight = (byte)(64f / (aspectRatio > 1f ? aspectRatio : 1f));
+                psWidth = (byte)(TgaPostageStampImage.MaxSize * (aspectRatio < 1f ? aspectRatio : 1f));
+                psHeight = (byte)(TgaPostageStampImage.MaxSize / (aspectRatio > 1f ? aspectRatio : 1f));
             }
             psWidth = Math.Max(psWidth, 4);
             psHeight = Math.Max(psHeight, 4);
