@@ -6,22 +6,26 @@
     public sealed record TgaDeveloperArea : ICloneable
     {
         /// <summary>
-        /// Create a new instnace of the <see cref="TgaDeveloperArea"/> class.
+        /// Create a new instance of the <see cref="TgaDeveloperArea"/> class with an empty <see cref="Entries"/> list.
         /// </summary>
         public TgaDeveloperArea() { }
 
         /// <summary>
         /// Create a new instance of the <see cref="TgaDeveloperArea"/> class.
         /// </summary>
-        /// <param name="entries"></param>
-        /// <exception cref="ArgumentNullException"></exception>
+        /// <param name="entries">The directory entries that make up this developer area.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="entries"/> is <see langword="null"/>.</exception>
         public TgaDeveloperArea(List<TgaDeveloperEntry> entries)
         {
             if (entries == null) throw new ArgumentNullException(nameof(entries) + " = null!");
             Entries = entries;
         }
 
-
+        /// <summary>
+        /// Gets or sets the <see cref="TgaDeveloperEntry"/> at the given index in <see cref="Entries"/>.
+        /// </summary>
+        /// <param name="index">The zero-based index of the entry.</param>
+        /// <returns>The <see cref="TgaDeveloperEntry"/> at <paramref name="index"/>.</returns>
         public TgaDeveloperEntry this[int index]
         {
             get { return Entries[index]; }
@@ -59,6 +63,10 @@
             return ReferenceEquals(Entries, other.Entries) || (Entries is not null && other.Entries is not null && Entries.SequenceEqual(other.Entries));
         }
 
+        /// <summary>
+        /// Gets a hash code derived from <see cref="Entries"/>.
+        /// </summary>
+        /// <returns>A hash code for this <see cref="TgaDeveloperArea"/>.</returns>
         public override int GetHashCode()
         {
             unchecked

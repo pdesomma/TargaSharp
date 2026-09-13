@@ -23,7 +23,7 @@
         /// <summary>
         /// Make <see cref="TgaExtensionArea"/> from bytes. Warning: <see cref="ScanLineTable"/>,
         /// <see cref="PostageStampImage"/>, <see cref="ColorCorrectionTable"/> not included,
-        /// because thea are can be not in the Extension Area of TGA file!
+        /// because they are optional and may not be present in the Extension Area of the TGA file.
         /// </summary>
         /// <param name="bytes">Bytes of <see cref="TgaExtensionArea"/>.</param>
         /// <param name="slt">Scan Line Table.</param>
@@ -57,6 +57,10 @@
             this.PostageStampImage = postageStampImage;
             ColorCorrectionTable = cct;
         }
+
+        /// <summary>
+        /// Make a new <see cref="TgaExtensionArea"/> with all fields defaulted.
+        /// </summary>
         public TgaExtensionArea() { }
 
 
@@ -369,6 +373,10 @@
         }
 
 
+        /// <summary>
+        /// Gets a hash code derived from every field of this <see cref="TgaExtensionArea"/>.
+        /// </summary>
+        /// <returns>A hash code for this <see cref="TgaExtensionArea"/>.</returns>
         public override int GetHashCode()
         {
             unchecked
@@ -412,7 +420,7 @@
         /// <summary>
         /// Convert <see cref="TgaExtensionArea"/> to byte array. Warning: <see cref="ScanLineTable"/>,
         /// <see cref="PostageStampImage"/>, <see cref="ColorCorrectionTable"/> not included,
-        /// because thea are can be not in the Extension Area of TGA file!
+        /// because they are optional and may not be present in the Extension Area of the TGA file.
         /// </summary>
         /// <returns>Byte array.</returns>
         public byte[] ToBytes()
@@ -447,5 +455,5 @@
                 .Add(OtherDataInExtensionArea)
                 .ToArray();
         }
-    } //Not full ToBytes()
+    }
 }

@@ -17,10 +17,29 @@
     /// </summary>
     public enum TgaColorMapEntrySize : byte
     {
+        /// <summary>
+        /// A color map entry size that does not match one of the standard values below.
+        /// </summary>
         Other = 0,
+
+        /// <summary>
+        /// A 15-bit color map entry: 5 bits per primary, with the 16th bit unused.
+        /// </summary>
         X1R5G5B5 = 15,
+
+        /// <summary>
+        /// A 16-bit color map entry: 5 bits per primary plus 1 interrupt-control bit.
+        /// </summary>
         A1R5G5B5 = 16,
+
+        /// <summary>
+        /// A 24-bit color map entry: 8 bits per primary.
+        /// </summary>
         R8G8B8 = 24,
+
+        /// <summary>
+        /// A 32-bit color map entry: 8 bits per primary plus an 8-bit Alpha channel.
+        /// </summary>
         A8R8G8B8 = 32
     }
 }

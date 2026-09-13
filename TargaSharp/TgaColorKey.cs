@@ -1,5 +1,8 @@
 ﻿namespace TargaSharp
 {
+    /// <summary>
+    /// An ARGB color value used as a transparency/color key, stored as four bytes.
+    /// </summary>
     public sealed record TgaColorKey : ICloneable
     {
         /// <summary>
@@ -9,7 +12,7 @@
 
 
         /// <summary>
-        /// Empty constructor (for serialization?)
+        /// Make a new <see cref="TgaColorKey"/> with all channel values defaulted to zero.
         /// </summary>
         public TgaColorKey() { }
 
@@ -32,7 +35,7 @@
         /// Make <see cref="TgaColorKey"/> from ARGB bytes.
         /// </summary>
         /// <param name="bytes">Array of bytes(byte[4]).</param>
-        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentNullException"><paramref name="bytes"/> is <see langword="null"/>.</exception>
         public TgaColorKey(byte[] bytes)
         {
             ArgumentNullException.ThrowIfNull(bytes);
@@ -73,7 +76,7 @@
         public byte B { get; set; }
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaColorKey"/>. Named <c>Copy</c> rather than
+        /// Make full independent copy of <see cref="TgaColorKey"/>. Named <c>Copy</c> rather than
         /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaColorKey"/></returns>

@@ -1,6 +1,10 @@
 ﻿
 namespace TargaSharp
 {
+    /// <summary>
+    /// An elapsed job time stored in the TGA extension area, expressed as separate hours,
+    /// minutes and seconds fields.
+    /// </summary>
     public sealed record TgaTime : ICloneable
     {
         /// <summary>
@@ -18,16 +22,18 @@ namespace TargaSharp
         /// <param name="time">Some <see cref="TimeSpan"/> variable.</param>
         public TgaTime(TimeSpan time) : this((ushort)time.TotalHours, (ushort)time.Minutes, (ushort)time.Seconds) { }
         /// <summary>
-        /// Make <see cref="TgaTime"/> from <see cref="TimeSpan"/>.
+        /// Make <see cref="TgaTime"/> from int values.
         /// </summary>
-        /// <param name="time">Some <see cref="TimeSpan"/> variable.</param>
+        /// <param name="hours">Hour (0 - 65535).</param>
+        /// <param name="minutes">Minute (0 - 59).</param>
+        /// <param name="seconds">Second (0 - 59).</param>
         public TgaTime(int hours, int minutes, int seconds) : this((ushort)hours, (ushort)minutes, (ushort)seconds) { }
         /// <summary>
         /// Make <see cref="TgaTime"/> from ushort values.
         /// </summary>
-        /// <param name="Hours">Hour (0 - 65535).</param>
-        /// <param name="Minutes">Minute (0 - 59).</param>
-        /// <param name="Seconds">Second (0 - 59).</param>
+        /// <param name="hours">Hour (0 - 65535).</param>
+        /// <param name="minutes">Minute (0 - 59).</param>
+        /// <param name="seconds">Second (0 - 59).</param>
         public TgaTime(ushort hours, ushort minutes, ushort seconds)
         {
             Hours = hours;
@@ -64,7 +70,7 @@ namespace TargaSharp
 
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaTime"/>. Named <c>Copy</c> rather than
+        /// Make full independent copy of <see cref="TgaTime"/>. Named <c>Copy</c> rather than
         /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaTime"/></returns>

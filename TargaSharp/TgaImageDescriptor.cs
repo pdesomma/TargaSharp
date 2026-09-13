@@ -74,6 +74,10 @@
         /// <returns>Full independent copy of <see cref="TgaImageDescriptor"/>.</returns>
         public TgaImageDescriptor Copy() => this with { };
 
+        /// <summary>
+        /// Gets <see cref="TgaImageDescriptor"/> like string.
+        /// </summary>
+        /// <returns>String in "ImageOrigin=0, AlphaChannelBits=1, ImageDescriptor_AsByte=2" format.</returns>
         public override string ToString() => string.Format("{0}={1}, {2}={3}, ImageDescriptor_AsByte={4}", nameof(ImageOrigin), ImageOrigin, nameof(AlphaChannelBits), AlphaChannelBits, ToByte());
 
         /// <summary>

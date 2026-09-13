@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
     <SupportedOSPlatform>windows</SupportedOSPlatform>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Version>0.2.0</Version>
     <Title>TargaSharp.Drawing</Title>
     <Authors>Patrick DeSomma</Authors>

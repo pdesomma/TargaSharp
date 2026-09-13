@@ -2,6 +2,11 @@
 
 namespace TargaSharp
 {
+    /// <summary>
+    /// Software Version - Field 17 (3 bytes): a version number (times 100) plus an optional
+    /// ASCII release letter, describing the software identified by the extension area's
+    /// Software ID field.
+    /// </summary>
     public sealed record TgaSoftwareVersion : ICloneable
     {
 
@@ -47,16 +52,22 @@ namespace TargaSharp
         /// <summary>
         /// Create a new instance of the <see cref="TgaSoftwareVersion"/> class.
         /// </summary>
-        /// <param name="versionNumber"></param>
-        /// <param name="versionLetter"></param>
+        /// <param name="versionNumber">Set 123 for 1.23 version.</param>
+        /// <param name="versionLetter">Version letter, example: for 'a' - "1.23a".</param>
         public TgaSoftwareVersion(ushort versionNumber, char versionLetter = ' ')
         {
             VersionNumber = versionNumber;
             VersionLetter = versionLetter;
         }
 
-
+        /// <summary>
+        /// Gets or sets the version number as a binary integer times 100 (e.g. 417 for version 4.17).
+        /// </summary>
         public ushort VersionNumber { get; set; } = 0;
+
+        /// <summary>
+        /// Gets or sets the ASCII release letter appended to the version (e.g. 'b' for "1.17b"), or a space when unused.
+        /// </summary>
         public char VersionLetter { get; set; } = ' ';
 
 
@@ -64,7 +75,7 @@ namespace TargaSharp
         /// Make full copy of <see cref="TgaSoftwareVersion"/>. Named <c>Copy</c> rather than
         /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>Full independent copy of <see cref="TgaSoftwareVersion"/>.</returns>
         public TgaSoftwareVersion Copy() => this with { };
 
         /// <summary>
@@ -82,6 +93,11 @@ namespace TargaSharp
         /// <returns>Byte array, <see cref="VersionNumber"/> (2 bytes) and <see cref="VersionLetter"/> (ASCII symbol).</returns>
         public static byte[] ToBytes(ushort versionNumber, char versionLetter = ' ') => new TgaByteBuilder(Size).Add(versionNumber).Add(Encoding.ASCII.GetBytes(versionLetter.ToString())).ToArray();
 
+        /// <summary>
+        /// Gets <see cref="TgaSoftwareVersion"/> like string.
+        /// </summary>
+        /// <returns><see cref="VersionNumber"/> formatted as three digits, followed by <see cref="VersionLetter"/>,
+        /// with trailing spaces and NUL characters trimmed (e.g. "123d" or "007").</returns>
         public override string ToString() => (VersionNumber.ToString("000") + VersionLetter).TrimEnd(new char[] { ' ', '\0' });
 
         /// <inheritdoc />

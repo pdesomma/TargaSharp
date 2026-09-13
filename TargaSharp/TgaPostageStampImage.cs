@@ -47,12 +47,12 @@
         /// <summary>
         /// Make <see cref="TgaPostageStampImage"/> from bytes and size.
         /// </summary>
-        /// <param name="Width">Image Width.</param>
-        /// <param name="Height">Image Height.</param>
-        /// <param name="Bytes">Postage Stamp Image Data.</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="Bytes"/> is <see langword="null"/>.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="Width"/> or
-        /// <paramref name="Height"/> is 0 or greater than <see cref="MaxSize"/> (a corrupt stamp).</exception>
+        /// <param name="width">Image Width.</param>
+        /// <param name="height">Image Height.</param>
+        /// <param name="bytes">Postage Stamp Image Data.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="bytes"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="width"/> or
+        /// <paramref name="height"/> is 0 or greater than <see cref="MaxSize"/> (a corrupt stamp).</exception>
         public TgaPostageStampImage(byte width, byte height, byte[] bytes)
         {
             if (bytes == null) throw new ArgumentNullException(nameof(bytes) + " = null!");
@@ -119,6 +119,10 @@
                 (ReferenceEquals(Data, other.Data) || (Data is not null && other.Data is not null && Data.AsSpan().SequenceEqual(other.Data)));
         }
 
+        /// <summary>
+        /// Gets a hash code derived from <see cref="Width"/>, <see cref="Height"/> and <see cref="Data"/>.
+        /// </summary>
+        /// <returns>A hash code for this <see cref="TgaPostageStampImage"/>.</returns>
         public override int GetHashCode()
         {
             unchecked
@@ -139,6 +143,10 @@
         /// <returns>Byte array.</returns>
         public byte[] ToBytes() => new TgaByteBuilder(2 + Data.Length).Add(Width).Add(Height).Add(Data).ToArray();
 
+        /// <summary>
+        /// Gets <see cref="TgaPostageStampImage"/> like string.
+        /// </summary>
+        /// <returns>String in "Width=0, Height=1, DataLength=2" format.</returns>
         public override string ToString() => string.Format("{0}={1}, {2}={3}, DataLength={4}", nameof(Width), Width, nameof(Height), Height, Data.Length);
     }
 }

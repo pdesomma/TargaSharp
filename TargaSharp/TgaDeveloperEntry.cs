@@ -1,5 +1,9 @@
 ﻿namespace TargaSharp
 {
+    /// <summary>
+    /// A single directory entry in a TGA developer area: a tag identifying the field, the file
+    /// offset of the field's data, and the field's data itself.
+    /// </summary>
     public sealed record TgaDeveloperEntry : ICloneable
     {
         /// <summary>
@@ -94,7 +98,7 @@
 
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaDeveloperEntry"/>. Named <c>Copy</c> rather than <c>Clone</c>
+        /// Make full independent copy of <see cref="TgaDeveloperEntry"/>. Named <c>Copy</c> rather than <c>Clone</c>
         /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaDeveloperEntry"/></returns>
@@ -111,6 +115,10 @@
                 (ReferenceEquals(Data, other.Data) || (Data is not null && other.Data is not null && Data.AsSpan().SequenceEqual(other.Data)));
         }
 
+        /// <summary>
+        /// Gets a hash code derived from <see cref="Tag"/>, <see cref="Offset"/> and <see cref="Data"/>.
+        /// </summary>
+        /// <returns>A hash code for this <see cref="TgaDeveloperEntry"/>.</returns>
         public override int GetHashCode()
         {
             unchecked

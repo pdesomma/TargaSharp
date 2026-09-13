@@ -67,12 +67,16 @@
         public TgaColorMapEntrySize ColorMapEntrySize { get; set; }
 
         /// <summary>
-        /// Make full independed copy of <see cref="TgaColorMapSpec"/>. Named <c>Copy</c> rather than
+        /// Make full independent copy of <see cref="TgaColorMapSpec"/>. Named <c>Copy</c> rather than
         /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Copy of <see cref="TgaColorMapSpec"/></returns>
         public TgaColorMapSpec Copy() => this with { };
 
+        /// <summary>
+        /// Gets <see cref="TgaColorMapSpec"/> like string.
+        /// </summary>
+        /// <returns>String in "FirstEntryIndex={0}, ColorMapLength={1}, ColorMapEntrySize={2}" format.</returns>
         public override string ToString() => string.Format("{0}={1}, {2}={3}, {4}={5}", nameof(FirstEntryIndex), FirstEntryIndex, nameof(ColorMapLength), ColorMapLength, nameof(ColorMapEntrySize), ColorMapEntrySize);
 
         /// <summary>
