@@ -1,4 +1,5 @@
-﻿using TargaSharp;
+﻿using System.Reflection;
+using TargaSharp;
 
 namespace TargaSharp.Tests;
 
@@ -8,6 +9,14 @@ namespace TargaSharp.Tests;
 [TestClass]
 public class TgaDevEntryTests
 {
+    [TestMethod]
+    public void Offset_Property_HasInternalSetter()
+    {
+        PropertyInfo property = typeof(TgaDevEntry).GetProperty(nameof(TgaDevEntry.Offset))!;
+
+        Assert.IsTrue(property.SetMethod!.IsAssembly);
+    }
+
     [TestMethod]
     public void DefaultCtor_NewInstance_DataIsEmptyAndFieldSizeIsZero()
     {

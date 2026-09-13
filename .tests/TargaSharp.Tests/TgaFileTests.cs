@@ -97,6 +97,54 @@ public class TgaFileTests
     }
 
     [TestMethod]
+    public void Save_ImageIDWithNChars_ReloadedHeaderIdLengthEqualsN()
+    {
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
+        tga.ImageOrColorMapArea.ImageData = new byte[2 * 2 * 3];
+        tga.ImageOrColorMapArea.ImageID = new TgaString("Hello", 5);
+
+        using var stream = new MemoryStream();
+        Assert.IsTrue(tga.Save(stream));
+
+        stream.Position = 0;
+        var reloaded = new TgaFile(stream);
+
+        Assert.AreEqual((byte)5, reloaded.Header.IdLength);
+    }
+
+    [TestMethod]
+    public void Save_NullImageID_ReloadedHeaderIdLengthIsZero()
+    {
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
+        tga.ImageOrColorMapArea.ImageData = new byte[2 * 2 * 3];
+        tga.ImageOrColorMapArea.ImageID = null;
+
+        using var stream = new MemoryStream();
+        Assert.IsTrue(tga.Save(stream));
+
+        stream.Position = 0;
+        var reloaded = new TgaFile(stream);
+
+        Assert.AreEqual((byte)0, reloaded.Header.IdLength);
+    }
+
+    [TestMethod]
+    public void Save_ExtAreaWithOtherData_ReloadedExtensionSizeEqualsMinSizePlusOtherDataLength()
+    {
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.Uncompressed_TrueColor);
+        tga.ImageOrColorMapArea.ImageData = new byte[2 * 2 * 3];
+        tga.ExtArea!.OtherDataInExtensionArea = [1, 2, 3, 4];
+
+        using var stream = new MemoryStream();
+        Assert.IsTrue(tga.Save(stream));
+
+        stream.Position = 0;
+        var reloaded = new TgaFile(stream);
+
+        Assert.AreEqual((ushort)(TgaExtArea.MinSize + 4), reloaded.ExtArea!.ExtensionSize);
+    }
+
+    [TestMethod]
     public void Header_Property_HasInternalSetter()
     {
         PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.Header))!;

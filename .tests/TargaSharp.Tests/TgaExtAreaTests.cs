@@ -1,4 +1,5 @@
-﻿using TargaSharp;
+﻿using System.Reflection;
+using TargaSharp;
 
 namespace TargaSharp.Tests;
 
@@ -8,6 +9,38 @@ namespace TargaSharp.Tests;
 [TestClass]
 public class TgaExtAreaTests
 {
+    [TestMethod]
+    public void ExtensionSize_Property_HasInternalSetter()
+    {
+        PropertyInfo property = typeof(TgaExtArea).GetProperty(nameof(TgaExtArea.ExtensionSize))!;
+
+        Assert.IsTrue(property.SetMethod!.IsAssembly);
+    }
+
+    [TestMethod]
+    public void ColorCorrectionTableOffset_Property_HasInternalSetter()
+    {
+        PropertyInfo property = typeof(TgaExtArea).GetProperty(nameof(TgaExtArea.ColorCorrectionTableOffset))!;
+
+        Assert.IsTrue(property.SetMethod!.IsAssembly);
+    }
+
+    [TestMethod]
+    public void PostageStampOffset_Property_HasInternalSetter()
+    {
+        PropertyInfo property = typeof(TgaExtArea).GetProperty(nameof(TgaExtArea.PostageStampOffset))!;
+
+        Assert.IsTrue(property.SetMethod!.IsAssembly);
+    }
+
+    [TestMethod]
+    public void ScanLineOffset_Property_HasInternalSetter()
+    {
+        PropertyInfo property = typeof(TgaExtArea).GetProperty(nameof(TgaExtArea.ScanLineOffset))!;
+
+        Assert.IsTrue(property.SetMethod!.IsAssembly);
+    }
+
     [TestMethod]
     public void DefaultCtor_NewInstance_ExtensionSizeEqualsMinSize()
     {

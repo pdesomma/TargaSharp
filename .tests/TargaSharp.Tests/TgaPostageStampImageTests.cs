@@ -44,4 +44,57 @@ public class TgaPostageStampImageTests
 
         Assert.IsTrue(roundTripped.Equals(original));
     }
+
+    [TestMethod]
+    public void Ctor_WidthZero_ThrowsArgumentOutOfRangeException()
+    {
+        byte[] bytes = [0, 2];
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaPostageStampImage(bytes));
+    }
+
+    [TestMethod]
+    public void Ctor_HeightGreaterThan64_ThrowsArgumentOutOfRangeException()
+    {
+        byte[] bytes = [2, 65];
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaPostageStampImage(bytes));
+    }
+
+    [TestMethod]
+    public void Ctor_WidthHeightBytes_MaxSize64_ConstructsSuccessfully()
+    {
+        var image = new TgaPostageStampImage(64, 64, []);
+
+        Assert.AreEqual((byte)64, image.Width);
+        Assert.AreEqual((byte)64, image.Height);
+    }
+
+    [TestMethod]
+    public void Ctor_WidthHeightBytes_WidthGreaterThan64_ThrowsArgumentOutOfRangeException()
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaPostageStampImage(65, 10, []));
+    }
+
+    [TestMethod]
+    public void Ctor_WidthHeightBytes_HeightZero_ThrowsArgumentOutOfRangeException()
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaPostageStampImage(10, 0, []));
+    }
+
+    [TestMethod]
+    public void WidthSetter_Zero_ThrowsArgumentOutOfRangeException()
+    {
+        var image = new TgaPostageStampImage();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => image.Width = 0);
+    }
+
+    [TestMethod]
+    public void HeightSetter_GreaterThan64_ThrowsArgumentOutOfRangeException()
+    {
+        var image = new TgaPostageStampImage();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => image.Height = 65);
+    }
 }

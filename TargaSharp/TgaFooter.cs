@@ -21,101 +21,112 @@
         /// </summary>
         /// <param name="extOff">Extension Area Offset, offset from the beginning of the file.</param>
         /// <param name="devDirOff">Developer Directory Offset, offset from the beginning of the file.</param>
-        /// <param name="sig">New TGA format signature.</param>
-        /// <param name="reservChr">Reserved Character - ASCII character “.” (period).</param>
-        /// <param name="terminator">Binary Zero Terminator, a binary zero which acts as a final terminator.</param>
-        public TgaFooter(uint extOff, uint devDirOff, TgaString sig, TgaString reservChr, TgaString terminator)
+        public TgaFooter(uint extOff, uint devDirOff)
         {
             ExtensionAreaOffset = extOff;
             DeveloperDirectoryOffset = devDirOff;
-            Signature = sig;
-            ReservedCharacter = reservChr;
-            BinaryZeroStringTerminator = terminator;
         }
 
         /// <summary>
-        /// Make <see cref="TgaFooter"/> from bytes (if signature is right).
+        /// Make <see cref="TgaFooter"/> from bytes (if the signature is right). Delegates to
+        /// <see cref="TryParse"/>; prefer that method when a non-throwing check is wanted (e.g. while
+        /// probing a stream for a v2.0 footer).
         /// </summary>
         /// <param name="bytes">Bytes array (byte[26]).</param>
+        /// <exception cref="ArgumentNullException"><paramref name="bytes"/> is <see langword="null"/>.</exception>
+        /// <exception cref="FormatException"><paramref name="bytes"/> is not a valid TGA v2.0 footer
+        /// (wrong length, signature, reserved character or binary-zero terminator).</exception>
         public TgaFooter(byte[] bytes)
         {
             ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
 
-            ExtensionAreaOffset = BitConverter.ToUInt32(bytes, 0);
-            DeveloperDirectoryOffset = BitConverter.ToUInt32(bytes, 4);
-            Signature = new TgaString(BitConverterHelper.GetElements(bytes, 8, TgaString.XFileSignatuteConst.Length));
-            ReservedCharacter = new TgaString(new byte[] { bytes[24] });
-            BinaryZeroStringTerminator = new TgaString(new byte[] { bytes[25] });
+            if (!TryParse(bytes, out TgaFooter? footer))
+                throw new FormatException("Bytes do not represent a valid TGA v2.0 footer.");
+
+            ExtensionAreaOffset = footer!.ExtensionAreaOffset;
+            DeveloperDirectoryOffset = footer.DeveloperDirectoryOffset;
         }
-
-        /// <summary>
-        /// Byte 25 - Binary Zero String Terminator - Field 32
-        /// Byte 25 is a binary zero which acts as a final terminator and allows the entire TGA
-        /// File Footer to be read and utilized as a “C” string.
-        /// </summary>
-        public TgaString BinaryZeroStringTerminator { get; set; } = TgaString.ZeroTerminator;
 
         /// <summary>
         /// Byte 4-7 - Developer Directory Offset - Field 29
         /// The next four bytes(bytes 4-7, the second LONG) contain an offset from the
         /// beginning of the file to the start of the Developer Directory. If the Developer
-        /// Directory Offset is zero, then the Developer Area does not exist.
+        /// Directory Offset is zero, then the Developer Area does not exist. This is a derived
+        /// field: it is computed by <see cref="TargaSharp.IO.TgaWriter"/> during layout (or read
+        /// from the file by <see cref="TargaSharp.IO.TgaReader"/>), so consumers cannot set it directly.
         /// </summary>
-        public uint DeveloperDirectoryOffset { get; set; } = 0;
+        public uint DeveloperDirectoryOffset { get; internal set; } = 0;
 
         /// <summary>
         /// Byte 0-3 - Extension Area Offset - Field 28
         /// The first four bytes (bytes 0-3, the first LONG) of the TGA File Footer contain an
         /// offset from the beginning of the file to the start of the Extension Area. Simply
         /// SEEK to this location to position to the start of the Extension Area. If the
-        /// Extension Area Offset is zero, no Extension Area exists in the file.
+        /// Extension Area Offset is zero, no Extension Area exists in the file. This is a derived
+        /// field: it is computed by <see cref="TargaSharp.IO.TgaWriter"/> during layout (or read
+        /// from the file by <see cref="TargaSharp.IO.TgaReader"/>), so consumers cannot set it directly.
         /// </summary>
-        public uint ExtensionAreaOffset { get; set; } = 0;
-
-        /// <summary>
-        /// Is footer is real footer of TGA File Format Version 2.0?
-        /// Checks <see cref="TgaString.XFileSignatute"/> (Field 30) and also, per spec Fields
-        /// 31/32, that <see cref="ReservedCharacter"/> is '.' (byte 24) and
-        /// <see cref="BinaryZeroStringTerminator"/> is '\0' (byte 25).
-        /// </summary>
-        public bool IsFooterCorrect =>
-            Signature == TgaString.XFileSignatute &&
-            ReservedCharacter.ToBytes() is [(byte)'.'] &&
-            BinaryZeroStringTerminator.ToBytes() is [0];
-
-        /// <summary>
-        /// Byte 24 - Reserved Character - Field 31
-        /// Byte 24 is an ASCII character “.” (period). This character MUST BE a period or
-        /// the file is not considered a proper TGA file.
-        /// </summary>
-        public TgaString ReservedCharacter { get; set; } = TgaString.DotSymbol;
-
-        /// <summary>
-        /// Byte 8-23 - Signature - Field 30
-        /// This string is exactly 16 bytes long and is formatted exactly as shown below
-        /// capital letters), with a hyphen between “TRUEVISION” and “XFILE.” If the
-        /// signature is detected, the file is assumed to be of the New TGA format and MAY,
-        /// therefore, contain the Developer Area and/or the Extension Area fields.If the
-        /// signature is not found, then the file is assumed to be in the Original TGA format.
-        /// </summary>
-        public TgaString Signature { get; set; } = TgaString.XFileSignatute;
+        public uint ExtensionAreaOffset { get; internal set; } = 0;
 
         /// <summary>
         /// Make full copy of <see cref="TgaFooter"/>. Named <c>Copy</c> rather than
         /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
-        /// <returns></returns>
-        public TgaFooter Copy() => this with { Signature = Signature.Copy(), ReservedCharacter = ReservedCharacter.Copy(), BinaryZeroStringTerminator = BinaryZeroStringTerminator.Copy() };
+        /// <returns>Full independent copy of <see cref="TgaFooter"/>.</returns>
+        public TgaFooter Copy() => this with { };
 
         /// <summary>
-        /// Convert <see cref="TgaFooter"/> to byte array.
+        /// Attempts to parse <paramref name="bytes"/> as a TGA v2.0 File Footer. Validates the fixed
+        /// spec constants that make up the footer alongside the two offsets - the
+        /// <see cref="TgaString.XFileSignatuteConst"/> signature (Field 30), the '.' reserved
+        /// character (Field 31) and the binary-zero string terminator (Field 32) - since a file is
+        /// only assumed to be in the New TGA format when all three match.
+        /// </summary>
+        /// <param name="bytes">Bytes array to parse (must be exactly <see cref="Size"/> (26) bytes long).</param>
+        /// <param name="footer">The parsed <see cref="TgaFooter"/> on success; otherwise <see langword="null"/>.</param>
+        /// <returns><see langword="true"/> if <paramref name="bytes"/> is a valid TGA v2.0 footer; otherwise <see langword="false"/>.</returns>
+        public static bool TryParse(byte[]? bytes, out TgaFooter? footer)
+        {
+            footer = null;
+            if (bytes is null || bytes.Length != Size)
+                return false;
+
+            for (int i = 0; i < TgaString.XFileSignatuteConst.Length; i++)
+                if (bytes[8 + i] != (byte)TgaString.XFileSignatuteConst[i])
+                    return false;
+
+            if (bytes[24] != (byte)'.')
+                return false;
+
+            if (bytes[25] != 0)
+                return false;
+
+            footer = new TgaFooter
+            {
+                ExtensionAreaOffset = BitConverter.ToUInt32(bytes, 0),
+                DeveloperDirectoryOffset = BitConverter.ToUInt32(bytes, 4),
+            };
+            return true;
+        }
+
+        /// <summary>
+        /// Convert <see cref="TgaFooter"/> to byte array. The signature, reserved character and
+        /// binary-zero terminator are fixed TGA v2.0 spec constants (not data on this instance) and
+        /// are always written as "TRUEVISION-XFILE", '.' and '\0' respectively.
         /// </summary>
         /// <returns>Byte array with size equal <see cref="Size"/>.</returns>
-        public byte[] ToBytes() => BitConverterHelper.ToBytes(ExtensionAreaOffset, DeveloperDirectoryOffset, Signature.ToBytes(), ReservedCharacter.ToBytes(), BinaryZeroStringTerminator.ToBytes());
+        public byte[] ToBytes() => BitConverterHelper.ToBytes(
+            ExtensionAreaOffset,
+            DeveloperDirectoryOffset,
+            TgaString.XFileSignatute.ToBytes(),
+            TgaString.DotSymbol.ToBytes(),
+            TgaString.ZeroTerminator.ToBytes())!;
 
-        public override string ToString() => string.Format("{0}={1}, {2}={3}, FullSignature={4}", nameof(ExtensionAreaOffset), ExtensionAreaOffset, nameof(DeveloperDirectoryOffset), DeveloperDirectoryOffset, (Signature + ReservedCharacter + BinaryZeroStringTerminator).ToString());
+        /// <summary>
+        /// Gets <see cref="TgaFooter"/> like string.
+        /// </summary>
+        /// <returns>String in "ExtensionAreaOffset={0}, DeveloperDirectoryOffset={1}" format.</returns>
+        public override string ToString() => string.Format("{0}={1}, {2}={3}", nameof(ExtensionAreaOffset), ExtensionAreaOffset, nameof(DeveloperDirectoryOffset), DeveloperDirectoryOffset);
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();

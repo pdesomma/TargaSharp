@@ -55,8 +55,7 @@
 
             // Try parse Footer
             stream.Seek(-TgaFooter.Size, SeekOrigin.End);
-            TgaFooter mbFooter = new TgaFooter(binaryReader.ReadBytes(TgaFooter.Size));
-            if (mbFooter.IsFooterCorrect)
+            if (TgaFooter.TryParse(binaryReader.ReadBytes(TgaFooter.Size), out TgaFooter? mbFooter))
             {
                 file.Footer = mbFooter;
                 uint devDirOffset = file.Footer.DeveloperDirectoryOffset;
@@ -117,7 +116,8 @@
                             byte w = binaryReader.ReadByte();
                             byte h = binaryReader.ReadByte();
                             int imgDataSize = w * h * bytesPerPixel;
-                            if (imgDataSize > 0)
+                            // Lenient read: a stamp outside the spec's 1..64 range is skipped rather than failing the whole file.
+                            if (imgDataSize > 0 && w <= TgaPostageStampImage.MaxSize && h <= TgaPostageStampImage.MaxSize)
                                 file.ExtArea.PostageStampImage = new TgaPostageStampImage(w, h, binaryReader.ReadBytes(imgDataSize));
                         }
 

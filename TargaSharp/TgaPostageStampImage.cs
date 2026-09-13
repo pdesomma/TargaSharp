@@ -5,6 +5,25 @@
     /// </summary>
     public sealed record TgaPostageStampImage : ICloneable
     {
+        /// <summary>
+        /// Postage Stamp Image maximum width/height, per spec (the reader relies on this bound
+        /// to size its read buffer).
+        /// </summary>
+        public const byte MaxSize = 64;
+
+        /// <summary>
+        /// Backing field for <see cref="Width"/>.
+        /// </summary>
+        private byte _width;
+
+        /// <summary>
+        /// Backing field for <see cref="Height"/>.
+        /// </summary>
+        private byte _height;
+
+        /// <summary>
+        /// Make empty <see cref="TgaPostageStampImage"/>.
+        /// </summary>
         public TgaPostageStampImage() { }
 
         /// <summary>
@@ -12,6 +31,9 @@
         /// </summary>
         /// <param name="bytes">Bytes array, first 2 bytes are <see cref="Width"/> and <see cref="Height"/>,
         /// next bytes - image data.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="bytes"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="bytes"/>.Length &lt; 2,
+        /// or when the encoded width or height is 0 or greater than <see cref="MaxSize"/> (a corrupt stamp).</exception>
         public TgaPostageStampImage(byte[] bytes)
         {
             ArgumentNullException.ThrowIfNull(bytes);
@@ -28,6 +50,9 @@
         /// <param name="Width">Image Width.</param>
         /// <param name="Height">Image Height.</param>
         /// <param name="Bytes">Postage Stamp Image Data.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="Bytes"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="Width"/> or
+        /// <paramref name="Height"/> is 0 or greater than <see cref="MaxSize"/> (a corrupt stamp).</exception>
         public TgaPostageStampImage(byte width, byte height, byte[] bytes)
         {
             if (bytes == null) throw new ArgumentNullException(nameof(bytes) + " = null!");
@@ -44,14 +69,36 @@
         public byte[] Data { get; set; } = Array.Empty<byte>();
 
         /// <summary>
-        /// Postage Stamp Image Height (maximum = 64).
+        /// Postage Stamp Image Height (must be 1-<see cref="MaxSize"/>, inclusive).
         /// </summary>
-        public byte Height { get; set; }
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when set to 0 or a value greater
+        /// than <see cref="MaxSize"/>, per spec ("must be" &lt;= 64x64; 0 is a meaningless stamp size).</exception>
+        public byte Height
+        {
+            get => _height;
+            set
+            {
+                if (value == 0 || value > MaxSize)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"Height must be in range 1-{MaxSize} (TGA postage stamp image maximum size).");
+                _height = value;
+            }
+        }
 
         /// <summary>
-        /// Postage Stamp Image Width (maximum = 64).
+        /// Postage Stamp Image Width (must be 1-<see cref="MaxSize"/>, inclusive).
         /// </summary>
-        public byte Width { get; set; }
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when set to 0 or a value greater
+        /// than <see cref="MaxSize"/>, per spec ("must be" &lt;= 64x64; 0 is a meaningless stamp size).</exception>
+        public byte Width
+        {
+            get => _width;
+            set
+            {
+                if (value == 0 || value > MaxSize)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"Width must be in range 1-{MaxSize} (TGA postage stamp image maximum size).");
+                _width = value;
+            }
+        }
 
 
         /// <summary>

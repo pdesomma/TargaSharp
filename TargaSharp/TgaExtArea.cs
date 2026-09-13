@@ -56,9 +56,12 @@
         /// If the number found in this field is not 495, then the file will be assumed to be of a
         /// version other than 2.0. If it ever becomes necessary to alter this number, the change
         /// will be controlled by Truevision, and will be accompanied by a revision to the TGA File
-        /// Format with an accompanying change in the version number.
+        /// Format with an accompanying change in the version number. This is a derived field: it is
+        /// computed by <see cref="TargaSharp.IO.TgaWriter"/> from <see cref="MinSize"/> plus
+        /// <see cref="OtherDataInExtensionArea"/>'s length during layout (or read from the file by
+        /// <see cref="TargaSharp.IO.TgaReader"/>), so consumers cannot set it directly.
         /// </summary>
-        public ushort ExtensionSize { get; set; } = MinSize;
+        public ushort ExtensionSize { get; internal set; } = MinSize;
 
         /// <summary>
         /// Author Name - Field 11 (41 Bytes):
@@ -201,25 +204,31 @@
         /// from the beginning of the file to the start of the Color Correction table. This table may be
         /// written anywhere between the end of the Image Data field (field 8) and the start of the TGA
         /// File Footer. If the image has no Color Correction Table or if the Gamma Value setting is
-        /// sufficient, set this value to zero and do not write a Correction Table anywhere.
+        /// sufficient, set this value to zero and do not write a Correction Table anywhere. This is a
+        /// derived field: it is computed by <see cref="TargaSharp.IO.TgaWriter"/> during layout (or
+        /// read from the file by <see cref="TargaSharp.IO.TgaReader"/>), so consumers cannot set it directly.
         /// </summary>
-        public uint ColorCorrectionTableOffset { get; set; }
+        public uint ColorCorrectionTableOffset { get; internal set; }
 
         /// <summary>
         /// Postage Stamp Offset - Field 22 (4 Bytes):
         /// Bytes 486-489 - This field is a 4-byte field containing a single offset value. This is an offset
         /// from the beginning of the file to the start of the Postage Stamp Image. The Postage Stamp Image
         /// must be written after Field 25 (Scan Line Table) but before the start of the TGA File Footer.
-        /// If no postage stamp is stored, set this field to the value zero (0).
+        /// If no postage stamp is stored, set this field to the value zero (0). This is a derived field:
+        /// it is computed by <see cref="TargaSharp.IO.TgaWriter"/> during layout (or read from the file
+        /// by <see cref="TargaSharp.IO.TgaReader"/>), so consumers cannot set it directly.
         /// </summary>
-        public uint PostageStampOffset { get; set; }
+        public uint PostageStampOffset { get; internal set; }
 
         /// <summary>
         /// Scan Line Offset - Field 23 (4 Bytes):
         /// Bytes 490-493 - This field is a 4-byte field containing a single offset value. This is an
-        /// offset from the beginning of the file to the start of the Scan Line Table.
+        /// offset from the beginning of the file to the start of the Scan Line Table. This is a derived
+        /// field: it is computed by <see cref="TargaSharp.IO.TgaWriter"/> during layout (or read from
+        /// the file by <see cref="TargaSharp.IO.TgaReader"/>), so consumers cannot set it directly.
         /// </summary>
-        public uint ScanLineOffset { get; set; }
+        public uint ScanLineOffset { get; internal set; }
 
         /// <summary>
         /// Attributes Type - Field 24 (1 Byte):

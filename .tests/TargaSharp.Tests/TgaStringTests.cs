@@ -49,8 +49,99 @@ public class TgaStringTests
     {
         TgaString first = TgaString.Empty;
 
+        // Length must grow before OriginalString can, since TgaString now enforces
+        // OriginalString.Length <= Length - (UseEndingChar ? 1 : 0) as a structural invariant.
+        first.Length = "mutated".Length;
         first.OriginalString = "mutated";
 
         Assert.AreEqual(string.Empty, TgaString.Empty.OriginalString);
+    }
+
+    [TestMethod]
+    public void Ctor_StringAndLength_ValidCombination_SetsProperties()
+    {
+        var str = new TgaString("ABC", 4, true);
+
+        Assert.AreEqual("ABC", str.OriginalString);
+        Assert.AreEqual(4, str.Length);
+    }
+
+    [TestMethod]
+    public void Ctor_NullString_ThrowsArgumentNullException()
+    {
+        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaString((string)null!, 4));
+    }
+
+    [TestMethod]
+    public void Ctor_NonAsciiString_ThrowsArgumentException()
+    {
+        Assert.ThrowsExactly<ArgumentException>(() => new TgaString("café", 10));
+    }
+
+    [TestMethod]
+    public void Ctor_StringLongerThanLength_ThrowsArgumentOutOfRangeException()
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaString("ABCDE", 4));
+    }
+
+    [TestMethod]
+    public void Ctor_StringLongerThanLengthMinusEndingChar_ThrowsArgumentOutOfRangeException()
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaString("ABCD", 4, true));
+    }
+
+    [TestMethod]
+    public void Ctor_LengthTooSmallForUseEndingChar_ThrowsArgumentOutOfRangeException()
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaString(0, true));
+    }
+
+    [TestMethod]
+    public void Ctor_BoolUseEndingCharTrue_ThrowsArgumentOutOfRangeException()
+    {
+        // Default Length is 0, which leaves no room for the mandatory ending character.
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaString(true));
+    }
+
+    [TestMethod]
+    public void OriginalStringSetter_NonAsciiValue_ThrowsArgumentException()
+    {
+        var str = new TgaString("ABC", 10);
+
+        Assert.ThrowsExactly<ArgumentException>(() => str.OriginalString = "café");
+    }
+
+    [TestMethod]
+    public void OriginalStringSetter_NullValue_ThrowsArgumentNullException()
+    {
+        var str = new TgaString("ABC", 10);
+
+        Assert.ThrowsExactly<ArgumentNullException>(() => str.OriginalString = null!);
+    }
+
+    [TestMethod]
+    public void LengthSetter_TooSmallForExistingOriginalString_ThrowsArgumentOutOfRangeException()
+    {
+        var str = new TgaString("ABCDE", 10);
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => str.Length = 3);
+    }
+
+    [TestMethod]
+    public void UseEndingCharSetter_TrueWithNoRoomForEndingChar_ThrowsArgumentOutOfRangeException()
+    {
+        var str = new TgaString("ABCDE", 5);
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => str.UseEndingChar = true);
+    }
+
+    [TestMethod]
+    public void ZeroTerminator_HasLengthOneAndProducesOneByte()
+    {
+        TgaString zeroTerminator = TgaString.ZeroTerminator;
+
+        Assert.AreEqual(1, zeroTerminator.Length);
+        Assert.AreEqual(1, zeroTerminator.ToBytes().Length);
+        Assert.AreEqual((byte)0, zeroTerminator.ToBytes()[0]);
     }
 }

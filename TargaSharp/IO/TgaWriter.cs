@@ -129,14 +129,22 @@
 
             uint offset = TgaHeader.Size; // Virtual Offset
 
+            // IdLength is derived from the ImageID string, not the other way around: the ImageID's
+            // own Length (clamped to what a 1-byte IdLength field can hold) drives Header.IdLength,
+            // so the header can never disagree with the actual ID field that gets written.
             if (file.ImageOrColorMapArea?.ImageID is not null)
             {
-                int strMaxLen = 255;
-                if (file.ImageOrColorMapArea.ImageID.UseEndingChar)
-                    strMaxLen--;
+                // Length counts the optional NUL terminator, so the text itself gets one byte less of the 255 max.
+                int ending = file.ImageOrColorMapArea.ImageID.UseEndingChar ? 1 : 0;
+                int textLength = file.ImageOrColorMapArea.ImageID.OriginalString.Length;
+                if (textLength > byte.MaxValue - ending)
+                {
+                    errorStr = $"ImageID text length {textLength} exceeds the {byte.MaxValue - ending} byte maximum.";
+                    return false;
+                }
 
-                file.Header.IdLength = (byte)Math.Min(file.ImageOrColorMapArea.ImageID.OriginalString.Length, strMaxLen);
-                file.ImageOrColorMapArea.ImageID.Length = file.Header.IdLength;
+                file.ImageOrColorMapArea.ImageID.Length = textLength + ending;
+                file.Header.IdLength = (byte)file.ImageOrColorMapArea.ImageID.Length;
                 offset += file.Header.IdLength;
             }
             else

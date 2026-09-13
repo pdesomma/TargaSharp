@@ -1,4 +1,4 @@
-using TargaSharp;
+﻿using TargaSharp;
 
 namespace TargaSharp.Tests;
 
@@ -47,5 +47,23 @@ public class TgaImageDescriptorTests
         var descriptor = new TgaImageDescriptor(0x2F);
 
         Assert.AreEqual((byte)0x2F, descriptor.ToByte());
+    }
+
+    [TestMethod]
+    public void Ctor_FromByteWithReservedBits76Set_IgnoresReservedBits()
+    {
+        // 0xEF = 11101111: reserved bits 7-6 set, origin bits 5-4 = 10 (TopLeft), alpha bits 3-0 = 1111.
+        var descriptor = new TgaImageDescriptor(0xEF);
+
+        Assert.AreEqual(TgaImageOrigin.TopLeft, descriptor.ImageOrigin);
+        Assert.AreEqual((byte)15, descriptor.AlphaChannelBits);
+    }
+
+    [TestMethod]
+    public void ToByte_ImageOriginOutOfRangeFromUncheckedCast_MasksReservedBits()
+    {
+        var descriptor = new TgaImageDescriptor { ImageOrigin = (TgaImageOrigin)0xFF, AlphaChannelBits = 0 };
+
+        Assert.AreEqual((byte)0x30, descriptor.ToByte());
     }
 }

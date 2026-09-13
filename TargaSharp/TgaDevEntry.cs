@@ -72,9 +72,12 @@
 
         /// <summary>
         /// This OFFSET is a number of bytes from the beginning of the file to the start of the field
-        /// referenced by the tag.
+        /// referenced by the tag. This is a derived field: it is computed by <see cref="TargaSharp.IO.TgaWriter"/>
+        /// during layout (or read from the file by <see cref="TargaSharp.IO.TgaReader"/>, which also
+        /// passes it through the <see cref="TgaDevEntry(ushort, uint, byte[])"/> constructor), so
+        /// consumers cannot set it directly.
         /// </summary>
-        public uint Offset { get; set; }
+        public uint Offset { get; internal set; }
 
         /// <summary>
         /// Each TAG is a value in the range of 0 to 65535. Values from 0 - 32767 are available for developer use,
