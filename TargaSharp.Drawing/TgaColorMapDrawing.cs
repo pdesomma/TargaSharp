@@ -10,6 +10,18 @@ namespace TargaSharp.Drawing
     internal static class TgaColorMapDrawing
     {
         /// <summary>
+        /// GDI+ aligns every bitmap row to 32 bits (4 bytes).
+        /// </summary>
+        private const int RowAlignment = 4;
+
+        /// <summary>
+        /// Gets the padding bytes GDI+ appends to a row of <paramref name="strideBytes"/> to reach 4-byte alignment.
+        /// </summary>
+        /// <param name="strideBytes">Unpadded row length in bytes.</param>
+        /// <returns>Padding byte count, 0-3.</returns>
+        internal static int RowPadding(int strideBytes) => (RowAlignment - strideBytes % RowAlignment) % RowAlignment;
+
+        /// <summary>
         /// Scale factor used to shrink an 8 bit color component down to 5 bits.
         /// </summary>
         private const float To5Bit = 32f / 256f;

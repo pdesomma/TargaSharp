@@ -93,7 +93,7 @@ namespace TargaSharp.Drawing
                         colorMapUseAlpha &= (alphaSum > 0);
 
                         int cMapBpp = (colorMap2BytesEntry ? 15 : 24) + (colorMapUseAlpha ? (colorMap2BytesEntry ? 1 : 8) : 0);
-                        int cmBytesPP = (int)Math.Ceiling(cMapBpp / 8.0);
+                        int cmBytesPP = ((TgaColorMapEntrySize)cMapBpp).BytesPerPixel();
                         #endregion
 
                         tga.Header.ColorMapSpec.ColorMapLength = Math.Min((ushort)colors.Length, ushort.MaxValue);
@@ -158,7 +158,7 @@ namespace TargaSharp.Drawing
 
                     #region Bitmap width is aligned by 32 bits = 4 bytes! Delete it.
                     int strideBytes = bmp.Width * bytesPP;
-                    int paddingBytes = (int)Math.Ceiling(strideBytes / 4.0) * 4 - strideBytes;
+                    int paddingBytes = TgaColorMapDrawing.RowPadding(strideBytes);
 
                     byte[] imageData = new byte[(strideBytes + paddingBytes) * bmp.Height];
 

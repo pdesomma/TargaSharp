@@ -286,4 +286,58 @@ public class TgaFileTests
         Assert.AreEqual(tags.Length, tga.DeveloperArea!.Count);
         return tga;
     }
+
+    [TestMethod]
+    [DataRow(TgaImageOrigin.BottomLeft, true, false, TgaImageOrigin.BottomRight)]
+    [DataRow(TgaImageOrigin.BottomLeft, false, true, TgaImageOrigin.TopLeft)]
+    [DataRow(TgaImageOrigin.BottomLeft, true, true, TgaImageOrigin.TopRight)]
+    [DataRow(TgaImageOrigin.TopRight, true, false, TgaImageOrigin.TopLeft)]
+    [DataRow(TgaImageOrigin.TopRight, false, true, TgaImageOrigin.BottomRight)]
+    [DataRow(TgaImageOrigin.BottomRight, false, false, TgaImageOrigin.BottomRight)]
+    public void Flip_TogglesOriginBits(TgaImageOrigin start, bool horizontal, bool vertical, TgaImageOrigin expected)
+    {
+        var tga = new TgaFile(2, 2);
+        tga.Header.ImageSpec.ImageDescriptor.ImageOrigin = start;
+
+        tga.Flip(horizontal, vertical);
+
+        Assert.AreEqual(expected, tga.Header.ImageSpec.ImageDescriptor.ImageOrigin);
+    }
+
+    [TestMethod]
+    public void Flip_Twice_RestoresOriginalOrigin()
+    {
+        var tga = new TgaFile(2, 2);
+        tga.Header.ImageSpec.ImageDescriptor.ImageOrigin = TgaImageOrigin.TopLeft;
+
+        tga.Flip(horizontal: true, vertical: true);
+        tga.Flip(horizontal: true, vertical: true);
+
+        Assert.AreEqual(TgaImageOrigin.TopLeft, tga.Header.ImageSpec.ImageDescriptor.ImageOrigin);
+    }
+
+    [TestMethod]
+    public void Flip_Vertical_ChangesDescriptorByteInSavedFile()
+    {
+        var tga = new TgaFile(2, 2);
+        tga.ImageArea.ImageData = new byte[12];
+        byte before = tga.ToBytes()[17];
+
+        tga.Flip(vertical: true);
+        byte after = tga.ToBytes()[17];
+
+        Assert.AreEqual(0x20, (before ^ after) & 0x30, "only the vertical origin bit (bit 5) should change");
+    }
+
+    [TestMethod]
+    public void Flip_DoesNotTouchImageData()
+    {
+        var tga = new TgaFile(2, 2);
+        tga.ImageArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        byte[] snapshot = (byte[])tga.ImageArea.ImageData.Clone();
+
+        tga.Flip(horizontal: true, vertical: true);
+
+        CollectionAssert.AreEqual(snapshot, tga.ImageArea.ImageData);
+    }
 }
