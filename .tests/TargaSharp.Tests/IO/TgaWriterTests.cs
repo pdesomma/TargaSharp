@@ -165,11 +165,22 @@ public class TgaWriterTests
     }
 
     [TestMethod]
-    public void Write_NonSeekableStream_ThrowsArgumentException()
+    public void Write_NonSeekableStream_WritesSameBytesAsSeekable()
     {
+        var file = new TgaFile(2, 2);
         using var nonSeekable = new WriteOnlyStream();
 
-        Assert.ThrowsExactly<ArgumentException>(() => new TgaWriter().Write(new TgaFile(2, 2), nonSeekable));
+        new TgaWriter().Write(file, nonSeekable);
+
+        CollectionAssert.AreEqual(new TgaWriter().Write(file), nonSeekable.ToArray());
+    }
+
+    [TestMethod]
+    public void Write_ReadOnlyStream_ThrowsArgumentException()
+    {
+        using var readOnly = new MemoryStream(new byte[16], writable: false);
+
+        Assert.ThrowsExactly<ArgumentException>(() => new TgaWriter().Write(new TgaFile(2, 2), readOnly));
     }
 
     [TestMethod]

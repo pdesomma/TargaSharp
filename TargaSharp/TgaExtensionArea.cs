@@ -5,7 +5,15 @@
     /// </summary>
     public sealed record TgaExtensionArea : ICloneable
     {
-        public const int MinSize = 495; //bytes
+        /// <summary>
+        /// Size in bytes of the fixed part of the extension area (spec field 10, TGA 2.0).
+        /// </summary>
+        public const int MinSize = 495;
+
+        /// <summary>
+        /// Number of <see cref="ushort"/> values in a color correction table: 256 entries x 4 channels (spec field 27).
+        /// </summary>
+        public const int ColorCorrectionTableLength = 256 * 4;
 
         /// <summary>
         /// Make <see cref="TgaExtensionArea"/> from bytes. Warning: <see cref="ScanLineTable"/>,

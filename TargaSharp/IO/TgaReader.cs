@@ -141,7 +141,7 @@
                         if (file.ExtensionArea.ColorCorrectionTableOffset > 0)
                         {
                             stream.Seek(file.ExtensionArea.ColorCorrectionTableOffset, SeekOrigin.Begin);
-                            file.ExtensionArea.ColorCorrectionTable = new ushort[256 * 4];
+                            file.ExtensionArea.ColorCorrectionTable = new ushort[TgaExtensionArea.ColorCorrectionTableLength];
                             for (int i = 0; i < file.ExtensionArea.ColorCorrectionTable.Length; i++)
                                 file.ExtensionArea.ColorCorrectionTable[i] = binaryReader.ReadUInt16();
                         }
