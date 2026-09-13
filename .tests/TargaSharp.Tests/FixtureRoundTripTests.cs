@@ -93,4 +93,22 @@ public class FixtureRoundTripTests
 
         Assert.AreEqual(tga.Header, reloaded.Header);
     }
+
+    /// <summary>
+    /// Loads every real-world .tga fixture and asserts <see cref="TgaFile.Validate"/> reports no
+    /// semantic errors, i.e. that <see cref="TargaSharp.Validation.TgaValidator"/>'s rules (spec
+    /// value ranges plus a couple of documented real-world relaxations - see
+    /// <c>TgaValidatorTests</c>) are permissive enough to accept every shipped fixture.
+    /// </summary>
+    /// <param name="filePath">Absolute path to the .tga fixture under test.</param>
+    [TestMethod]
+    [DynamicData(nameof(GetFixtureFiles), DynamicDataDisplayName = nameof(GetFixtureDisplayName))]
+    public void Validate_RealWorldFixture_ReturnsNoErrors(string filePath)
+    {
+        var tga = new TgaFile(File.ReadAllBytes(filePath));
+
+        var errors = tga.Validate();
+
+        Assert.AreEqual(0, errors.Count, $"Unexpected validation error(s): {string.Join("; ", errors.Select(e => $"{e.Path}: {e.Message}"))}");
+    }
 }

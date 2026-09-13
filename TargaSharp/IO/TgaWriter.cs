@@ -1,14 +1,37 @@
-﻿namespace TargaSharp.IO
+﻿using TargaSharp.Validation;
+
+namespace TargaSharp.IO
 {
     /// <summary>
-    /// Default <see cref="ITgaWriter"/> implementation. Computes field offsets/lengths (see
-    /// <see cref="TryComputeLayout"/>), then serializes the header, ID field, color map, image data
-    /// (raw or RLE via <see cref="RleCodec"/>), and - when present - the developer directory and
-    /// extension area (including its scan-line, postage-stamp and color-correction tables), followed
-    /// by the v2.0 footer.
+    /// Default <see cref="ITgaWriter"/> implementation. Validates the <see cref="TgaFile"/> (see
+    /// <see cref="ITgaValidator"/>), computes field offsets/lengths (see <see cref="TryComputeLayout"/>),
+    /// then serializes the header, ID field, color map, image data (raw or RLE via <see cref="RleCodec"/>),
+    /// and - when present - the developer directory and extension area (including its scan-line,
+    /// postage-stamp and color-correction tables), followed by the v2.0 footer.
     /// </summary>
     public sealed class TgaWriter : ITgaWriter
     {
+        /// <summary>
+        /// Validator run against a <see cref="TgaFile"/> before it is written.
+        /// </summary>
+        private readonly ITgaValidator _validator;
+
+        /// <summary>
+        /// Make a <see cref="TgaWriter"/> that validates with a new <see cref="TgaValidator"/>.
+        /// </summary>
+        public TgaWriter() : this(new TgaValidator()) { }
+
+        /// <summary>
+        /// Make a <see cref="TgaWriter"/> that validates with <paramref name="validator"/>.
+        /// </summary>
+        /// <param name="validator">The validator to run against a <see cref="TgaFile"/> before it is written.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="validator"/> is <see langword="null"/>.</exception>
+        public TgaWriter(ITgaValidator validator)
+        {
+            ArgumentNullException.ThrowIfNull(validator);
+            _validator = validator;
+        }
+
         /// <inheritdoc />
         public void Write(TgaFile file, Stream stream)
         {
@@ -16,6 +39,10 @@
             ArgumentNullException.ThrowIfNull(stream);
             if (!(stream.CanWrite && stream.CanSeek))
                 throw new FileLoadException("Stream writing or seeking is not avaiable!");
+
+            IReadOnlyList<TgaValidationError> errors = _validator.Validate(file);
+            if (errors.Count > 0)
+                throw new TgaValidationException(errors);
 
             if (!TryComputeLayout(file, out string checkResult))
                 throw new InvalidOperationException(checkResult);

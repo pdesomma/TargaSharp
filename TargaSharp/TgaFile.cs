@@ -1,4 +1,5 @@
 ﻿using TargaSharp.IO;
+using TargaSharp.Validation;
 
 namespace TargaSharp
 {
@@ -147,6 +148,13 @@ namespace TargaSharp
         /// <param name="ErrorStr">Description of the failure, or <see cref="string.Empty"/> on success.</param>
         /// <returns>Return "true", if all OK or "false", if checking failed.</returns>
         public bool CheckAndUpdateOffsets(out string ErrorStr) => new TgaWriter().TryComputeLayout(this, out ErrorStr);
+
+        /// <summary>
+        /// Runs semantic validation (spec value ranges and cross-field consistency) against this
+        /// <see cref="TgaFile"/>, e.g. via <see cref="TgaWriter.Write(TgaFile, Stream)"/> before writing.
+        /// </summary>
+        /// <returns>Every rule violation found, or an empty list when this instance is valid.</returns>
+        public IReadOnlyList<TgaValidationError> Validate() => new TgaValidator().Validate(this);
 
         /// <summary>
         /// Save the <see cref="TgaFile"/> to disk.
