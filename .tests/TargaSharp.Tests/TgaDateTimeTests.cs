@@ -38,4 +38,17 @@ public class TgaDateTimeTests
 
         Assert.IsTrue(roundTripped.Equals(original));
     }
+
+    [TestMethod]
+    public void IsUnset_DefaultInstance_ReturnsTrue()
+    {
+        Assert.IsTrue(new TgaDateTime().IsUnset);
+    }
+
+    [TestMethod]
+    public void IsUnset_AnyFieldNonZero_ReturnsFalse()
+    {
+        Assert.IsFalse(new TgaDateTime { Second = 1 }.IsUnset);
+        Assert.IsFalse(new TgaDateTime(new DateTime(2020, 5, 6)).IsUnset);
+    }
 }

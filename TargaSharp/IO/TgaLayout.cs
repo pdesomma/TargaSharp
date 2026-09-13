@@ -223,7 +223,9 @@ namespace TargaSharp.IO
             }
 
             ext.ExtensionSize = (ushort)(TgaExtensionArea.MinSize + (ext.OtherDataInExtensionArea?.Length ?? 0));
-            ext.DateTimeStamp = new TgaDateTime(DateTime.UtcNow);
+            // A caller-supplied timestamp is preserved; only an unset one is stamped with "now".
+            if (ext.DateTimeStamp.IsUnset)
+                ext.DateTimeStamp = new TgaDateTime(DateTime.UtcNow);
             file.Footer!.ExtensionAreaOffset = add("ExtensionArea", ext.ExtensionSize, ext.ToBytes);
 
             if (ext.ScanLineTable is null)

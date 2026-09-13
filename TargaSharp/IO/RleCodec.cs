@@ -11,6 +11,16 @@
     internal static class RleCodec
     {
         /// <summary>
+        /// Maximum pixels one packet can carry (7-bit count + 1).
+        /// </summary>
+        internal const int MaxPacketPixels = 128;
+
+        /// <summary>
+        /// Packet header bit 7: set for a run-length packet, clear for a raw packet.
+        /// </summary>
+        private const int RunLengthFlag = 0x80;
+
+        /// <summary>
         /// Encodes raw pixel data using TGA's per-scanline Run-Length Encoding.
         /// </summary>
         /// <param name="imageData">Image data, bytes array with size = <paramref name="width"/> * <paramref name="height"/> * <paramref name="bytesPerPixel"/>.</param>
@@ -23,60 +33,77 @@
         /// or <paramref name="imageData"/>'s length is not exactly <paramref name="width"/> * <paramref name="height"/> * <paramref name="bytesPerPixel"/>.</exception>
         internal static byte[] Encode(byte[] imageData, int bytesPerPixel, int width, int height)
         {
-            if (imageData == null)
-                throw new ArgumentNullException(nameof(imageData));
-
-            if (width <= 0 || height <= 0)
-                throw new ArgumentOutOfRangeException(nameof(width) + " and " + nameof(height) + " must be > 0!");
+            ArgumentNullException.ThrowIfNull(imageData);
+            if (bytesPerPixel <= 0)
+                throw new ArgumentOutOfRangeException(nameof(bytesPerPixel), bytesPerPixel, "Must be > 0.");
+            if (width <= 0)
+                throw new ArgumentOutOfRangeException(nameof(width), width, "Must be > 0.");
+            if (height <= 0)
+                throw new ArgumentOutOfRangeException(nameof(height), height, "Must be > 0.");
 
             int scanLineSize = width * bytesPerPixel;
-
             if (scanLineSize * height != imageData.Length)
-                throw new ArgumentOutOfRangeException("ImageData has wrong Length!");
+                throw new ArgumentOutOfRangeException(nameof(imageData), imageData.Length, $"Length must be {scanLineSize * height} ({width} x {height} x {bytesPerPixel}).");
 
-            int count = 0;
-            int pos = 0;
-            bool isRle = false;
-            List<byte> encoded = new List<byte>();
-            byte[] rowData = new byte[scanLineSize];
+            // Worst case (no runs at all) is one header byte per 128 pixels on top of the raw data.
+            var encoded = new List<byte>(imageData.Length + (width + MaxPacketPixels - 1) / MaxPacketPixels * height);
 
             for (int y = 0; y < height; y++)
+                EncodeScanline(imageData.AsSpan(y * scanLineSize, scanLineSize), bytesPerPixel, width, encoded);
+
+            return [.. encoded];
+        }
+
+        /// <summary>
+        /// Encodes one scanline. Runs of 2+ identical pixels become run-length packets; everything else is
+        /// gathered into raw packets that end where the next run begins. Packets never exceed
+        /// <see cref="MaxPacketPixels"/> pixels and never cross into the next scanline.
+        /// </summary>
+        /// <param name="row">Exactly one scanline of pixels.</param>
+        /// <param name="bytesPerPixel">Bytes per pixel.</param>
+        /// <param name="width">Pixels in the row.</param>
+        /// <param name="encoded">Output sink.</param>
+        private static void EncodeScanline(ReadOnlySpan<byte> row, int bytesPerPixel, int width, List<byte> encoded)
+        {
+            int pos = 0;
+            while (pos < width)
             {
-                pos = 0;
-                Buffer.BlockCopy(imageData, y * scanLineSize, rowData, 0, scanLineSize);
-
-                while (pos < scanLineSize)
+                int run = RunLength(row, bytesPerPixel, width, pos);
+                if (run >= 2)
                 {
-                    if (pos >= scanLineSize - bytesPerPixel)
-                    {
-                        encoded.Add(0);
-                        encoded.AddRange(rowData.AsSpan(pos, bytesPerPixel).ToArray());
-                        pos += bytesPerPixel;
-                        break;
-                    }
-
-                    count = 0; //1
-                    isRle = rowData.AsSpan(pos, bytesPerPixel).SequenceEqual(rowData.AsSpan(pos + bytesPerPixel, bytesPerPixel));
-
-                    for (int i = pos + bytesPerPixel; i < Math.Min(pos + 128 * bytesPerPixel, scanLineSize) - bytesPerPixel; i += bytesPerPixel)
-                    {
-                        if (isRle ^ rowData.AsSpan(isRle ? pos : i, bytesPerPixel).SequenceEqual(rowData.AsSpan(i + bytesPerPixel, bytesPerPixel)))
-                        {
-                            //count--;
-                            break;
-                        }
-                        else
-                            count++;
-                    }
-
-                    int countBpp = (count + 1) * bytesPerPixel;
-                    encoded.Add((byte)(isRle ? count | 128 : count));
-                    encoded.AddRange(rowData.AsSpan(pos, (isRle ? bytesPerPixel : countBpp)).ToArray());
-                    pos += countBpp;
+                    encoded.Add((byte)(RunLengthFlag | (run - 1)));
+                    encoded.AddRange(row.Slice(pos * bytesPerPixel, bytesPerPixel).ToArray());
+                    pos += run;
+                    continue;
                 }
-            }
 
-            return encoded.ToArray();
+                // Raw span: advance until a run of 2+ starts, the packet fills, or the row ends.
+                int start = pos;
+                pos++;
+                while (pos < width && pos - start < MaxPacketPixels && RunLength(row, bytesPerPixel, width, pos) < 2)
+                    pos++;
+
+                int count = pos - start;
+                encoded.Add((byte)(count - 1));
+                encoded.AddRange(row.Slice(start * bytesPerPixel, count * bytesPerPixel).ToArray());
+            }
+        }
+
+        /// <summary>
+        /// Counts how many consecutive pixels from <paramref name="pos"/> equal the pixel at <paramref name="pos"/>, capped at <see cref="MaxPacketPixels"/>.
+        /// </summary>
+        /// <param name="row">One scanline.</param>
+        /// <param name="bytesPerPixel">Bytes per pixel.</param>
+        /// <param name="width">Pixels in the row.</param>
+        /// <param name="pos">Pixel index to start from.</param>
+        /// <returns>Run length, at least 1.</returns>
+        private static int RunLength(ReadOnlySpan<byte> row, int bytesPerPixel, int width, int pos)
+        {
+            ReadOnlySpan<byte> first = row.Slice(pos * bytesPerPixel, bytesPerPixel);
+            int run = 1;
+            while (pos + run < width && run < MaxPacketPixels && row.Slice((pos + run) * bytesPerPixel, bytesPerPixel).SequenceEqual(first))
+                run++;
+            return run;
         }
 
         /// <summary>
