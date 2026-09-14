@@ -23,9 +23,7 @@
         /// <param name="bytes">Array of bytes(byte[5]).</param>
         public TgaColorMapSpec(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            TgaBinary.RequireLength(bytes, Size);
 
             FirstEntryIndex = TgaBinary.ReadUInt16(bytes, 0);
             ColorMapLength = TgaBinary.ReadUInt16(bytes, 2);

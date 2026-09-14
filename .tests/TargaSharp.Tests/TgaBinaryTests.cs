@@ -166,4 +166,33 @@ public class TgaBinaryTests
 
         Assert.AreEqual(0, result.Length);
     }
+
+    [TestMethod]
+    public void RequireLength_ExactLength_DoesNotThrow()
+    {
+        TgaBinary.RequireLength(new byte[4], 4);
+    }
+
+    [TestMethod]
+    public void RequireLength_Null_ThrowsArgumentNullExceptionNamingArgument()
+    {
+        byte[] bytes = null!;
+
+        var ex = Assert.ThrowsExactly<ArgumentNullException>(() => TgaBinary.RequireLength(bytes, 4));
+
+        Assert.AreEqual("bytes", ex.ParamName);
+    }
+
+    [TestMethod]
+    [DataRow(3)]
+    [DataRow(5)]
+    public void RequireLength_WrongLength_ThrowsArgumentOutOfRangeExceptionNamingArgument(int length)
+    {
+        byte[] bytes = new byte[length];
+
+        var ex = Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => TgaBinary.RequireLength(bytes, 4));
+
+        Assert.AreEqual("bytes", ex.ParamName);
+        Assert.AreEqual(length, ex.ActualValue);
+    }
 }

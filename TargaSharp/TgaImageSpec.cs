@@ -49,9 +49,7 @@
         /// <param name="bytes">Array of bytes(byte[10]).</param>
         public TgaImageSpec(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            TgaBinary.RequireLength(bytes, Size);
             XOrigin = TgaBinary.ReadUInt16(bytes, 0);
             YOrigin = TgaBinary.ReadUInt16(bytes, 2);
             ImageWidth = TgaBinary.ReadUInt16(bytes, 4);
@@ -127,7 +125,7 @@
             .Add(ImageWidth)
             .Add(ImageHeight)
             .Add((byte)PixelDepth)
-            .Add(ImageDescriptor == null ? byte.MinValue : ImageDescriptor.ToByte())
+            .Add(ImageDescriptor.ToByte())
             .ToArray();
 
         /// <inheritdoc />

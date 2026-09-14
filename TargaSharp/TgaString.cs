@@ -43,6 +43,11 @@ namespace TargaSharp
         private bool _useEndingChar;
 
         /// <summary>
+        /// Backing field for <see cref="BlankSpaceChar"/>.
+        /// </summary>
+        private char _blankSpaceChar = DefaultBlankSpaceChar;
+
+        /// <summary>
         /// Gets a new Empty <see cref="TgaString"/>. A new instance is returned on every access
         /// so callers cannot mutate a shared default.
         /// </summary>
@@ -93,6 +98,10 @@ namespace TargaSharp
         /// <see cref="Encoding.ASCII"/> (which maps code points >= 128 to '?') instead of
         /// throwing, since malformed non-ASCII bytes are known to appear in the wild. Structural
         /// invariant validation (see <see cref="Validate()"/>) is intentionally skipped here.
+        /// <see cref="OriginalString"/> is cut at the first NUL (anything after it is dropped, as
+        /// every reader would); trailing spaces are treated as padding and set
+        /// <see cref="BlankSpaceChar"/> to ' '. When <paramref name="useEnding"/> is
+        /// <see langword="true"/> the last byte is always dropped, even if it is not NUL.
         /// </remarks>
         public TgaString(byte[] bytes, bool useEnding = false)
         {
@@ -104,18 +113,17 @@ namespace TargaSharp
             _length = bytes.Length;
             string s = Encoding.ASCII.GetString(bytes, 0, bytes.Length - (useEnding ? 1 : 0));
 
-            if (s.Length > 0)
-                switch (s[s.Length - 1])
-                {
-                    case '\0':
-                    case ' ':
-                        BlankSpaceChar = s[s.Length - 1];
-                        _originalString = s.TrimEnd([s[s.Length - 1]]);
-                        break;
-                    default:
-                        _originalString = s;
-                        break;
-                }
+            // First NUL ends the text; otherwise trailing spaces are padding.
+            int nulIndex = s.IndexOf(DefaultEndingChar);
+            if (nulIndex >= 0)
+                _originalString = s.Substring(0, nulIndex);
+            else if (s.Length > 0 && s[s.Length - 1] == ' ')
+            {
+                _blankSpaceChar = ' ';
+                _originalString = s.TrimEnd(' ');
+            }
+            else
+                _originalString = s;
         }
 
         /// <summary>
@@ -144,7 +152,8 @@ namespace TargaSharp
         /// <exception cref="ArgumentException">Thrown when <paramref name="str"/> contains a
         /// non-ASCII character.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="length"/> is
-        /// too small to hold <paramref name="str"/> plus the optional ending character.</exception>
+        /// too small to hold <paramref name="str"/> plus the optional ending character, or
+        /// <paramref name="blankSpaceChar"/> is neither '\0' nor ' '.</exception>
         public TgaString(string str, int length, bool useEnding = false, char blankSpaceChar = DefaultBlankSpaceChar)
         {
             ArgumentNullException.ThrowIfNull(str);
@@ -157,18 +166,23 @@ namespace TargaSharp
         }
 
         /// <summary>
-        /// Concatenates the byte-encoded representations of two <see cref="TgaString"/> instances into a new one.
+        /// Concatenates two <see cref="TgaString"/> instances: the texts are joined, the lengths
+        /// summed, <see cref="UseEndingChar"/> taken from <paramref name="item2"/> and
+        /// <see cref="BlankSpaceChar"/> from <paramref name="item1"/>.
         /// </summary>
-        /// <param name="item1">The first <see cref="TgaString"/>.</param>
+        /// <param name="item1">The first <see cref="TgaString"/>; must not use an ending character, since a mid-field terminator is not representable.</param>
         /// <param name="item2">The second <see cref="TgaString"/>.</param>
-        /// <returns>A new <see cref="TgaString"/> whose bytes are <paramref name="item1"/>'s bytes followed by <paramref name="item2"/>'s bytes.</returns>
+        /// <returns>A new <see cref="TgaString"/> holding <paramref name="item1"/>'s text followed by <paramref name="item2"/>'s.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="item1"/> or <paramref name="item2"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException"><paramref name="item1"/>.<see cref="UseEndingChar"/> is <see langword="true"/>.</exception>
         public static TgaString operator +(TgaString item1, TgaString item2)
         {
-            if (item1 is null || item2 is null) throw new ArgumentNullException();
-            byte[] bytes1 = item1.ToBytes();
-            byte[] bytes2 = item2.ToBytes();
-            return new TgaString(new TgaByteBuilder(bytes1.Length + bytes2.Length).Add(bytes1).Add(bytes2).ToArray());
+            ArgumentNullException.ThrowIfNull(item1);
+            ArgumentNullException.ThrowIfNull(item2);
+            if (item1.UseEndingChar)
+                throw new ArgumentException("The first operand must not use an ending character; a NUL in the middle of a field is not representable.", nameof(item1));
+
+            return new TgaString(item1.OriginalString + item2.OriginalString, item1.Length + item2.Length, item2.UseEndingChar, item1.BlankSpaceChar);
         }
 
         /// <summary>
@@ -211,9 +225,20 @@ namespace TargaSharp
         }
 
         /// <summary>
-        /// Gets or sets the character used to fill unused space in the fixed-width string field.
+        /// Gets or sets the character used to fill unused space in the fixed-width string field:
+        /// '\0' or ' ', the two paddings the spec allows and the byte constructor recognises.
         /// </summary>
-        public char BlankSpaceChar { get; set; } = DefaultBlankSpaceChar;
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when set to anything other than '\0' or ' '.</exception>
+        public char BlankSpaceChar
+        {
+            get => _blankSpaceChar;
+            set
+            {
+                if (value is not (DefaultBlankSpaceChar or ' '))
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "BlankSpaceChar must be '\\0' or ' ' (the only paddings TGA readers recognise).");
+                _blankSpaceChar = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets whether a mandatory ending character (see <see cref="DefaultEndingChar"/>)

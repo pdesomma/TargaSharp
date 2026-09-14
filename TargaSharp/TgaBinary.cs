@@ -1,4 +1,5 @@
 ﻿using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 
 namespace TargaSharp
 {
@@ -10,6 +11,21 @@ namespace TargaSharp
     /// </summary>
     internal static class TgaBinary
     {
+        /// <summary>
+        /// Shared guard for fixed-size field constructors: <paramref name="bytes"/> must be non-null and exactly <paramref name="size"/> long.
+        /// </summary>
+        /// <param name="bytes">Field bytes to check.</param>
+        /// <param name="size">Required length.</param>
+        /// <param name="paramName">Caller's argument name for the exception; captured automatically.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="bytes"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="bytes"/>.Length != <paramref name="size"/>.</exception>
+        internal static void RequireLength(byte[] bytes, int size, [CallerArgumentExpression(nameof(bytes))] string? paramName = null)
+        {
+            ArgumentNullException.ThrowIfNull(bytes, paramName);
+            if (bytes.Length != size)
+                throw new ArgumentOutOfRangeException(paramName, bytes.Length, $"Length must be {size}.");
+        }
+
         /// <summary>
         /// Reads a little-endian <see cref="ushort"/> from <paramref name="source"/> at <paramref name="offset"/>.
         /// </summary>

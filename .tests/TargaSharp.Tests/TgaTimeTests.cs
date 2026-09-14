@@ -68,4 +68,63 @@ public class TgaTimeTests
     {
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaTime(TimeSpan.FromMinutes(-30)));
     }
+
+    [TestMethod]
+    public void Ctor_UShorts_ValidValues_PopulatesFields()
+    {
+        var time = new TgaTime((ushort)65535, (ushort)59, (ushort)59);
+
+        Assert.AreEqual((ushort)65535, time.Hours);
+        Assert.AreEqual((ushort)59, time.Minutes);
+        Assert.AreEqual((ushort)59, time.Seconds);
+    }
+
+    [TestMethod]
+    [DataRow(60, 0)]
+    [DataRow(0, 60)]
+    [DataRow(65535, 65535)]
+    public void Ctor_UShortsMinutesOrSecondsAbove59_ThrowsArgumentOutOfRangeException(int minutes, int seconds)
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaTime((ushort)0, (ushort)minutes, (ushort)seconds));
+    }
+
+    [TestMethod]
+    public void MinutesSetter_Above59_ThrowsArgumentOutOfRangeException()
+    {
+        var time = new TgaTime();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => time.Minutes = 60);
+        Assert.AreEqual((ushort)0, time.Minutes);
+    }
+
+    [TestMethod]
+    public void SecondsSetter_Above59_ThrowsArgumentOutOfRangeException()
+    {
+        var time = new TgaTime();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => time.Seconds = 60);
+        Assert.AreEqual((ushort)0, time.Seconds);
+    }
+
+    [TestMethod]
+    public void MinutesAndSecondsSetters_59_AreAccepted()
+    {
+        var time = new TgaTime { Minutes = 59, Seconds = 59 };
+
+        Assert.AreEqual((ushort)59, time.Minutes);
+        Assert.AreEqual((ushort)59, time.Seconds);
+    }
+
+    [TestMethod]
+    public void Ctor_Bytes_OutOfRangeMinutesAndSeconds_AreKeptLeniently()
+    {
+        // 0 hours, 65535 minutes, 65535 seconds - the reader path must not throw on corrupt input.
+        byte[] bytes = [0, 0, 0xFF, 0xFF, 0xFF, 0xFF];
+
+        var time = new TgaTime(bytes);
+
+        Assert.AreEqual((ushort)65535, time.Minutes);
+        Assert.AreEqual((ushort)65535, time.Seconds);
+        CollectionAssert.AreEqual(bytes, time.ToBytes());
+    }
 }

@@ -21,9 +21,7 @@
         /// <param name="bytes">Bytes array (byte[18]).</param>
         public TgaHeader(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            TgaBinary.RequireLength(bytes, Size);
 
             IdLength = bytes[0];
             ColorMapType = (TgaColorMapType)bytes[1];
@@ -119,8 +117,8 @@
             .Add(IdLength)
             .Add((byte)ColorMapType)
             .Add((byte)ImageType)
-            .Add(ColorMapSpec?.ToBytes() ?? new byte[TgaColorMapSpec.Size])
-            .Add(ImageSpec?.ToBytes() ?? new byte[TgaImageSpec.Size])
+            .Add(ColorMapSpec.ToBytes())
+            .Add(ImageSpec.ToBytes())
             .ToArray();
 
         /// <inheritdoc />

@@ -10,13 +10,13 @@
         /// </summary>
         /// <param name="depth">Pixel depth, in bits per pixel.</param>
         /// <returns>Number of bytes per pixel, rounded up to the nearest whole byte.</returns>
-        public static int BytesPerPixel(this TgaPixelDepth depth) => (int)Math.Ceiling((double)depth / 8.0);
+        public static int BytesPerPixel(this TgaPixelDepth depth) => ((int)depth + 7) / 8;
 
         /// <summary>
         /// Gets the number of bytes required to store one color-map entry of the given <see cref="TgaColorMapEntrySize"/>.
         /// </summary>
         /// <param name="entrySize">Color-map entry size, in bits per entry.</param>
         /// <returns>Number of bytes per entry, rounded up to the nearest whole byte.</returns>
-        public static int BytesPerPixel(this TgaColorMapEntrySize entrySize) => (int)Math.Ceiling((double)entrySize / 8.0);
+        public static int BytesPerPixel(this TgaColorMapEntrySize entrySize) => ((int)entrySize + 7) / 8;
     }
 }

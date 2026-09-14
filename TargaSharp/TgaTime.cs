@@ -13,6 +13,21 @@ namespace TargaSharp
         public const int Size = 6;
 
         /// <summary>
+        /// Largest value <see cref="Minutes"/> and <see cref="Seconds"/> accept.
+        /// </summary>
+        private const ushort MaxSexagesimal = 59;
+
+        /// <summary>
+        /// Backing field for <see cref="Minutes"/>.
+        /// </summary>
+        private ushort _minutes;
+
+        /// <summary>
+        /// Backing field for <see cref="Seconds"/>.
+        /// </summary>
+        private ushort _seconds;
+
+        /// <summary>
         /// Make empty <see cref="TgaTime"/>.
         /// </summary>
         public TgaTime() { }
@@ -36,6 +51,7 @@ namespace TargaSharp
         /// <param name="hours">Hour (0 - 65535).</param>
         /// <param name="minutes">Minute (0 - 59).</param>
         /// <param name="seconds">Second (0 - 59).</param>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="minutes"/> or <paramref name="seconds"/> is > 59.</exception>
         public TgaTime(ushort hours, ushort minutes, ushort seconds)
         {
             Hours = hours;
@@ -43,17 +59,19 @@ namespace TargaSharp
             Seconds = seconds;
         }
         /// <summary>
-        /// Make <see cref="TgaTime"/> from bytes.
+        /// Make <see cref="TgaTime"/> from bytes. This is the lenient file-reader path: out-of-range
+        /// minutes/seconds are kept as read (range checking is <see cref="Validation.TgaValidator"/>'s job).
         /// </summary>
         /// <param name="bytes">Array of bytes(byte[6]).</param>
+        /// <exception cref="ArgumentNullException"><paramref name="bytes"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="bytes"/>.Length != <see cref="Size"/>.</exception>
         public TgaTime(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size) throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            TgaBinary.RequireLength(bytes, Size);
 
             Hours = TgaBinary.ReadUInt16(bytes, 0);
-            Minutes = TgaBinary.ReadUInt16(bytes, 2);
-            Seconds = TgaBinary.ReadUInt16(bytes, 4);
+            _minutes = TgaBinary.ReadUInt16(bytes, 2);
+            _seconds = TgaBinary.ReadUInt16(bytes, 4);
         }
 
 
@@ -64,11 +82,31 @@ namespace TargaSharp
         /// <summary>
         /// Gets or Sets minute (0 - 59).
         /// </summary>
-        public ushort Minutes { get; set; }
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when set to a value > 59.</exception>
+        public ushort Minutes
+        {
+            get => _minutes;
+            set
+            {
+                if (value > MaxSexagesimal)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"Minutes must be 0-{MaxSexagesimal}.");
+                _minutes = value;
+            }
+        }
         /// <summary>
         /// Gets or Sets second (0 - 59).
         /// </summary>
-        public ushort Seconds { get; set; }
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when set to a value > 59.</exception>
+        public ushort Seconds
+        {
+            get => _seconds;
+            set
+            {
+                if (value > MaxSexagesimal)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"Seconds must be 0-{MaxSexagesimal}.");
+                _seconds = value;
+            }
+        }
 
 
         /// <summary>
@@ -131,8 +169,8 @@ namespace TargaSharp
         /// <returns><paramref name="value"/> as <see cref="ushort"/>.</returns>
         private static ushort CheckedSexagesimal(int value, string paramName)
         {
-            if (value is < 0 or > 59)
-                throw new ArgumentOutOfRangeException(paramName, value, "Must be 0-59.");
+            if (value is < 0 or > MaxSexagesimal)
+                throw new ArgumentOutOfRangeException(paramName, value, $"Must be 0-{MaxSexagesimal}.");
             return (ushort)value;
         }
     }

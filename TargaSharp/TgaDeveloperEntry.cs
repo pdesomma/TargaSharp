@@ -7,6 +7,17 @@
     public sealed record TgaDeveloperEntry : ICloneable
     {
         /// <summary>
+        /// Gets TGA <see cref="TgaDeveloperEntry"/> size in bytes (Always constant and equal 10!).
+        /// It is not <see cref="FieldSize"/>! It is just size of entry sizeof(ushort + uint + uint).
+        /// </summary>
+        public const int Size = 10;
+
+        /// <summary>
+        /// Field size declared by a directory entry parsed from bytes; reported by <see cref="FieldSize"/> while <see cref="Data"/> is empty.
+        /// </summary>
+        private readonly int _declaredFieldSize;
+
+        /// <summary>
         /// Make empty <see cref="TgaDeveloperEntry"/>.
         /// </summary>
         public TgaDeveloperEntry() { }
@@ -41,9 +52,9 @@
         /// <see cref="ToBytes"/> - [Tag:2][Offset:4][FieldSize:4] - and NOT the field's actual
         /// payload, which is not part of the directory entry itself and is loaded separately
         /// (e.g. by <see cref="TgaFile"/>, which reads <see cref="FieldSize"/> bytes from
-        /// <see cref="Offset"/> in the file). <see cref="Data"/> is therefore initialized to a
-        /// zero-filled placeholder of length <see cref="FieldSize"/> so the byte layout
-        /// round-trips through <see cref="ToBytes"/>.
+        /// <see cref="Offset"/> in the file). <see cref="Data"/> is left empty and the declared
+        /// size is remembered so <see cref="FieldSize"/> and <see cref="ToBytes"/> round-trip the
+        /// entry without allocating an untrusted amount of memory.
         /// </summary>
         /// <param name="bytes">Array of bytes, must be exactly <see cref="Size"/> (10) bytes long.</param>
         /// <exception cref="ArgumentNullException"><paramref name="bytes"/> is <see langword="null"/>.</exception>
@@ -51,16 +62,14 @@
         /// or the declared field size exceeds <see cref="int.MaxValue"/> (used to wrap negative and throw <see cref="OverflowException"/>).</exception>
         public TgaDeveloperEntry(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            TgaBinary.RequireLength(bytes, Size);
 
             Tag = TgaBinary.ReadUInt16(bytes, 0);
             Offset = TgaBinary.ReadUInt32(bytes, 2);
             uint fieldSize = TgaBinary.ReadUInt32(bytes, 6);
             if (fieldSize > int.MaxValue)
                 throw new ArgumentOutOfRangeException(nameof(bytes), fieldSize, $"FieldSize must be <= {int.MaxValue}.");
-            Data = new byte[fieldSize];
+            _declaredFieldSize = (int)fieldSize;
         }
 
 
@@ -75,9 +84,10 @@
         public byte[] Data { get; set; } = Array.Empty<byte>();
 
         /// <summary>
-        /// The FIELD SIZE is a number of bytes in the field. Same as <see cref="Data"/>.Length.
+        /// The FIELD SIZE is a number of bytes in the field: <see cref="Data"/>.Length, or the size
+        /// declared by the directory bytes while <see cref="Data"/> has not been loaded.
         /// </summary>
-        public int FieldSize => Data.Length;
+        public int FieldSize => Data.Length > 0 ? Data.Length : _declaredFieldSize;
 
         /// <summary>
         /// This OFFSET is a number of bytes from the beginning of the file to the start of the field
@@ -95,14 +105,6 @@
         public ushort Tag { get; set; }
 
         /// <summary>
-        /// Gets TGA <see cref="TgaDeveloperEntry"/> size in bytes (Always constant and equal 10!).
-        /// It is not <see cref="FieldSize"/>! It is just size of entry sizeof(ushort + uint + uint).
-        /// </summary>
-        public const int Size = 10;
-
-
-
-        /// <summary>
         /// Make full independent copy of <see cref="TgaDeveloperEntry"/>. Named <c>Copy</c> rather than <c>Clone</c>
         /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
@@ -116,12 +118,13 @@
         public bool Equals(TgaDeveloperEntry? other)
         {
             if (other is null) return false;
-            return Tag == other.Tag && Offset == other.Offset &&
+            // FieldSize covers the declared size of a not-yet-loaded entry, so equal entries serialize identically.
+            return Tag == other.Tag && Offset == other.Offset && FieldSize == other.FieldSize &&
                 TgaArrayEquality.Equals(Data, other.Data);
         }
 
         /// <summary>
-        /// Gets a hash code derived from <see cref="Tag"/>, <see cref="Offset"/> and <see cref="Data"/>.
+        /// Gets a hash code derived from <see cref="Tag"/>, <see cref="Offset"/>, <see cref="FieldSize"/> and <see cref="Data"/>.
         /// </summary>
         /// <returns>A hash code for this <see cref="TgaDeveloperEntry"/>.</returns>
         public override int GetHashCode()
@@ -131,6 +134,7 @@
                 int hash = 17;
                 hash = hash * 23 + Tag.GetHashCode();
                 hash = hash * 23 + Offset.GetHashCode();
+                hash = hash * 23 + FieldSize.GetHashCode();
                 hash = TgaArrayEquality.Hash(hash, Data, 23);
                 return hash;
             }
@@ -140,7 +144,7 @@
         /// Convert <see cref="TgaDeveloperEntry"/> to byte array. (Not include <see cref="Data"/>!).
         /// </summary>
         /// <returns>Byte array with length = 10.</returns>
-        public byte[] ToBytes() => new TgaByteBuilder(Size).Add(Tag).Add(Offset).Add(unchecked((uint)(Data?.Length ?? 0))).ToArray();
+        public byte[] ToBytes() => new TgaByteBuilder(Size).Add(Tag).Add(Offset).Add((uint)FieldSize).ToArray();
 
         /// <summary>
         /// Gets <see cref="TgaDeveloperEntry"/> like string.

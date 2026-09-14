@@ -26,12 +26,14 @@ namespace TargaSharp
         public TgaDeveloperArea? DeveloperArea { get; set; } = null;
 
         /// <summary>
-        /// Gets or sets the optional TGA 2.0 extension area, or <see langword="null"/> when the file has none.
+        /// Gets the optional TGA 2.0 extension area, or <see langword="null"/> when the file has none.
+        /// Created by <see cref="ToNewFormat"/>, dropped by <see cref="ToOldFormat"/>.
         /// </summary>
         public TgaExtensionArea? ExtensionArea { get; internal set; } = null;
 
         /// <summary>
-        /// Gets or sets the optional TGA 2.0 footer, or <see langword="null"/> when the file is in the original (pre-2.0) format.
+        /// Gets the optional TGA 2.0 footer, or <see langword="null"/> when the file is in the original (pre-2.0) format.
+        /// Created by <see cref="ToNewFormat"/>, dropped by <see cref="ToOldFormat"/>.
         /// </summary>
         public TgaFooter? Footer { get; internal set; } = null;
 
@@ -55,7 +57,8 @@ namespace TargaSharp
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="width"/> or <paramref name="height"/> is 0,
         /// <paramref name="pixDepth"/> is <see cref="TgaPixelDepth.Other"/>, <paramref name="attrBits"/> exceeds
         /// <see cref="TgaImageDescriptor.MaxAlphaChannelBits"/>, or the image data would exceed <see cref="int.MaxValue"/> bytes.</exception>
-        /// <exception cref="ArgumentException"><paramref name="imgType"/> is <see cref="TgaImageType.NoImageData"/>, which has no pixel data to size.</exception>
+        /// <exception cref="ArgumentException"><paramref name="imgType"/> is <see cref="TgaImageType.NoImageData"/>, which has no pixel data to size,
+        /// or is not a spec-defined value (see <see cref="TgaImageTypeExtensions.IsKnown"/>).</exception>
         public TgaFile(ushort width, ushort height, TgaPixelDepth pixDepth = TgaPixelDepth.Bpp24, TgaImageType imgType = TgaImageType.UncompressedTrueColor, byte attrBits = 0, bool newFormat = true)
         {
             if (width == 0)
@@ -66,6 +69,8 @@ namespace TargaSharp
                 throw new ArgumentOutOfRangeException(nameof(pixDepth), pixDepth, "Must be 8, 16, 24 or 32 bits per pixel.");
             if (imgType == TgaImageType.NoImageData)
                 throw new ArgumentException($"{nameof(TgaImageType.NoImageData)} has no pixel data; use the parameterless constructor.", nameof(imgType));
+            if (!imgType.IsKnown())
+                throw new ArgumentException($"{imgType} is not a spec-defined image type.", nameof(imgType));
             if (attrBits > TgaImageDescriptor.MaxAlphaChannelBits)
                 throw new ArgumentOutOfRangeException(nameof(attrBits), attrBits, $"Must be 0-{TgaImageDescriptor.MaxAlphaChannelBits}.");
 
@@ -92,15 +97,7 @@ namespace TargaSharp
             Header.ImageSpec.PixelDepth = pixDepth;
             Header.ImageSpec.ImageDescriptor.AlphaChannelBits = attrBits;
 
-            if (newFormat)
-            {
-                Footer = new TgaFooter();
-                ExtensionArea = new TgaExtensionArea
-                {
-                    DateTimeStamp = new TgaDateTime(DateTime.UtcNow),
-                    AttributesType = (attrBits > 0 ? TgaAttributeType.UsefulAlpha : TgaAttributeType.NoAlpha)
-                };
-            }
+            if (newFormat) ToNewFormat();
         }
 
         /// <summary>
@@ -122,7 +119,6 @@ namespace TargaSharp
         /// Load <see cref="TgaFile"/> from file.
         /// </summary>
         /// <param name="filename">Full path to TGA file.</param>
-        /// <returns>Loaded <see cref="TgaFile"/> file.</returns>
         public TgaFile(string filename) => CopyAreasFrom(new TgaReader().Read(filename));
         /// <summary>
         /// Make <see cref="TgaFile"/> from bytes array.
@@ -278,7 +274,7 @@ namespace TargaSharp
             stamp.Height = (byte)psHeight;
 
             int bytesPerPixel = Header.ImageSpec.PixelDepth.BytesPerPixel();
-            stamp.Data = new byte[psWidth * psHeight * bytesPerPixel];
+            stamp.Data = new byte[stamp.DataLength(Header.ImageSpec.PixelDepth)];
 
             float widthCoef = Width / (float)psWidth;
             float heightCoef = Height / (float)psHeight;

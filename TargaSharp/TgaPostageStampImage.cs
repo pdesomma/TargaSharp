@@ -27,6 +27,11 @@
         private byte _height = 1;
 
         /// <summary>
+        /// Backing field for <see cref="Data"/>.
+        /// </summary>
+        private byte[] _data = Array.Empty<byte>();
+
+        /// <summary>
         /// Make a 1x1 <see cref="TgaPostageStampImage"/> with empty <see cref="Data"/> (the smallest size the setters allow).
         /// </summary>
         public TgaPostageStampImage() { }
@@ -42,11 +47,16 @@
         public TgaPostageStampImage(byte[] bytes)
         {
             ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length < 2)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, "Length must be >= 2.");
-            Width = bytes[0];
-            Height = bytes[1];
-            Data = bytes.AsSpan(2, bytes.Length - 2).ToArray();
+            if (bytes.Length < HeaderSize)
+                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be >= {HeaderSize}.");
+            // Checked here so the exception names bytes rather than the setters' value.
+            if (bytes[0] == 0 || bytes[0] > MaxSize)
+                throw new ArgumentOutOfRangeException(nameof(bytes), bytes[0], $"Width (byte 0) must be in range 1-{MaxSize}.");
+            if (bytes[1] == 0 || bytes[1] > MaxSize)
+                throw new ArgumentOutOfRangeException(nameof(bytes), bytes[1], $"Height (byte 1) must be in range 1-{MaxSize}.");
+            _width = bytes[0];
+            _height = bytes[1];
+            _data = bytes.AsSpan(HeaderSize, bytes.Length - HeaderSize).ToArray();
         }
 
         /// <summary>
@@ -71,7 +81,16 @@
         /// <summary>
         /// Postage Stamp Image Data
         /// </summary>
-        public byte[] Data { get; set; } = Array.Empty<byte>();
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        public byte[] Data
+        {
+            get => _data;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _data = value;
+            }
+        }
 
         /// <summary>
         /// Postage Stamp Image Height (must be 1-<see cref="MaxSize"/>, inclusive).
@@ -105,6 +124,13 @@
             }
         }
 
+
+        /// <summary>
+        /// Byte length <see cref="Data"/> must have for a stamp of this size at <paramref name="pixelDepth"/> (the main image's depth).
+        /// </summary>
+        /// <param name="pixelDepth">Pixel depth of the parent image; the stamp shares it.</param>
+        /// <returns><see cref="Width"/> * <see cref="Height"/> * bytes per pixel.</returns>
+        public int DataLength(TgaPixelDepth pixelDepth) => Width * Height * pixelDepth.BytesPerPixel();
 
         /// <summary>
         /// Make full copy of <see cref="TgaPostageStampImage"/>. Named <c>Copy</c> rather than <c>Clone</c>

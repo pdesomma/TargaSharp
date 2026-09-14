@@ -56,9 +56,7 @@ namespace TargaSharp
         /// <param name="bytes">Bytes array (byte[3]).</param>
         public TgaSoftwareVersion(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            TgaBinary.RequireLength(bytes, Size);
 
             VersionNumber = TgaBinary.ReadUInt16(bytes, 0);
             VersionLetter = Encoding.ASCII.GetString(bytes, 2, 1)[0];

@@ -38,9 +38,7 @@
         /// <exception cref="ArgumentNullException"><paramref name="bytes"/> is <see langword="null"/>.</exception>
         public TgaColorKey(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            TgaBinary.RequireLength(bytes, Size);
             int argb = unchecked((int)TgaBinary.ReadUInt32(bytes, 0));
             A = (byte)((argb >> 24) & 0xFF);
             R = (byte)((argb >> 16) & 0xFF);

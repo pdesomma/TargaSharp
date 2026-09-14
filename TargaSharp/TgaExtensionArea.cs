@@ -11,6 +11,11 @@
         public const int MinSize = 495;
 
         /// <summary>
+        /// Longest <see cref="OtherDataInExtensionArea"/> that still fits the 2-byte Extension Size field together with <see cref="MinSize"/>.
+        /// </summary>
+        public const int MaxOtherDataLength = ushort.MaxValue - MinSize;
+
+        /// <summary>
         /// Number of <see cref="ushort"/> values in a color correction table: 256 entries x 4 channels (spec field 27).
         /// </summary>
         public const int ColorCorrectionTableLength = 256 * 4;
@@ -21,6 +26,61 @@
         public const int NameFieldLength = 41;
 
         /// <summary>
+        /// Backing field for <see cref="OtherDataInExtensionArea"/>.
+        /// </summary>
+        private byte[]? _otherDataInExtensionArea;
+
+        /// <summary>
+        /// Backing field for <see cref="AuthorName"/>.
+        /// </summary>
+        private TgaString _authorName = new TgaString(NameFieldLength, true);
+
+        /// <summary>
+        /// Backing field for <see cref="AuthorComments"/>.
+        /// </summary>
+        private TgaComment _authorComments = new TgaComment();
+
+        /// <summary>
+        /// Backing field for <see cref="DateTimeStamp"/>.
+        /// </summary>
+        private TgaDateTime _dateTimeStamp = new TgaDateTime();
+
+        /// <summary>
+        /// Backing field for <see cref="JobNameOrId"/>.
+        /// </summary>
+        private TgaString _jobNameOrId = new TgaString(NameFieldLength, true);
+
+        /// <summary>
+        /// Backing field for <see cref="JobTime"/>.
+        /// </summary>
+        private TgaTime _jobTime = new TgaTime();
+
+        /// <summary>
+        /// Backing field for <see cref="SoftwareId"/>.
+        /// </summary>
+        private TgaString _softwareId = new TgaString(NameFieldLength, true);
+
+        /// <summary>
+        /// Backing field for <see cref="SoftwareVersion"/>.
+        /// </summary>
+        private TgaSoftwareVersion _softwareVersion = new TgaSoftwareVersion();
+
+        /// <summary>
+        /// Backing field for <see cref="KeyColor"/>.
+        /// </summary>
+        private TgaColorKey _keyColor = new TgaColorKey();
+
+        /// <summary>
+        /// Backing field for <see cref="PixelAspectRatio"/>.
+        /// </summary>
+        private TgaFraction _pixelAspectRatio = TgaFraction.Empty;
+
+        /// <summary>
+        /// Backing field for <see cref="GammaValue"/>.
+        /// </summary>
+        private TgaFraction _gammaValue = TgaFraction.Empty;
+
+        /// <summary>
         /// Make <see cref="TgaExtensionArea"/> from bytes. Warning: <see cref="ScanLineTable"/>,
         /// <see cref="PostageStampImage"/>, <see cref="ColorCorrectionTable"/> not included,
         /// because they are optional and may not be present in the Extension Area of the TGA file.
@@ -29,11 +89,15 @@
         /// <param name="slt">Scan Line Table.</param>
         /// <param name="postageStampImage">Postage Stamp Image.</param>
         /// <param name="cct">Color Correction Table.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="bytes"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="bytes"/> is shorter than <see cref="MinSize"/> or longer than <see cref="ushort.MaxValue"/>.</exception>
         public TgaExtensionArea(byte[] bytes, uint[]? slt = null, TgaPostageStampImage? postageStampImage = null, ushort[]? cct = null)
         {
             ArgumentNullException.ThrowIfNull(bytes);
             if (bytes.Length < MinSize)
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be >= {MinSize}.");
+            if (bytes.Length > ushort.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be <= {ushort.MaxValue} (ExtensionSize is a ushort).");
 
             AuthorName = new TgaString(bytes.AsSpan(2, NameFieldLength).ToArray(), true);
             AuthorComments = new TgaComment(bytes.AsSpan(43, TgaComment.Size).ToArray());
@@ -72,7 +136,7 @@
         /// extension area; Truevision reserves any other value for future revisions. Derived, so it
         /// always matches what <see cref="ToBytes"/> writes.
         /// </summary>
-        public ushort ExtensionSize => (ushort)Math.Min(ushort.MaxValue, MinSize + (OtherDataInExtensionArea?.Length ?? 0));
+        public ushort ExtensionSize => (ushort)(MinSize + (OtherDataInExtensionArea?.Length ?? 0));
 
         /// <summary>
         /// Author Name - Field 11 (41 Bytes):
@@ -82,7 +146,16 @@
         /// used, you may fill it with nulls or a series of blanks(spaces) terminated by a null.
         /// The 41st byte must always be a null.
         /// </summary>
-        public TgaString AuthorName { get; set; } = new TgaString(NameFieldLength, true);
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        public TgaString AuthorName
+        {
+            get => _authorName;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _authorName = value;
+            }
+        }
 
         /// <summary>
         /// Author Comments - Field 12 (324 Bytes):
@@ -96,7 +169,16 @@
         /// character and blank or null fill the rest of the line. The 81st byte of each of the four
         /// lines must be null.
         /// </summary>
-        public TgaComment AuthorComments { get; set; } = new TgaComment();
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        public TgaComment AuthorComments
+        {
+            get => _authorComments;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _authorComments = value;
+            }
+        }
 
         /// <summary>
         /// Date/Time Stamp - Field 13 (12 Bytes):
@@ -113,7 +195,16 @@
         /// copied. By using this area, you are guaranteed an unmodified region for date and time
         /// recording. If the fields are not used, you should fill them with binary zeros (0).
         /// </summary>
-        public TgaDateTime DateTimeStamp { get; set; } = new TgaDateTime();
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        public TgaDateTime DateTimeStamp
+        {
+            get => _dateTimeStamp;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _dateTimeStamp = value;
+            }
+        }
 
         /// <summary>
         /// Job Name/ID - Field 14 (41 Bytes):
@@ -125,7 +216,16 @@
         /// (i.e., CITY023). If the field is not used, you may fill it with a null terminated series
         /// of blanks (spaces) or nulls. In any case, the 41st byte must be a null.
         /// </summary>
-        public TgaString JobNameOrId { get; set; } = new TgaString(NameFieldLength, true);
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        public TgaString JobNameOrId
+        {
+            get => _jobNameOrId;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _jobNameOrId = value;
+            }
+        }
 
         /// <summary>
         /// Job Time - Field 15 (6 Bytes):
@@ -138,7 +238,16 @@
         /// of the amount of time invested in a particular image. This may be useful for billing, costing,
         /// and time estimating. If the fields are not used, you should fill them with binary zeros (0).
         /// </summary>
-        public TgaTime JobTime { get; set; } = new TgaTime();
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        public TgaTime JobTime
+        {
+            get => _jobTime;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _jobTime = value;
+            }
+        }
 
         /// <summary>
         /// Software ID - Field 16 (41 Bytes):
@@ -148,7 +257,16 @@
         /// a particular image was created.If the field is not used, you may fill it with a
         /// null terminated series of blanks (spaces) or nulls. The 41st byte must always be a null.
         /// </summary>
-        public TgaString SoftwareId { get; set; } = new TgaString(NameFieldLength, true);
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        public TgaString SoftwareId
+        {
+            get => _softwareId;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _softwareId = value;
+            }
+        }
 
         /// <summary>
         /// Software Version - Field 17 (3 Bytes):
@@ -165,7 +283,16 @@
         /// <para>BYTE(Byte 2): Version Letter</para>
         /// If you do not use this field, set the SHORT to binary zero, and the BYTE to a space(“ “)
         /// </summary>
-        public TgaSoftwareVersion SoftwareVersion { get; set; } = new TgaSoftwareVersion();
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        public TgaSoftwareVersion SoftwareVersion
+        {
+            get => _softwareVersion;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _softwareVersion = value;
+            }
+        }
 
         /// <summary>
         /// Key Color - Field 18 (4 Bytes):
@@ -180,7 +307,16 @@
         /// color of black.</para>
         /// A good example of a key color is the ‘transparent color’ used in TIPS™ for WINDOW loading/saving.
         /// </summary>
-        public TgaColorKey KeyColor { get; set; } = new TgaColorKey();
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        public TgaColorKey KeyColor
+        {
+            get => _keyColor;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _keyColor = value;
+            }
+        }
 
         /// <summary>
         /// Pixel Aspect Ratio - Field 19 (4 Bytes):
@@ -193,7 +329,16 @@
         /// are set to the same non-zero value, then the image is composed of square pixels. A zero
         /// in the second sub-field (denominator) indicates that no pixel aspect ratio is specified.
         /// </summary>
-        public TgaFraction PixelAspectRatio { get; set; } = TgaFraction.Empty;
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        public TgaFraction PixelAspectRatio
+        {
+            get => _pixelAspectRatio;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _pixelAspectRatio = value;
+            }
+        }
 
         /// <summary>
         /// Gamma Value - Field 20 (4 Bytes):
@@ -207,7 +352,16 @@
         /// (i.e., 1/1). If you decide to totally ignore this field, please set the denominator (the second
         /// SHORT) to the value zero. This will indicate that the Gamma Value field is not being used.
         /// </summary>
-        public TgaFraction GammaValue { get; set; } = TgaFraction.Empty;
+        /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
+        public TgaFraction GammaValue
+        {
+            get => _gammaValue;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                _gammaValue = value;
+            }
+        }
 
         /// <summary>
         /// Color Correction Offset - Field 21 (4 Bytes):
@@ -307,9 +461,20 @@
         public ushort[]? ColorCorrectionTable { get; set; }
 
         /// <summary>
-        /// Other Data In Extension Area (if <see cref="ExtensionSize"/> > 495).
+        /// Other Data In Extension Area (if <see cref="ExtensionSize"/> > 495); at most
+        /// <see cref="MaxOtherDataLength"/> bytes so the 2-byte size field stays exact.
         /// </summary>
-        public byte[]? OtherDataInExtensionArea { get; set; }
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when set to more than <see cref="MaxOtherDataLength"/> bytes.</exception>
+        public byte[]? OtherDataInExtensionArea
+        {
+            get => _otherDataInExtensionArea;
+            set
+            {
+                if (value is not null && value.Length > MaxOtherDataLength)
+                    throw new ArgumentOutOfRangeException(nameof(value), value.Length, $"OtherDataInExtensionArea must be <= {MaxOtherDataLength} bytes (ExtensionSize is a ushort).");
+                _otherDataInExtensionArea = value;
+            }
+        }
 
         #endregion
 
@@ -411,17 +576,6 @@
         /// <returns>Byte array.</returns>
         public byte[] ToBytes()
         {
-            AuthorName ??= new TgaString(NameFieldLength, true);
-            AuthorComments ??= new TgaComment();
-            DateTimeStamp ??= new TgaDateTime();
-            JobNameOrId ??= new TgaString(NameFieldLength, true);
-            JobTime ??= new TgaTime();
-            SoftwareId ??= new TgaString(NameFieldLength, true);
-            SoftwareVersion ??= new TgaSoftwareVersion();
-            KeyColor ??= new TgaColorKey();
-            PixelAspectRatio ??= new TgaFraction();
-            GammaValue ??= new TgaFraction();
-
             return new TgaByteBuilder(MinSize + (OtherDataInExtensionArea?.Length ?? 0))
                 .Add(ExtensionSize)
                 .Add(AuthorName.ToBytes())
