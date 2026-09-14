@@ -155,6 +155,54 @@ public class TgaStringTests
     }
 
     [TestMethod]
+    public void LengthSetter_RejectedValue_LeavesInstanceUnchanged()
+    {
+        var str = new TgaString("ABCDE", 10);
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => str.Length = 3);
+
+        Assert.AreEqual(10, str.Length);
+        Assert.AreEqual(10, str.ToBytes().Length);
+    }
+
+    [TestMethod]
+    public void OriginalStringSetter_RejectedValue_LeavesInstanceUnchanged()
+    {
+        var str = new TgaString("ABCDE", 6, true);
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => str.OriginalString = "ABCDEFGH");
+        Assert.ThrowsExactly<ArgumentException>(() => str.OriginalString = "é");
+
+        Assert.AreEqual("ABCDE", str.OriginalString);
+        CollectionAssert.AreEqual("ABCDE\0"u8.ToArray(), str.ToBytes());
+    }
+
+    [TestMethod]
+    public void UseEndingCharSetter_RejectedValue_LeavesInstanceUnchanged()
+    {
+        var str = new TgaString("ABCDE", 5);
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => str.UseEndingChar = true);
+
+        Assert.IsFalse(str.UseEndingChar);
+        CollectionAssert.AreEqual("ABCDE"u8.ToArray(), str.ToBytes());
+    }
+
+    [TestMethod]
+    public void OriginalStringSetter_EmbeddedNul_ThrowsArgumentException()
+    {
+        var str = new TgaString("ABC", 10);
+
+        Assert.ThrowsExactly<ArgumentException>(() => str.OriginalString = "ab\0cd");
+    }
+
+    [TestMethod]
+    public void Ctor_StringWithEmbeddedNul_ThrowsArgumentException()
+    {
+        Assert.ThrowsExactly<ArgumentException>(() => new TgaString("ab\0cd", 10));
+    }
+
+    [TestMethod]
     public void ZeroTerminator_HasLengthOneAndProducesOneByte()
     {
         TgaString zeroTerminator = TgaString.ZeroTerminator;

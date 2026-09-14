@@ -86,6 +86,93 @@ public class TgaValidatorTests
 
     #endregion
 
+    #region PixelDepth / ImageType cross-check
+
+    [TestMethod]
+    [DataRow(TgaImageType.UncompressedTrueColor, TgaPixelDepth.Bpp8)]
+    [DataRow(TgaImageType.RleTrueColor, TgaPixelDepth.Bpp8)]
+    [DataRow(TgaImageType.UncompressedGrayscale, TgaPixelDepth.Bpp24)]
+    [DataRow(TgaImageType.RleGrayscale, TgaPixelDepth.Bpp32)]
+    public void Validate_PixelDepthNotValidForImageType_ReturnsSingleError(TgaImageType imageType, TgaPixelDepth depth)
+    {
+        var file = new TgaFile(4, 4, depth, imageType);
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("Header.ImageSpec.PixelDepth", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_ColorMappedImageWith24BppPixels_ReturnsPixelDepthError()
+    {
+        var file = CreateValidColorMappedBaseline();
+        file.Header.ImageSpec.PixelDepth = TgaPixelDepth.Bpp24;
+        file.ImageArea.ImageData = new byte[4 * 4 * 3];
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("Header.ImageSpec.PixelDepth", errors[0].Path);
+    }
+
+    [TestMethod]
+    [DataRow(TgaImageType.UncompressedTrueColor, TgaPixelDepth.Bpp16)]
+    [DataRow(TgaImageType.UncompressedTrueColor, TgaPixelDepth.Bpp32)]
+    [DataRow(TgaImageType.UncompressedGrayscale, TgaPixelDepth.Bpp8)]
+    [DataRow(TgaImageType.RleGrayscale, TgaPixelDepth.Bpp16)]
+    public void Validate_PixelDepthValidForImageType_ReturnsNoError(TgaImageType imageType, TgaPixelDepth depth)
+    {
+        var file = new TgaFile(4, 4, depth, imageType);
+
+        var errors = Validator.Validate(file);
+
+        Assert.AreEqual(0, errors.Count);
+    }
+
+    #endregion
+
+    #region ExtensionArea name fields
+
+    [TestMethod]
+    [DataRow(40)]
+    [DataRow(42)]
+    public void Validate_AuthorNameLengthNot41_ReturnsSingleError(int length)
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.AuthorName = new TgaString("me", length, true);
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("ExtensionArea.AuthorName", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_SoftwareIdWithoutEndingChar_ReturnsSingleError()
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.SoftwareId = new TgaString(new string('A', TgaExtensionArea.NameFieldLength), TgaExtensionArea.NameFieldLength, false);
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("ExtensionArea.SoftwareId", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_JobNameOrIdWithSpecLength_ReturnsNoError()
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.JobNameOrId = new TgaString("job", TgaExtensionArea.NameFieldLength, true);
+
+        var errors = Validator.Validate(file);
+
+        Assert.AreEqual(0, errors.Count);
+    }
+
+    #endregion
+
     #region ColorMapSpec
 
     [TestMethod]
@@ -572,6 +659,40 @@ public class TgaValidatorTests
     }
 
     [TestMethod]
+    public void Validate_DateTimeStampDayPastEndOfMonth_ReturnsSingleError()
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.DateTimeStamp = new TgaDateTime(2, 30, 2023, 10, 30, 15);
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("ExtensionArea.DateTimeStamp.Day", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_DateTimeStampLeapDay_ReturnsNoError()
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.DateTimeStamp = new TgaDateTime(2, 29, 2024, 10, 30, 15);
+
+        var errors = Validator.Validate(file);
+
+        Assert.AreEqual(0, errors.Count);
+    }
+
+    [TestMethod]
+    public void Validate_DateTimeStampDay31WithYearZero_FallsBackToSpecRange()
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.DateTimeStamp = new TgaDateTime(2, 31, 0, 10, 30, 15);
+
+        var errors = Validator.Validate(file);
+
+        Assert.AreEqual(0, errors.Count);
+    }
+
+    [TestMethod]
     public void Validate_DateTimeStampHourOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
@@ -751,6 +872,18 @@ public class TgaValidatorTests
     {
         var file = CreateValidBaseline();
         file.ExtensionArea!.SoftwareVersion.VersionLetter = '5';
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("ExtensionArea.SoftwareVersion.VersionLetter", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_SoftwareVersionLetterIsNonAsciiLetter_ReturnsSingleError()
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.SoftwareVersion.VersionLetter = 'Ω';
 
         var errors = Validator.Validate(file);
 

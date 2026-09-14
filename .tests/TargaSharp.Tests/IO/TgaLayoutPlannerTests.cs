@@ -141,7 +141,19 @@ public class TgaLayoutPlannerTests
     }
 
     [TestMethod]
-    public void Plan_EmptyDeveloperEntries_AreLeftOutOfFileButKeptOnCallerList()
+    public void Plan_OtherDataTooLargeForExtensionSize_ThrowsNamingTheField()
+    {
+        var file = new TgaFile(2, 2);
+        file.ImageArea.ImageData = new byte[12];
+        file.ExtensionArea!.OtherDataInExtensionArea = new byte[ushort.MaxValue - TgaExtensionArea.MinSize + 1];
+
+        var e = Assert.ThrowsExactly<TgaValidationException>(() => new TgaLayoutPlanner().Plan(file));
+
+        Assert.AreEqual("ExtensionArea.OtherDataInExtensionArea", e.Errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Plan_EmptyDeveloperEntry_KeepsItsDirectorySlotWithZeroSize()
     {
         var file = new TgaFile(2, 2);
         file.ImageArea.ImageData = new byte[12];
@@ -151,8 +163,24 @@ public class TgaLayoutPlannerTests
         TgaLayout layout = new TgaLayoutPlanner().Plan(file);
 
         Assert.AreEqual(1, file.DeveloperArea.Count, "planning must not delete the caller's entry");
-        Assert.AreEqual(0u, file.Footer!.DeveloperDirectoryOffset);
-        Assert.IsFalse(layout.Sections.Any(s => s.Name.StartsWith("DeveloperArea", StringComparison.Ordinal)));
+        TgaSection directory = layout.Sections.Single(s => s.Name == "DeveloperArea.Directory");
+        Assert.AreEqual(directory.Offset, file.Footer!.DeveloperDirectoryOffset);
+        Assert.AreEqual(1, TgaBinary.ReadUInt16(directory.Bytes, 0));
+        Assert.AreEqual(0u, TgaBinary.ReadUInt32(directory.Bytes, 8), "field size");
+    }
+
+    [TestMethod]
+    public void Plan_EmptyDeveloperEntry_SurvivesWriteThenRead()
+    {
+        var file = new TgaFile(2, 2);
+        file.ImageArea.ImageData = new byte[12];
+        file.DeveloperArea = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, []), new TgaDeveloperEntry(2, 0, [9])]);
+
+        TgaFile reloaded = new TgaReader().Read(file.ToBytes());
+
+        Assert.AreEqual(2, reloaded.DeveloperArea!.Count);
+        Assert.AreEqual(0, reloaded.DeveloperArea.Entries[0].FieldSize);
+        CollectionAssert.AreEqual(new byte[] { 9 }, reloaded.DeveloperArea.Entries[1].Data);
     }
 
     [TestMethod]
@@ -171,13 +199,14 @@ public class TgaLayoutPlannerTests
         // Caller's list: same three entries, same order (ToBytes() used to leave it as [5, 7]).
         CollectionAssert.AreEqual(new ushort[] { 7, 3, 5 }, file.DeveloperArea.Entries.Select(e => e.Tag).ToArray());
 
-        // File: only the two non-empty entries, tag-ordered, and the directory lists them in that order.
+        // File: all three entries, tag-ordered, and the directory lists them in that order.
         TgaSection directory = layout.Sections.Single(s => s.Name == "DeveloperArea.Directory");
-        Assert.AreEqual(2, TgaBinary.ReadUInt16(directory.Bytes, 0));
-        Assert.AreEqual(5, TgaBinary.ReadUInt16(directory.Bytes, 2));
-        Assert.AreEqual(7, TgaBinary.ReadUInt16(directory.Bytes, 2 + TgaDeveloperEntry.Size));
-        Assert.AreEqual(file.DeveloperArea.Entries[2].Offset, TgaBinary.ReadUInt32(directory.Bytes, 4));
-        Assert.AreEqual(file.DeveloperArea.Entries[0].Offset, TgaBinary.ReadUInt32(directory.Bytes, 4 + TgaDeveloperEntry.Size));
+        Assert.AreEqual(3, TgaBinary.ReadUInt16(directory.Bytes, 0));
+        Assert.AreEqual(3, TgaBinary.ReadUInt16(directory.Bytes, 2));
+        Assert.AreEqual(5, TgaBinary.ReadUInt16(directory.Bytes, 2 + TgaDeveloperEntry.Size));
+        Assert.AreEqual(7, TgaBinary.ReadUInt16(directory.Bytes, 2 + 2 * TgaDeveloperEntry.Size));
+        Assert.AreEqual(file.DeveloperArea.Entries[2].Offset, TgaBinary.ReadUInt32(directory.Bytes, 4 + TgaDeveloperEntry.Size));
+        Assert.AreEqual(file.DeveloperArea.Entries[0].Offset, TgaBinary.ReadUInt32(directory.Bytes, 4 + 2 * TgaDeveloperEntry.Size));
     }
 
     [TestMethod]

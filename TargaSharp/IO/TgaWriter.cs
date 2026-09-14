@@ -19,7 +19,7 @@ namespace TargaSharp.IO
         /// <summary>
         /// Computes section order, sizes and offsets for a <see cref="TgaFile"/>.
         /// </summary>
-        private readonly TgaLayoutPlanner _planner = new();
+        private readonly ITgaLayoutPlanner _planner;
 
         /// <summary>
         /// Make a <see cref="TgaWriter"/> that validates with a new <see cref="TgaValidator"/>.
@@ -31,10 +31,20 @@ namespace TargaSharp.IO
         /// </summary>
         /// <param name="validator">The validator to run against a <see cref="TgaFile"/> before it is written.</param>
         /// <exception cref="ArgumentNullException"><paramref name="validator"/> is <see langword="null"/>.</exception>
-        public TgaWriter(ITgaValidator validator)
+        public TgaWriter(ITgaValidator validator) : this(validator, new TgaLayoutPlanner()) { }
+
+        /// <summary>
+        /// Make a <see cref="TgaWriter"/> with an explicit validator and layout planner.
+        /// </summary>
+        /// <param name="validator">The validator to run against a <see cref="TgaFile"/> before it is written.</param>
+        /// <param name="planner">Computes the on-disk layout of a validated <see cref="TgaFile"/>.</param>
+        /// <exception cref="ArgumentNullException">Either argument is <see langword="null"/>.</exception>
+        internal TgaWriter(ITgaValidator validator, ITgaLayoutPlanner planner)
         {
             ArgumentNullException.ThrowIfNull(validator);
+            ArgumentNullException.ThrowIfNull(planner);
             _validator = validator;
+            _planner = planner;
         }
 
         /// <inheritdoc />

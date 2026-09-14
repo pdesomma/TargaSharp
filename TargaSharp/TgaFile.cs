@@ -52,7 +52,9 @@ namespace TargaSharp
         /// <param name="attrBits">Set number of Attribute bits (Alpha channel bits), default: 0, 1, 8.</param>
         /// <param name="newFormat">Use new 2.0 TGA XFile format?</param>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="width"/> or <paramref name="height"/> is 0,
-        /// <paramref name="pixDepth"/> is <see cref="TgaPixelDepth.Other"/>, or the image data would exceed <see cref="int.MaxValue"/> bytes.</exception>
+        /// <paramref name="pixDepth"/> is <see cref="TgaPixelDepth.Other"/>, <paramref name="attrBits"/> exceeds
+        /// <see cref="TgaImageDescriptor.MaxAlphaChannelBits"/>, or the image data would exceed <see cref="int.MaxValue"/> bytes.</exception>
+        /// <exception cref="ArgumentException"><paramref name="imgType"/> is <see cref="TgaImageType.NoImageData"/>, which has no pixel data to size.</exception>
         public TgaFile(ushort width, ushort height, TgaPixelDepth pixDepth = TgaPixelDepth.Bpp24, TgaImageType imgType = TgaImageType.UncompressedTrueColor, byte attrBits = 0, bool newFormat = true)
         {
             if (width == 0)
@@ -61,6 +63,10 @@ namespace TargaSharp
                 throw new ArgumentOutOfRangeException(nameof(height), height, "Must be > 0.");
             if (pixDepth == TgaPixelDepth.Other)
                 throw new ArgumentOutOfRangeException(nameof(pixDepth), pixDepth, "Must be 8, 16, 24 or 32 bits per pixel.");
+            if (imgType == TgaImageType.NoImageData)
+                throw new ArgumentException($"{nameof(TgaImageType.NoImageData)} has no pixel data; use the parameterless constructor.", nameof(imgType));
+            if (attrBits > TgaImageDescriptor.MaxAlphaChannelBits)
+                throw new ArgumentOutOfRangeException(nameof(attrBits), attrBits, $"Must be 0-{TgaImageDescriptor.MaxAlphaChannelBits}.");
 
             // ushort * ushort * 4 exceeds int.MaxValue, so size in long before allocating.
             long imageDataSize = (long)width * height * pixDepth.BytesPerPixel();
@@ -222,6 +228,8 @@ namespace TargaSharp
         /// <summary>
         /// Update Postage Stamp Image or set it.
         /// </summary>
+        /// <exception cref="InvalidOperationException"><see cref="TgaImageArea.ImageData"/> is <see langword="null"/>, a dimension is 0,
+        /// or the data length does not match <see cref="TgaHeader.ImageDataLength"/>.</exception>
         public void UpdatePostageStampImage()
         {
             if (Header.ImageType == TgaImageType.NoImageData)
@@ -230,10 +238,15 @@ namespace TargaSharp
                 return;
             }
 
+            byte[] imageData = ImageArea.ImageData ?? throw new InvalidOperationException("ImageArea.ImageData is null; nothing to build a postage stamp from.");
+            if (Width == 0 || Height == 0)
+                throw new InvalidOperationException($"Cannot build a postage stamp from a {Width}x{Height} image.");
+            if (imageData.Length != Header.ImageDataLength)
+                throw new InvalidOperationException($"ImageArea.ImageData is {imageData.Length} bytes but the header declares {Header.ImageDataLength}.");
+
             // ToNewFormat guarantees the extension area; the stamp is rebuilt from the main image data.
             ToNewFormat();
             TgaPostageStampImage stamp = ExtensionArea!.PostageStampImage ??= new TgaPostageStampImage();
-            byte[] imageData = ImageArea.ImageData ?? throw new InvalidOperationException("ImageArea.ImageData is null; nothing to build a postage stamp from.");
 
             int psWidth = Header.ImageSpec.ImageWidth;
             int psHeight = Header.ImageSpec.ImageHeight;

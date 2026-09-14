@@ -204,17 +204,47 @@ public class RleCodecTests
     [TestMethod]
     public void Encode_RawFollowedByRun_RawPacketEndsWhereRunStarts()
     {
-        byte[] encoded = RleCodec.Encode([1, 2, 3, 3], bytesPerPixel: 1, width: 4, height: 1);
+        byte[] encoded = RleCodec.Encode([1, 2, 3, 3, 3], bytesPerPixel: 1, width: 5, height: 1);
 
-        CollectionAssert.AreEqual(new byte[] { 0x01, 1, 2, 0x81, 3 }, encoded);
+        CollectionAssert.AreEqual(new byte[] { 0x01, 1, 2, 0x82, 3 }, encoded);
     }
 
     [TestMethod]
     public void Encode_RunThenRaw_RunPacketThenRawPacket()
     {
-        byte[] encoded = RleCodec.Encode([5, 5, 1, 2], bytesPerPixel: 1, width: 4, height: 1);
+        byte[] encoded = RleCodec.Encode([5, 5, 5, 1, 2], bytesPerPixel: 1, width: 5, height: 1);
 
-        CollectionAssert.AreEqual(new byte[] { 0x81, 5, 0x01, 1, 2 }, encoded);
+        CollectionAssert.AreEqual(new byte[] { 0x82, 5, 0x01, 1, 2 }, encoded);
+    }
+
+    [TestMethod]
+    public void Encode_TwoPixelRunAt1Bpp_StaysRawBecauseARunPacketIsNoSmaller()
+    {
+        // 1bpp: run packet (2 bytes) == 2 raw pixels; splitting the raw packet would cost a header more.
+        byte[] encoded = RleCodec.Encode([1, 2, 3, 3, 4, 5], bytesPerPixel: 1, width: 6, height: 1);
+
+        CollectionAssert.AreEqual(new byte[] { 0x05, 1, 2, 3, 3, 4, 5 }, encoded);
+    }
+
+    [TestMethod]
+    public void Encode_TwoPixelRunAt3Bpp_BecomesRunPacket()
+    {
+        // 3bpp: run packet (4 bytes) beats 2 raw pixels (6 bytes) even after paying for the extra raw header.
+        byte[] encoded = RleCodec.Encode([1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3], bytesPerPixel: 3, width: 4, height: 1);
+
+        CollectionAssert.AreEqual(new byte[] { 0x00, 1, 1, 1, 0x81, 2, 2, 2, 0x00, 3, 3, 3 }, encoded);
+    }
+
+    [TestMethod]
+    public void Encode_IsolatedTwoPixelRunsAt1Bpp_NeverExceedsRawSizePlusOneHeader()
+    {
+        // (a, b, c, c) repeated across a 128-pixel row used to encode to 160 bytes.
+        byte[] row = Enumerable.Range(0, 32).SelectMany(_ => new byte[] { 1, 2, 3, 3 }).ToArray();
+
+        byte[] encoded = RleCodec.Encode(row, bytesPerPixel: 1, width: 128, height: 1);
+
+        Assert.AreEqual(129, encoded.Length);
+        CollectionAssert.AreEqual(row, RleCodec.Decode(new BinaryReader(new MemoryStream(encoded)), 1, row.Length));
     }
 
     [TestMethod]

@@ -62,6 +62,14 @@ public class TgaDeveloperAreaTests
     }
 
     [TestMethod]
+    public void GetHashCode_NullEntry_DoesNotThrow()
+    {
+        var area = new TgaDeveloperArea([null!]);
+
+        _ = area.GetHashCode();
+    }
+
+    [TestMethod]
     public void ToBytes_MoreThanUshortMaxEntries_ThrowsInvalidOperationException()
     {
         var entries = new List<TgaDeveloperEntry>(ushort.MaxValue + 1);

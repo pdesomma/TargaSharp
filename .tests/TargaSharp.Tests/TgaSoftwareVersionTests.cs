@@ -43,10 +43,42 @@ public class TgaSoftwareVersionTests
 
     [TestMethod]
     [DataRow("12")]
-    [DataRow("12345")]
-    public void Ctor_String_WrongLength_ThrowsArgumentOutOfRangeException(string input)
+    [DataRow("65536")]
+    public void Ctor_String_TooShortOrNumberTooLarge_ThrowsArgumentOutOfRangeException(string input)
     {
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaSoftwareVersion(input));
+    }
+
+    [TestMethod]
+    [DataRow("1234", 1234, ' ')]
+    [DataRow("12345", 12345, ' ')]
+    [DataRow("65535z", 65535, 'z')]
+    public void Ctor_String_MoreThanThreeDigits_ParsesAllDigitsAsTheNumber(string input, int number, char letter)
+    {
+        var version = new TgaSoftwareVersion(input);
+
+        Assert.AreEqual((ushort)number, version.VersionNumber);
+        Assert.AreEqual(letter, version.VersionLetter);
+    }
+
+    [TestMethod]
+    [DataRow("12a4")]
+    [DataRow("123ab")]
+    public void Ctor_String_LetterNotLast_ThrowsFormatException(string input)
+    {
+        Assert.ThrowsExactly<FormatException>(() => new TgaSoftwareVersion(input));
+    }
+
+    [TestMethod]
+    [DataRow(1234, ' ')]
+    [DataRow(65535, 'b')]
+    public void ToString_ThenCtorString_RoundTripsVersionsAbove999(int number, char letter)
+    {
+        var original = new TgaSoftwareVersion((ushort)number, letter);
+
+        var parsed = new TgaSoftwareVersion(original.ToString());
+
+        Assert.AreEqual(original, parsed);
     }
 
     [TestMethod]

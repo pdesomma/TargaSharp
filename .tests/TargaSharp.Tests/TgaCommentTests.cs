@@ -100,6 +100,14 @@ public class TgaCommentTests
     }
 
     [TestMethod]
+    public void SetLine_EmbeddedNul_ThrowsArgumentException()
+    {
+        var comment = new TgaComment();
+
+        Assert.ThrowsExactly<ArgumentException>(() => comment.SetLine(0, "ab\0cd"));
+    }
+
+    [TestMethod]
     public void Copy_MutatingCopyLines_DoesNotAffectOriginal()
     {
         var original = new TgaComment("original");

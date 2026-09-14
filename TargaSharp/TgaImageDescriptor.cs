@@ -18,6 +18,11 @@
         public const int Size = 1;
 
         /// <summary>
+        /// Largest <see cref="AlphaChannelBits"/> value: bits 3-0 of the descriptor byte.
+        /// </summary>
+        public const byte MaxAlphaChannelBits = 0x0F;
+
+        /// <summary>
         /// Backing field for <see cref="AlphaChannelBits"/>.
         /// </summary>
         private byte _alphaChannelBits;
@@ -61,8 +66,8 @@
             get => _alphaChannelBits;
             set
             {
-                if (value > 15)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "AlphaChannelBits must be in range 0-15 (bits 3-0 of the ImageDescriptor byte).");
+                if (value > MaxAlphaChannelBits)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"AlphaChannelBits must be in range 0-{MaxAlphaChannelBits} (bits 3-0 of the ImageDescriptor byte).");
                 _alphaChannelBits = value;
             }
         }

@@ -92,7 +92,7 @@ namespace TargaSharp
         /// This is the file-reader path: bytes read from disk are decoded leniently with
         /// <see cref="Encoding.ASCII"/> (which maps code points >= 128 to '?') instead of
         /// throwing, since malformed non-ASCII bytes are known to appear in the wild. Structural
-        /// invariant validation (see <see cref="Validate"/>) is intentionally skipped here.
+        /// invariant validation (see <see cref="Validate()"/>) is intentionally skipped here.
         /// </remarks>
         public TgaString(byte[] bytes, bool useEnding = false)
         {
@@ -180,7 +180,7 @@ namespace TargaSharp
         /// </summary>
         /// <exception cref="ArgumentNullException">Thrown when set to <see langword="null"/>.</exception>
         /// <exception cref="ArgumentException">Thrown when set to a value containing a non-ASCII
-        /// character.</exception>
+        /// character or a NUL.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when the value is too long to fit
         /// within <see cref="Length"/> (minus the optional ending character).</exception>
         public string OriginalString
@@ -189,8 +189,8 @@ namespace TargaSharp
             set
             {
                 ArgumentNullException.ThrowIfNull(value);
+                Validate(value, _length, _useEndingChar);
                 _originalString = value;
-                Validate();
             }
         }
 
@@ -205,8 +205,8 @@ namespace TargaSharp
             get => _length;
             set
             {
+                Validate(_originalString, value, _useEndingChar);
                 _length = value;
-                Validate();
             }
         }
 
@@ -226,8 +226,8 @@ namespace TargaSharp
             get => _useEndingChar;
             set
             {
+                Validate(_originalString, _length, value);
                 _useEndingChar = value;
-                Validate();
             }
         }
 
@@ -293,31 +293,46 @@ namespace TargaSharp
         }
 
         /// <summary>
-        /// Validates the structural invariants that span <see cref="OriginalString"/>,
-        /// <see cref="Length"/> and <see cref="UseEndingChar"/> together. Since these are
-        /// independent mutable properties, this is called after every property setter assignment
-        /// and (directly against the backing fields) at the end of every constructor that accepts
-        /// caller-supplied values, so the combination is always checked as a whole. The lenient
-        /// byte-array (file-reader) constructor intentionally does not call this.
+        /// Validates the backing fields as a whole; called at the end of every constructor that
+        /// accepts caller-supplied values. The lenient byte-array (file-reader) constructor
+        /// intentionally does not call this.
         /// </summary>
-        /// <exception cref="ArgumentException">Thrown when <see cref="OriginalString"/> contains a
-        /// character with code point >= 128 (TGA fixed-width string fields are ASCII-only per spec).</exception>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when <see cref="Length"/> is
-        /// negative, or too small to hold both <see cref="OriginalString"/> and the optional
-        /// ending character reserved by <see cref="UseEndingChar"/>.</exception>
-        private void Validate()
+        /// <exception cref="ArgumentException">See <see cref="Validate(string, int, bool)"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">See <see cref="Validate(string, int, bool)"/>.</exception>
+        private void Validate() => Validate(_originalString, _length, _useEndingChar);
+
+        /// <summary>
+        /// Validates the structural invariants that span <see cref="OriginalString"/>,
+        /// <see cref="Length"/> and <see cref="UseEndingChar"/> together. Setters validate the
+        /// candidate combination <em>before</em> assigning, so a rejected value never leaves the
+        /// instance in a state whose <see cref="ToBytes()"/> would silently truncate.
+        /// </summary>
+        /// <param name="originalString">Candidate <see cref="OriginalString"/>.</param>
+        /// <param name="length">Candidate <see cref="Length"/>.</param>
+        /// <param name="useEndingChar">Candidate <see cref="UseEndingChar"/>.</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="originalString"/> contains a
+        /// character with code point >= 128 (TGA fixed-width string fields are ASCII-only per spec)
+        /// or a NUL, which every reader treats as the end of the text.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="length"/> is
+        /// negative, or too small to hold both <paramref name="originalString"/> and the optional
+        /// ending character reserved by <paramref name="useEndingChar"/>.</exception>
+        private static void Validate(string originalString, int length, bool useEndingChar)
         {
-            foreach (char c in _originalString)
+            foreach (char c in originalString)
+            {
                 if (c >= 128)
                     throw new ArgumentException($"OriginalString must be ASCII (all chars < 128); TGA fixed-width string fields are ASCII-only per spec. Found '{c}' (0x{(int)c:X2}).", nameof(OriginalString));
+                if (c == DefaultEndingChar)
+                    throw new ArgumentException("OriginalString must not contain NUL; readers treat it as the end of the text.", nameof(OriginalString));
+            }
 
-            int reserved = _useEndingChar ? 1 : 0;
+            int reserved = useEndingChar ? 1 : 0;
 
-            if (_length < reserved)
-                throw new ArgumentOutOfRangeException(nameof(Length), _length, $"Length must be >= {reserved} when UseEndingChar = {_useEndingChar} (room is needed for the mandatory ending character), per TGA fixed-width string field rules.");
+            if (length < reserved)
+                throw new ArgumentOutOfRangeException(nameof(Length), length, $"Length must be >= {reserved} when UseEndingChar = {useEndingChar} (room is needed for the mandatory ending character), per TGA fixed-width string field rules.");
 
-            if (_originalString.Length > _length - reserved)
-                throw new ArgumentOutOfRangeException(nameof(Length), _length, $"OriginalString.Length ({_originalString.Length}) must be <= Length - (UseEndingChar ? 1 : 0) ({_length - reserved}), per TGA fixed-width string field rules.");
+            if (originalString.Length > length - reserved)
+                throw new ArgumentOutOfRangeException(nameof(Length), length, $"OriginalString.Length ({originalString.Length}) must be <= Length - (UseEndingChar ? 1 : 0) ({length - reserved}), per TGA fixed-width string field rules.");
         }
 
         /// <inheritdoc />

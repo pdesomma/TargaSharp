@@ -21,6 +21,16 @@ public class TgaWriterTests
     }
 
     /// <summary>
+    /// An <see cref="ITgaLayoutPlanner"/> test double that emits one fixed section, proving
+    /// <see cref="TgaWriter"/> writes whatever layout the planner it was given produces.
+    /// </summary>
+    private sealed class FixedLayoutPlanner : ITgaLayoutPlanner
+    {
+        /// <inheritdoc />
+        public TgaLayout Plan(TgaFile file) => new([new TgaSection("Test", 0, [1, 2, 3])]);
+    }
+
+    /// <summary>
     /// Builds a small, otherwise-valid 24bpp <see cref="TgaFile"/> with populated image data.
     /// </summary>
     /// <returns>A small 24bpp <see cref="TgaFile"/>.</returns>
@@ -29,6 +39,22 @@ public class TgaWriterTests
         var file = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
         file.ImageArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
         return file;
+    }
+
+    [TestMethod]
+    public void Write_InjectedPlanner_WritesItsSections()
+    {
+        var writer = new TgaWriter(new TgaValidator(), new FixedLayoutPlanner());
+
+        byte[] bytes = writer.Write(CreateSmall24BppFile());
+
+        CollectionAssert.AreEqual(new byte[] { 1, 2, 3 }, bytes);
+    }
+
+    [TestMethod]
+    public void Ctor_NullPlanner_ThrowsArgumentNullException()
+    {
+        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaWriter(new TgaValidator(), null!));
     }
 
     [TestMethod]
