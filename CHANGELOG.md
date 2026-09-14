@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - An RLE stream that ended inside a run packet leaked `IndexOutOfRangeException` from the reader; truncated and overrunning RLE packets now raise `TgaFormatException`.
 - `TgaValidator` threw `NullReferenceException` on a `null` element in `DeveloperArea.Entries`; it is now reported as a `TgaValidationError`.
 - `Save`/`ToBytes` removed empty entries from and re-sorted the caller's `DeveloperArea.Entries` list; the file is still written tag-ordered without empty entries, but the in-memory list is no longer modified.
+- `ToBitmap()` on a file with `NoImageData`, a zero dimension or `null` `ImageData` failed with GDI+'s opaque "Parameter is not valid" (or a `NullReferenceException`); it now throws `InvalidOperationException` saying why.
 
 ## [0.2.0]
 

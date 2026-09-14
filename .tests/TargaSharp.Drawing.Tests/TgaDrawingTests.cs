@@ -57,6 +57,30 @@ public class TgaDrawingTests
     }
 
     [TestMethod]
+    public void ToBitmap_NullFile_ThrowsArgumentNullException()
+    {
+        Assert.ThrowsExactly<ArgumentNullException>(() => ((TgaFile)null!).ToBitmap());
+    }
+
+    [TestMethod]
+    public void ToBitmap_NoImageDataFile_ThrowsInvalidOperationException()
+    {
+        // Used to surface as GDI+'s opaque ArgumentException "Parameter is not valid" from new Bitmap(0, 0, ...).
+        var tga = new TgaFile(0, 0);
+
+        Assert.ThrowsExactly<InvalidOperationException>(() => tga.ToBitmap());
+    }
+
+    [TestMethod]
+    public void ToBitmap_NullImageData_ThrowsInvalidOperationException()
+    {
+        var tga = new TgaFile(2, 2);
+        tga.ImageArea.ImageData = null;
+
+        Assert.ThrowsExactly<InvalidOperationException>(() => tga.ToBitmap());
+    }
+
+    [TestMethod]
     public void FromBitmap_BitmapWithA1R5G5B5Palette_PreservesAlphaBitInColorMapData()
     {
         // Format8bppIndexed => IsColorMapped, and colorMap2BytesEntry: true + a palette that mixes
