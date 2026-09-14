@@ -208,7 +208,7 @@ public class TgaLayoutPlannerTests
         new TgaLayoutPlanner().Plan(file);
 
         Assert.IsFalse(file.ExtensionArea.DateTimeStamp.IsUnset);
-        Assert.IsTrue(file.ExtensionArea.DateTimeStamp.ToDateTime() >= new DateTime(before.Year, before.Month, before.Day, before.Hour, before.Minute, before.Second));
+        Assert.IsTrue(file.ExtensionArea.DateTimeStamp.ToDateTime()!.Value >= new DateTime(before.Year, before.Month, before.Day, before.Hour, before.Minute, before.Second));
     }
 
     [TestMethod]

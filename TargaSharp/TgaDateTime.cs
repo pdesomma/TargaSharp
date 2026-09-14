@@ -118,10 +118,14 @@
         public byte[] ToBytes() => new TgaByteBuilder(Size).Add(Month).Add(Day).Add(Year).Add(Hour).Add(Minute).Add(Second).ToArray();
 
         /// <summary>
-        /// Gets <see cref="TgaDateTime"/> like <see cref="DateTime"/>.
+        /// Gets <see cref="TgaDateTime"/> as a <see cref="DateTime"/>, or <see langword="null"/> when
+        /// <see cref="IsUnset"/> (all fields zero, the spec's "not set" value - which has no
+        /// <see cref="DateTime"/> equivalent, since year, month and day 0 are not representable).
         /// </summary>
-        /// <returns><see cref="DateTime"/> value of <see cref="TgaDateTime"/>.</returns>
-        public DateTime ToDateTime() => new DateTime(Year, Month, Day, Hour, Minute, Second);
+        /// <returns><see cref="DateTime"/> value of <see cref="TgaDateTime"/>, or <see langword="null"/> when unset.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">The fields are set but out of range for a
+        /// <see cref="DateTime"/> (e.g. month 13); see <see cref="Validation.TgaValidator"/>.</exception>
+        public DateTime? ToDateTime() => IsUnset ? null : new DateTime(Year, Month, Day, Hour, Minute, Second);
 
         /// <summary>
         /// Gets <see cref="TgaDateTime"/> like string.
