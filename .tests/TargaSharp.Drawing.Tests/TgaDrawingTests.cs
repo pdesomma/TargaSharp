@@ -74,6 +74,7 @@ public class TgaDrawingTests
     }
 
     [TestMethod]
+    [DataRow(PixelFormat.Format16bppRgb555)]
     [DataRow(PixelFormat.Format24bppRgb)]
     [DataRow(PixelFormat.Format32bppArgb)]
     [DataRow(PixelFormat.Format32bppRgb)]
@@ -292,16 +293,16 @@ public class TgaDrawingTests
     }
 
     [TestMethod]
-    public void ToBitmap_KeyColorOn16BppGrayscale_DoesNotThrow()
+    public void ToBitmap_KeyColorOn16BppGrayscale_ReturnsFormat32bppArgb()
     {
-        // MakeTransparent rebuilds the bitmap as 32bppArgb and fails outright on Format16bppGrayScale.
+        // 16bpp gray now lands in 8bpp indexed, which MakeTransparent can rebuild as 32bppArgb like every other depth.
         var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp16, TgaImageType.UncompressedGrayscale, attrBits: 8);
         tga.ExtensionArea!.KeyColor = new TgaColorKey(255, 1, 2, 3);
         tga.ImageArea.ImageData = new byte[2 * 2 * 2];
 
         using Bitmap bmp = tga.ToBitmap();
 
-        Assert.AreEqual(PixelFormat.Format16bppGrayScale, bmp.PixelFormat);
+        Assert.AreEqual(PixelFormat.Format32bppArgb, bmp.PixelFormat);
     }
 
     [TestMethod]
@@ -340,11 +341,11 @@ public class TgaDrawingTests
     }
 
     [TestMethod]
-    public void ToColor_FromColor_RoundTripsArgb()
+    public void ToTgaColorKey_ToColor_RoundTripsArgb()
     {
         var color = Color.FromArgb(1, 2, 3, 4);
 
-        TgaColorKey key = TgaColorKeyDrawingExtensions.FromColor(color);
+        TgaColorKey key = color.ToTgaColorKey();
 
         Assert.AreEqual((byte)1, key.A);
         Assert.AreEqual((byte)2, key.R);
@@ -518,5 +519,208 @@ public class TgaDrawingTests
         using var bmp = new Bitmap(1, 1, PixelFormat.Format32bppPArgb);
 
         Assert.ThrowsExactly<NotSupportedException>(() => TgaDrawing.FromBitmap(bmp, newFormat: false));
+    }
+
+    [TestMethod]
+    [DataRow(PixelFormat.Format16bppArgb1555)]
+    [DataRow(PixelFormat.Format32bppArgb)]
+    [DataRow(PixelFormat.Format32bppPArgb)]
+    public void FromBitmap_ThenToBitmap_TranslucentPixels_RoundTripsFormatAndBytes(PixelFormat pixelFormat)
+    {
+        using var bmp = new Bitmap(5, 2, pixelFormat);
+        for (int y = 0; y < bmp.Height; y++)
+            for (int x = 0; x < bmp.Width; x++)
+                bmp.SetPixel(x, y, Color.FromArgb(x * 60, 200, y * 100, x + y));
+
+        TgaFile tga = TgaDrawing.FromBitmap(bmp);
+        using Bitmap back = tga.ToBitmap();
+
+        Assert.AreEqual(pixelFormat, back.PixelFormat);
+        CollectionAssert.AreEqual(TgaBitmapRows.Read(bmp), TgaBitmapRows.Read(back));
+        for (int y = 0; y < bmp.Height; y++)
+            for (int x = 0; x < bmp.Width; x++)
+                Assert.AreEqual(bmp.GetPixel(x, y), back.GetPixel(x, y), $"pixel ({x},{y})");
+    }
+
+    [TestMethod]
+    public void FromBitmap_ThenToBitmap_ColorMappedNonIdentityPalette_RoundTripsPaletteAndIndices()
+    {
+        using var bmp = new Bitmap(5, 2, PixelFormat.Format8bppIndexed);
+        ColorPalette palette = bmp.Palette;
+        for (int i = 0; i < 256; i++) palette.Entries[i] = Color.FromArgb(255, (i * 3) & 255, 255 - i, i);
+        bmp.Palette = palette;
+        byte[] indices = [0, 1, 2, 3, 4, 250, 200, 150, 100, 50];
+        TgaBitmapRows.Write(bmp, indices);
+
+        TgaFile tga = TgaDrawing.FromBitmap(bmp);
+        using Bitmap back = tga.ToBitmap();
+
+        Assert.AreEqual(TgaImageType.UncompressedColorMapped, tga.Header.ImageType);
+        Assert.AreEqual(PixelFormat.Format8bppIndexed, back.PixelFormat);
+        CollectionAssert.AreEqual(indices, TgaBitmapRows.Read(back));
+        CollectionAssert.AreEqual(palette.Entries, back.Palette.Entries);
+        Assert.AreEqual(bmp.GetPixel(4, 1), back.GetPixel(4, 1));
+    }
+
+    /// <summary>
+    /// Builds a 2x2 file whose stored pixel k has value (k + 1) * 60 in its first channel (gray or blue).
+    /// </summary>
+    /// <param name="depth">8 (grayscale) or 32 (true-color).</param>
+    /// <param name="origin">Image origin to declare.</param>
+    /// <returns>The file.</returns>
+    private static TgaFile CreateChannelRampFile(TgaPixelDepth depth, TgaImageOrigin origin)
+    {
+        TgaImageType type = depth == TgaPixelDepth.Bpp8 ? TgaImageType.UncompressedGrayscale : TgaImageType.UncompressedTrueColor;
+        var tga = new TgaFile(2, 2, depth, type, newFormat: false);
+        tga.Header.ImageSpec.ImageDescriptor.ImageOrigin = origin;
+        int bpp = depth.BytesPerPixel();
+        for (int k = 0; k < 4; k++)
+        {
+            tga.ImageArea.ImageData![k * bpp] = (byte)((k + 1) * 60);
+            if (bpp == 4) tga.ImageArea.ImageData[k * bpp + 3] = 255;
+        }
+        return tga;
+    }
+
+    [TestMethod]
+    [DataRow(TgaPixelDepth.Bpp8, TgaImageOrigin.BottomLeft, 0, 1)]
+    [DataRow(TgaPixelDepth.Bpp8, TgaImageOrigin.TopRight, 1, 0)]
+    [DataRow(TgaPixelDepth.Bpp8, TgaImageOrigin.BottomRight, 1, 1)]
+    [DataRow(TgaPixelDepth.Bpp32, TgaImageOrigin.BottomLeft, 0, 1)]
+    [DataRow(TgaPixelDepth.Bpp32, TgaImageOrigin.TopRight, 1, 0)]
+    [DataRow(TgaPixelDepth.Bpp32, TgaImageOrigin.BottomRight, 1, 1)]
+    public void ToBitmap_ImageOriginOn8And32Bpp_PlacesFirstStoredPixelAtOriginCorner(TgaPixelDepth depth, TgaImageOrigin origin, int expectedX, int expectedY)
+    {
+        using Bitmap bmp = CreateChannelRampFile(depth, origin).ToBitmap();
+
+        Assert.AreEqual(60, bmp.GetPixel(expectedX, expectedY).B);
+        Assert.AreEqual(240, bmp.GetPixel(1 - expectedX, 1 - expectedY).B);
+    }
+
+    [TestMethod]
+    public void GetPostageStampBitmap_ColorMappedBottomLeft_AppliesPaletteAndFlips()
+    {
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp8, TgaImageType.UncompressedColorMapped);
+        tga.Header.ImageSpec.ImageDescriptor.ImageOrigin = TgaImageOrigin.BottomLeft;
+        tga.Header.ColorMapSpec.ColorMapLength = 4;
+        tga.ImageArea.ColorMapData = [0, 0, 10, 0, 0, 20, 0, 0, 30, 0, 0, 40]; // B G R: red 10/20/30/40
+        tga.ImageArea.ImageData = [0, 1, 2, 3];
+        tga.ExtensionArea!.PostageStampImage = new TgaPostageStampImage(2, 2, [0, 1, 2, 3]);
+
+        using Bitmap? stamp = tga.GetPostageStampBitmap();
+
+        Assert.IsNotNull(stamp);
+        Assert.AreEqual(PixelFormat.Format8bppIndexed, stamp.PixelFormat);
+        // Stored row 0 (indices 0, 1) is the bottom row after the flip.
+        Assert.AreEqual(30, stamp.GetPixel(0, 0).R);
+        Assert.AreEqual(40, stamp.GetPixel(1, 0).R);
+        Assert.AreEqual(10, stamp.GetPixel(0, 1).R);
+    }
+
+    [TestMethod]
+    public void ToBitmap_A8R8G8B8PaletteWithNoAlphaAttributes_ForceUseAlphaOverridesVeto()
+    {
+        var tga = new TgaFile(1, 1, TgaPixelDepth.Bpp8, TgaImageType.UncompressedColorMapped);
+        tga.Header.ColorMapSpec.ColorMapEntrySize = TgaColorMapEntrySize.A8R8G8B8;
+        tga.Header.ColorMapSpec.ColorMapLength = 1;
+        tga.ImageArea.ColorMapData = [30, 20, 10, 0x80]; // B G R A
+        tga.ImageArea.ImageData = [0];
+        tga.ExtensionArea!.AttributesType = TgaAttributeType.NoAlpha;
+
+        using Bitmap vetoed = tga.ToBitmap();
+        using Bitmap forced = tga.ToBitmap(forceUseAlpha: true);
+
+        Assert.AreEqual(255, vetoed.Palette.Entries[0].A);
+        Assert.AreEqual(Color.FromArgb(0x80, 10, 20, 30), forced.Palette.Entries[0]);
+    }
+
+    [TestMethod]
+    public void FromBitmap_PaletteAllAlpha250_KeepsAlphaEntries()
+    {
+        // Used to treat A >= 248 as opaque and silently rewrite the palette.
+        using var bmp = new Bitmap(1, 1, PixelFormat.Format8bppIndexed);
+        ColorPalette palette = bmp.Palette;
+        for (int i = 0; i < 256; i++) palette.Entries[i] = Color.FromArgb(250, i, 0, 0);
+        bmp.Palette = palette;
+
+        TgaFile tga = TgaDrawing.FromBitmap(bmp);
+        using Bitmap back = tga.ToBitmap();
+
+        Assert.AreEqual(TgaColorMapEntrySize.A8R8G8B8, tga.Header.ColorMapSpec.ColorMapEntrySize);
+        Assert.AreEqual(TgaAttributeType.UsefulAlpha, tga.ExtensionArea!.AttributesType);
+        Assert.AreEqual(250, back.Palette.Entries[7].A);
+    }
+
+    [TestMethod]
+    public void FromBitmap_PaletteAllTransparent_KeepsAlphaEntries()
+    {
+        // An all-A=0 palette used to be written opaque because "no entry has alpha > 0".
+        using var bmp = new Bitmap(1, 1, PixelFormat.Format8bppIndexed);
+        ColorPalette palette = bmp.Palette;
+        for (int i = 0; i < 256; i++) palette.Entries[i] = Color.FromArgb(0, i, 0, 0);
+        bmp.Palette = palette;
+
+        TgaFile tga = TgaDrawing.FromBitmap(bmp);
+        using Bitmap back = tga.ToBitmap();
+
+        Assert.AreEqual(TgaColorMapEntrySize.A8R8G8B8, tga.Header.ColorMapSpec.ColorMapEntrySize);
+        Assert.AreEqual(0, back.Palette.Entries[7].A);
+    }
+
+    [TestMethod]
+    public void ToBitmap_16BppGrayscale_ReturnsFormat8bppIndexedOfHighBytes()
+    {
+        // Format16bppGrayScale is unusable in GDI+ (GetPixel/Clone/Save all throw) and used to be written byte-inverted.
+        var tga = new TgaFile(2, 1, TgaPixelDepth.Bpp16, TgaImageType.UncompressedGrayscale, newFormat: false);
+        tga.ImageArea.ImageData = [0x34, 0x12, 0xFF, 0x80]; // little-endian: 0x1234, 0x80FF
+
+        using Bitmap bmp = tga.ToBitmap();
+
+        Assert.AreEqual(PixelFormat.Format8bppIndexed, bmp.PixelFormat);
+        Assert.AreEqual(Color.FromArgb(0x12, 0x12, 0x12), bmp.GetPixel(0, 0));
+        Assert.AreEqual(Color.FromArgb(0x80, 0x80, 0x80), bmp.GetPixel(1, 0));
+    }
+
+    [TestMethod]
+    public void ToBitmap_Monochrome16Fixture_PinsHighBytePixelValues()
+    {
+        var tga = new TgaFile(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", "monochrome16_top_left.tga")));
+
+        using Bitmap bmp = tga.ToBitmap();
+
+        Assert.AreEqual(PixelFormat.Format8bppIndexed, bmp.PixelFormat);
+        Assert.AreEqual(186, bmp.GetPixel(0, 0).R);
+        Assert.AreEqual(55, bmp.GetPixel(1, 0).R);
+        Assert.AreEqual(196, bmp.GetPixel(32, 0).R);
+        Assert.AreEqual(0, bmp.GetPixel(63, 0).R);
+    }
+
+    [TestMethod]
+    public void ToBitmap_16BppGrayscale_ThenFromBitmap_Produces8BppGrayscaleOfHighBytes()
+    {
+        var tga = new TgaFile(2, 1, TgaPixelDepth.Bpp16, TgaImageType.UncompressedGrayscale, newFormat: false);
+        tga.ImageArea.ImageData = [0x34, 0x12, 0xFF, 0x80];
+
+        using Bitmap bmp = tga.ToBitmap();
+        TgaFile back = TgaDrawing.FromBitmap(bmp);
+
+        Assert.AreEqual(TgaImageType.UncompressedGrayscale, back.Header.ImageType);
+        Assert.AreEqual(TgaPixelDepth.Bpp8, back.Header.ImageSpec.PixelDepth);
+        CollectionAssert.AreEqual(new byte[] { 0x12, 0x80 }, back.ImageArea.ImageData);
+        Assert.AreEqual(0, back.Validate().Count);
+    }
+
+    [TestMethod]
+    public void FromBitmap_Format16bppGrayScale_CopiesRawBytesWithoutInversion()
+    {
+        using var bmp = new Bitmap(2, 1, PixelFormat.Format16bppGrayScale);
+        byte[] raw = [0x34, 0x12, 0xFF, 0x80];
+        TgaBitmapRows.Write(bmp, raw);
+
+        TgaFile tga = TgaDrawing.FromBitmap(bmp);
+
+        Assert.AreEqual(TgaImageType.UncompressedGrayscale, tga.Header.ImageType);
+        Assert.AreEqual(TgaPixelDepth.Bpp16, tga.Header.ImageSpec.PixelDepth);
+        CollectionAssert.AreEqual(raw, tga.ImageArea.ImageData);
     }
 }

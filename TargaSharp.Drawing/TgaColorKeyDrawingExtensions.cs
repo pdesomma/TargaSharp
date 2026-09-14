@@ -19,6 +19,6 @@ namespace TargaSharp.Drawing
         /// </summary>
         /// <param name="color">GDI+ <see cref="Color"/> value.</param>
         /// <returns>New <see cref="TgaColorKey"/> matching <paramref name="color"/>.</returns>
-        public static TgaColorKey FromColor(Color color) => new TgaColorKey(color.A, color.R, color.G, color.B);
+        public static TgaColorKey ToTgaColorKey(this Color color) => new TgaColorKey(color.A, color.R, color.G, color.B);
     }
 }

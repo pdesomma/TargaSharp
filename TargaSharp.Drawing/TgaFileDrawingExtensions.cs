@@ -1,6 +1,5 @@
 ﻿using System.Drawing;
 using System.Drawing.Imaging;
-using System.Runtime.InteropServices;
 
 namespace TargaSharp.Drawing
 {
@@ -16,7 +15,10 @@ namespace TargaSharp.Drawing
         /// <param name="forceUseAlpha">Force use alpha channel.</param>
         /// <returns>The image as a <see cref="Bitmap"/>. When the extension area carries a non-zero
         /// <see cref="TgaExtensionArea.KeyColor"/> the key is applied with <see cref="Bitmap.MakeTransparent(Color)"/>,
-        /// which converts the result to <see cref="PixelFormat.Format32bppArgb"/> regardless of the file's depth.</returns>
+        /// which converts the result to <see cref="PixelFormat.Format32bppArgb"/> regardless of the file's depth.
+        /// A 16bpp grayscale image is returned as <see cref="PixelFormat.Format8bppIndexed"/> with an identity gray
+        /// palette, keeping only each pixel's high byte: GDI+ cannot read, draw, clone or save
+        /// <see cref="PixelFormat.Format16bppGrayScale"/>, so the mapping is lossy but usable.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="tga"/> is <see langword="null"/>.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="tga"/> has no image: its
         /// <see cref="TgaHeader.ImageType"/> is <see cref="TgaImageType.NoImageData"/>, its width or height
@@ -57,7 +59,7 @@ namespace TargaSharp.Drawing
             if (tga.Header.ImageType == TgaImageType.NoImageData || stamp is null || stamp.Data is null || stamp.Width == 0 || stamp.Height == 0)
                 return null;
             // A stamp shorter than its declared size used to yield a half-filled or throwing bitmap.
-            if (stamp.Data.Length != stamp.Width * stamp.Height * tga.Header.ImageSpec.PixelDepth.BytesPerPixel())
+            if (stamp.Data.Length != stamp.DataLength(tga.Header.ImageSpec.PixelDepth))
                 return null;
 
             return ToBitmapCore(tga, forceUseAlpha, stamp.Width, stamp.Height, stamp.Data);
@@ -79,8 +81,7 @@ namespace TargaSharp.Drawing
         private static Bitmap ToBitmapCore(TgaFile tga, bool forceUseAlpha, int width, int height, byte[] pixels)
         {
             int bytesPerPixel = tga.Header.ImageSpec.PixelDepth.BytesPerPixel();
-            int strideBytes = width * bytesPerPixel;
-            long expected = (long)strideBytes * height;
+            long expected = (long)width * bytesPerPixel * height;
             // Marshal.Copy into Scan0 is unchecked: a too-long buffer corrupts the GDI+ heap and kills the process.
             if (pixels.Length != expected)
                 throw new InvalidOperationException($"Image data is {pixels.Length} bytes but {width}x{height}x{bytesPerPixel} needs {expected}.");
@@ -102,7 +103,12 @@ namespace TargaSharp.Drawing
                     throw new InvalidOperationException($"{nameof(TgaFile)}.{nameof(TgaFile.ImageArea)}.{nameof(TgaImageArea.ColorMapData)} is {tga.ImageArea.ColorMapData?.Length.ToString() ?? "null"} bytes but the header declares {expectedPalette}.");
             }
 
-            PixelFormat pixFormat = ResolvePixelFormat(tga, useAlpha, isGrayImage);
+            bool preMultiplied = tga.ExtensionArea?.AttributesType == TgaAttributeType.PreMultipliedAlpha;
+            PixelFormat pixFormat = TgaPixelFormatMap.Resolve(tga.Header.ImageSpec.PixelDepth, useAlpha, isGrayImage, preMultiplied);
+            // 16bpp grayscale has no usable GDI+ format: keep each little-endian pixel's high byte as an 8bpp gray index.
+            if (isGrayImage && tga.Header.ImageSpec.PixelDepth == TgaPixelDepth.Bpp16)
+                pixels = HighBytes(pixels);
+
             var bmp = new Bitmap(width, height, pixFormat);
             try
             {
@@ -114,17 +120,16 @@ namespace TargaSharp.Drawing
                 }
                 else if (pixFormat == PixelFormat.Format8bppIndexed)
                 {
-                    // 8bpp grayscale (or 8bpp true-color, which has no palette of its own): identity gray ramp.
+                    // 8bpp grayscale, 16bpp grayscale high bytes, or 8bpp true-color (no palette of its own): identity gray ramp.
                     ColorPalette grayPalette = bmp.Palette;
                     for (int i = 0; i < grayPalette.Entries.Length; i++)
                         grayPalette.Entries[i] = Color.FromArgb(i, i, i);
                     bmp.Palette = grayPalette;
                 }
 
-                CopyRows(pixels, bmp, strideBytes, pixFormat == PixelFormat.Format16bppGrayScale);
+                TgaBitmapRows.Write(bmp, pixels);
 
-                // GDI+ has no key-color notion for Format16bppGrayScale (MakeTransparent throws a generic GDI+ error).
-                if (tga.ExtensionArea != null && tga.ExtensionArea.KeyColor.ToInt() != 0 && pixFormat != PixelFormat.Format16bppGrayScale)
+                if (tga.ExtensionArea != null && tga.ExtensionArea.KeyColor.ToInt() != 0)
                     bmp.MakeTransparent(tga.ExtensionArea.KeyColor.ToColor());
 
                 // TGA rows are stored from the origin corner; GDI+ is always top-left.
@@ -155,37 +160,16 @@ namespace TargaSharp.Drawing
         }
 
         /// <summary>
-        /// Maps the file's pixel depth (and image type / alpha usage) to the GDI+ <see cref="PixelFormat"/> holding the same byte layout.
+        /// Keeps the high byte of every little-endian 16-bit pixel.
         /// </summary>
-        /// <param name="tga">Source <see cref="TgaFile"/>.</param>
-        /// <param name="useAlpha">Whether the per-pixel attribute bits are meaningful alpha.</param>
-        /// <param name="isGrayImage">Whether the image type is black-and-white.</param>
-        /// <returns>The matching <see cref="PixelFormat"/>.</returns>
-        /// <exception cref="NotSupportedException">The pixel depth has no GDI+ equivalent.</exception>
-        private static PixelFormat ResolvePixelFormat(TgaFile tga, bool useAlpha, bool isGrayImage)
+        /// <param name="pixels16">16-bit pixels, low byte first.</param>
+        /// <returns>Half-length buffer of high bytes.</returns>
+        private static byte[] HighBytes(byte[] pixels16)
         {
-            switch (tga.Header.ImageSpec.PixelDepth)
-            {
-                case TgaPixelDepth.Bpp8:
-                    return PixelFormat.Format8bppIndexed;
-
-                case TgaPixelDepth.Bpp16:
-                    if (isGrayImage) return PixelFormat.Format16bppGrayScale;
-                    return useAlpha ? PixelFormat.Format16bppArgb1555 : PixelFormat.Format16bppRgb555;
-
-                case TgaPixelDepth.Bpp24:
-                    return PixelFormat.Format24bppRgb;
-
-                case TgaPixelDepth.Bpp32:
-                    if (!useAlpha) return PixelFormat.Format32bppRgb;
-                    return tga.ExtensionArea?.AttributesType == TgaAttributeType.PreMultipliedAlpha
-                        ? PixelFormat.Format32bppPArgb
-                        : PixelFormat.Format32bppArgb;
-
-                default:
-                    // Used to hand PixelFormat.Undefined to new Bitmap, which fails with "Parameter is not valid".
-                    throw new NotSupportedException($"{nameof(TgaPixelDepth)} {(byte)tga.Header.ImageSpec.PixelDepth} has no {nameof(PixelFormat)} equivalent.");
-            }
+            byte[] high = new byte[pixels16.Length / 2];
+            for (int i = 0; i < high.Length; i++)
+                high[i] = pixels16[i * 2 + 1];
+            return high;
         }
 
         /// <summary>
@@ -217,38 +201,6 @@ namespace TargaSharp.Drawing
             }
 
             bmp.Palette = palette;
-        }
-
-        /// <summary>
-        /// Writes unpadded rows into the bitmap's buffer one row at a time so GDI+'s own stride (padding,
-        /// or a negative stride for bottom-up surfaces) is respected instead of assumed.
-        /// </summary>
-        /// <param name="pixels">Unpadded row-major pixel bytes.</param>
-        /// <param name="bmp">Destination bitmap.</param>
-        /// <param name="strideBytes">Unpadded bytes per row.</param>
-        /// <param name="invert">Whether to invert every byte (GDI+'s 16bpp grayscale stores inverted intensities).</param>
-        private static void CopyRows(byte[] pixels, Bitmap bmp, int strideBytes, bool invert)
-        {
-            byte[] source = pixels;
-            if (invert)
-            {
-                // Not officially supported by GDI+, but round-trips (tested on 16bpp grayscale images).
-                source = (byte[])pixels.Clone();
-                for (int i = 0; i < source.Length; i++)
-                    source[i] ^= byte.MaxValue;
-            }
-
-            var rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
-            BitmapData bmpData = bmp.LockBits(rect, ImageLockMode.WriteOnly, bmp.PixelFormat);
-            try
-            {
-                for (int y = 0; y < bmp.Height; y++)
-                    Marshal.Copy(source, y * strideBytes, bmpData.Scan0 + (nint)y * bmpData.Stride, strideBytes);
-            }
-            finally
-            {
-                bmp.UnlockBits(bmpData);
-            }
         }
     }
 }
