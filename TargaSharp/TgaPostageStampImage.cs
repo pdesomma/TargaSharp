@@ -12,6 +12,11 @@
         public const byte MaxSize = 64;
 
         /// <summary>
+        /// Bytes preceding <see cref="Data"/> on disk: one each for <see cref="Width"/> and <see cref="Height"/>.
+        /// </summary>
+        public const int HeaderSize = 2;
+
+        /// <summary>
         /// Backing field for <see cref="Width"/>.
         /// </summary>
         private byte _width;
@@ -141,7 +146,7 @@
         /// Convert <see cref="TgaPostageStampImage"/> to byte array.
         /// </summary>
         /// <returns>Byte array.</returns>
-        public byte[] ToBytes() => new TgaByteBuilder(2 + Data.Length).Add(Width).Add(Height).Add(Data).ToArray();
+        public byte[] ToBytes() => new TgaByteBuilder(HeaderSize + Data.Length).Add(Width).Add(Height).Add(Data).ToArray();
 
         /// <summary>
         /// Gets <see cref="TgaPostageStampImage"/> like string.

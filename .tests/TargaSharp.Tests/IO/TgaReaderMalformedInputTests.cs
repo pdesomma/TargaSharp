@@ -61,6 +61,85 @@ public class TgaReaderMalformedInputTests
     }
 
     [TestMethod]
+    public void Read_NoColorMapWithStaleColorMapLength_DoesNotConsumePaletteBytes()
+    {
+        // Spec Field 7: the color map is present only when ColorMapType says so. A stale length on a
+        // NoColorMap header used to swallow the first pixel bytes as palette and misalign the image.
+        var file = new TgaFile(2, 1, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor, newFormat: false);
+        file.ImageArea.ImageData = [1, 2, 3, 4, 5, 6];
+        byte[] bytes = file.ToBytes();
+        TgaBinary.WriteUInt16(bytes, 5, 256); // ColorMapLength
+        bytes[7] = 24;                        // ColorMapEntrySize
+
+        TgaFile read = new TgaReader().Read(bytes);
+
+        Assert.IsNull(read.ImageArea.ColorMapData);
+        CollectionAssert.AreEqual(file.ImageArea.ImageData, read.ImageArea.ImageData);
+    }
+
+    [TestMethod]
+    public void Read_RleImageWithZeroHeight_LoadsEmptyImageDataWithoutConsumingFooter()
+    {
+        // 0xN RLE image: the decoder used to read one packet regardless, eating the first footer/extension byte.
+        var file = new TgaFile(2, 1, TgaPixelDepth.Bpp24, TgaImageType.RleTrueColor, newFormat: false);
+        byte[] bytes = file.ToBytes();
+        TgaBinary.WriteUInt16(bytes, 14, 0); // ImageHeight
+        byte[] headerOnly = bytes[..TgaHeader.Size];
+
+        TgaFile read = new TgaReader().Read(headerOnly);
+
+        Assert.AreEqual(0, read.ImageArea.ImageData!.Length);
+    }
+
+    [TestMethod]
+    public void Read_ValidLegacyFileShorterThanFooter_LoadsWithoutFooter()
+    {
+        // 1x1 8bpp grayscale legacy file is 19 bytes, shorter than the 26-byte footer the reader probes for.
+        var file = new TgaFile(1, 1, TgaPixelDepth.Bpp8, TgaImageType.UncompressedGrayscale, newFormat: false);
+        byte[] bytes = file.ToBytes();
+        Assert.IsTrue(bytes.Length < TgaFooter.Size);
+
+        TgaFile read = new TgaReader().Read(bytes);
+
+        Assert.IsNull(read.Footer);
+        Assert.AreEqual((ushort)1, read.Width);
+    }
+
+    [TestMethod]
+    public void Read_FooterOffsetsBeyondEndOfFile_ThrowsTgaFormatException()
+    {
+        TgaFile file = CreateFileWithEverySection();
+        byte[] bytes = file.ToBytes();
+        TgaBinary.WriteUInt32(bytes, bytes.Length - TgaFooter.Size, 0x7FFFFFFF); // ExtensionAreaOffset
+
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+    }
+
+    [TestMethod]
+    public void Read_TruncatedScanLineTable_ThrowsTgaFormatException()
+    {
+        TgaFile file = CreateFileWithEverySection();
+        file.ExtensionArea!.ScanLineTable = new uint[file.Height];
+        byte[] bytes = file.ToBytes();
+        // Point the scan-line table at the last 2 bytes so the second uint cannot be read.
+        TgaBinary.WriteUInt32(bytes, (int)file.Footer!.ExtensionAreaOffset + 490, (uint)(bytes.Length - 2));
+
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+    }
+
+    [TestMethod]
+    public void Read_PostageStampLargerThanMaxSize_IsSkipped()
+    {
+        TgaFile file = CreateFileWithEverySection();
+        byte[] bytes = file.ToBytes();
+        bytes[file.ExtensionArea!.PostageStampOffset] = TgaPostageStampImage.MaxSize + 1; // stamp width
+
+        TgaFile read = new TgaReader().Read(bytes);
+
+        Assert.IsNull(read.ExtensionArea!.PostageStampImage);
+    }
+
+    [TestMethod]
     public void Read_FileCutInsideImageId_ThrowsTgaFormatException()
     {
         byte[] bytes = CreateFileWithEverySection().ToBytes();

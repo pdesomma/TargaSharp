@@ -9,7 +9,9 @@
         /// Writes <paramref name="file"/> to a stream.
         /// </summary>
         /// <param name="file">The <see cref="TgaFile"/> to write.</param>
-        /// <param name="stream">Destination stream. Must support <see cref="Stream.CanWrite"/>.</param>
+        /// <param name="stream">Destination stream, written from its current position. File offsets embedded in
+        /// the footer and extension area are relative to that position, so it should be the start of the stream
+        /// (offset 0) for the result to be a standalone TGA file. Must support <see cref="Stream.CanWrite"/>.</param>
         void Write(TgaFile file, Stream stream);
 
         /// <summary>

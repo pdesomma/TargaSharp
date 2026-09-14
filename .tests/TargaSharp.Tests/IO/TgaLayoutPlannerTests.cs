@@ -181,6 +181,96 @@ public class TgaLayoutPlannerTests
     }
 
     [TestMethod]
+    public void Plan_PaddedImageId_HonorsFieldLength()
+    {
+        // A padded ID read from disk (Length 6, text "abc") used to be shortened to 3 on write.
+        var file = new TgaFile(2, 2);
+        file.ImageArea.ImageId = new TgaString("abc", 6, true);
+
+        new TgaLayoutPlanner().Plan(file);
+
+        Assert.AreEqual((byte)6, file.Header.IdLength);
+        Assert.AreEqual(6, file.ImageArea.ImageId.Length);
+    }
+
+    [TestMethod]
+    public void Plan_ImageIdLongerThan255Bytes_ThrowsTgaValidationException()
+    {
+        var file = new TgaFile(2, 2);
+        file.ImageArea.ImageId = new TgaString("x", 256);
+
+        var ex = Assert.ThrowsExactly<TgaValidationException>(() => new TgaLayoutPlanner().Plan(file));
+        Assert.AreEqual("ImageArea.ImageId", ex.Errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Plan_ColorMapDataLengthMismatch_ThrowsTgaValidationException()
+    {
+        var file = new TgaFile(2, 2, TgaPixelDepth.Bpp8, TgaImageType.UncompressedColorMapped);
+        file.Header.ColorMapSpec.ColorMapLength = 2;
+        file.ImageArea.ColorMapData = new byte[5];
+
+        var ex = Assert.ThrowsExactly<TgaValidationException>(() => new TgaLayoutPlanner().Plan(file));
+        Assert.AreEqual("ImageArea.ColorMapData", ex.Errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Plan_ZeroWidth_ThrowsTgaValidationException()
+    {
+        var file = new TgaFile(2, 2);
+        file.Width = 0;
+        file.ImageArea.ImageData = [];
+
+        var ex = Assert.ThrowsExactly<TgaValidationException>(() => new TgaLayoutPlanner().Plan(file));
+        Assert.AreEqual("ImageArea.ImageData", ex.Errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Plan_HeaderDeclaringImageOverIntMaxWithEmptyData_ThrowsTgaValidationException()
+    {
+        // 32768 x 32768 x 4 wrapped to exactly 0 in int, so an empty ImageData used to pass this check.
+        var file = new TgaFile(2, 2, TgaPixelDepth.Bpp32);
+        file.Width = 32768;
+        file.Height = 32768;
+        file.ImageArea.ImageData = [];
+
+        Assert.ThrowsExactly<TgaValidationException>(() => new TgaLayoutPlanner().Plan(file));
+    }
+
+    [TestMethod]
+    [DataRow("ScanLineTable")]
+    [DataRow("ColorCorrectionTable")]
+    [DataRow("PostageStampImage.Data")]
+    public void Plan_ExtensionTableLengthMismatch_ThrowsTgaValidationException(string table)
+    {
+        var file = new TgaFile(2, 2);
+        switch (table)
+        {
+            case "ScanLineTable": file.ExtensionArea!.ScanLineTable = [1]; break;
+            case "ColorCorrectionTable": file.ExtensionArea!.ColorCorrectionTable = [1]; break;
+            default: file.ExtensionArea!.PostageStampImage = new TgaPostageStampImage(1, 1, new byte[1]); break;
+        }
+
+        var ex = Assert.ThrowsExactly<TgaValidationException>(() => new TgaLayoutPlanner().Plan(file));
+        Assert.AreEqual("ExtensionArea." + table, ex.Errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Plan_ColorMappedFile_ColorMapSectionFollowsImageId()
+    {
+        var file = new TgaFile(2, 2, TgaPixelDepth.Bpp8, TgaImageType.UncompressedColorMapped);
+        file.Header.ColorMapSpec.ColorMapLength = 2;
+        file.ImageArea.ColorMapData = new byte[6];
+        file.ImageArea.ImageId = new TgaString("id", 2);
+
+        TgaLayout layout = new TgaLayoutPlanner().Plan(file);
+
+        CollectionAssert.AreEqual(
+            new[] { "Header", "ImageArea.ImageId", "ImageArea.ColorMapData", "ImageArea.ImageData", "ExtensionArea", "Footer" },
+            layout.Sections.Select(s => s.Name).ToArray());
+    }
+
+    [TestMethod]
     public void Plan_NullFile_ThrowsArgumentNullException()
     {
         Assert.ThrowsExactly<ArgumentNullException>(() => new TgaLayoutPlanner().Plan(null!));

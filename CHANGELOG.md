@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `TgaImageType.IsRunLengthEncoded()` is true only for spec values 9-11; reserved values with bit 3 set (25, 27, 41, ...) no longer decode as RLE.
 
 ### Fixed
+- `TgaReader` read color-map bytes whenever `ColorMapLength > 0`, even with `ColorMapType = NoColorMap`, shifting the image data of files with a stale color-map spec; the color map is now gated on `ColorMapType` as the spec requires (and as the writer already did).
+- `TgaReader` on an RLE image with a zero dimension always consumed one packet, eating the first footer/extension byte or failing at end of stream; a zero-length decode now reads nothing.
+- `Save`/`ToBytes` shortened a padded image ID (e.g. `IdLength` 6 for `"abc"`) to its text length, so files did not round-trip byte-for-byte; the field's `Length` is now written as-is.
+- `TgaLayoutPlanner` sized image data in `int`, so a header of 32768x32768x32bpp with empty `ImageData` planned as a valid file when validation was bypassed; now sized in `long`.
 - `new TgaFile(65535, 65535, Bpp32)` overflowed the `int` buffer size and threw `OverflowException`; the size is now computed in `long` and rejected with `ArgumentOutOfRangeException`.
 - `new TgaDeveloperEntry(byte[])` with a field size above `int.MaxValue` threw `OverflowException` from the placeholder allocation; now `ArgumentOutOfRangeException`.
 - `new TgaComment(byte[])` lost a space `BlankSpaceChar`, so a space-padded comment re-serialized NUL-padded and compared unequal to its source.

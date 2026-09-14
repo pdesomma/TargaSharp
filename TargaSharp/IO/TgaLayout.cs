@@ -104,7 +104,8 @@ namespace TargaSharp.IO
         }
 
         /// <summary>
-        /// Plans the image ID field. IdLength is derived from the ID string, never the other way around.
+        /// Plans the image ID field. IdLength is derived from the ID string's <see cref="TgaString.Length"/>
+        /// (which already covers the text and optional NUL terminator), never the other way around.
         /// </summary>
         /// <param name="file">File being planned.</param>
         /// <param name="add">Section sink.</param>
@@ -117,13 +118,11 @@ namespace TargaSharp.IO
                 return;
             }
 
-            // Length counts the optional NUL terminator, so the text itself gets one byte less of the 255 max.
-            int ending = imageId.UseEndingChar ? 1 : 0;
-            int textLength = imageId.OriginalString.Length;
-            if (textLength > byte.MaxValue - ending)
-                throw Fail("ImageArea.ImageId", $"text length {textLength} exceeds the {byte.MaxValue - ending} byte maximum.");
+            // The field's own Length (text + padding + optional NUL) is honored as-is so a padded ID read
+            // from disk is written back byte-for-byte; it only has to fit the 1-byte IdLength.
+            if (imageId.Length > byte.MaxValue)
+                throw Fail("ImageArea.ImageId", $"length {imageId.Length} exceeds the {byte.MaxValue} byte maximum.");
 
-            imageId.Length = textLength + ending;
             file.Header.IdLength = (byte)imageId.Length;
             if (file.Header.IdLength > 0)
                 add("ImageArea.ImageId", file.Header.IdLength, imageId.ToBytes);
@@ -159,7 +158,8 @@ namespace TargaSharp.IO
 
             byte[]? data = file.ImageArea.ImageData;
             int bytesPerPixel = file.Header.ImageSpec.PixelDepth.BytesPerPixel();
-            int expected = file.Width * file.Height * bytesPerPixel;
+            // ushort * ushort * 4 exceeds int.MaxValue, so size in long.
+            long expected = (long)file.Width * file.Height * bytesPerPixel;
             if (file.Width == 0 || file.Height == 0 || data is null || data.Length != expected)
                 throw Fail("ImageArea.ImageData", $"expected {expected} bytes for {file.Width}x{file.Height}, found {data?.Length.ToString() ?? "null"}.");
 
@@ -247,7 +247,7 @@ namespace TargaSharp.IO
                 if (file.Header.ImageType != TgaImageType.NoImageData && stamp.Data.Length != expected)
                     throw Fail("ExtensionArea.PostageStampImage.Data", $"expected {expected} bytes, found {stamp.Data.Length}.");
 
-                ext.PostageStampOffset = add("ExtensionArea.PostageStampImage", 2 + (uint)stamp.Data.Length, stamp.ToBytes);
+                ext.PostageStampOffset = add("ExtensionArea.PostageStampImage", TgaPostageStampImage.HeaderSize + (uint)stamp.Data.Length, stamp.ToBytes);
             }
 
             if (ext.ColorCorrectionTable is null)
