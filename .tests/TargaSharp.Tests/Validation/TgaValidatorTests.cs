@@ -76,7 +76,8 @@ public class TgaValidatorTests
     [TestMethod]
     public void Validate_PixelDepthOtherWithNoImageData_ReturnsNoError()
     {
-        var file = new TgaFile(0, 0);
+        var file = new TgaFile();
+        file.ToNewFormat();
 
         var errors = Validator.Validate(file);
 
@@ -333,7 +334,8 @@ public class TgaValidatorTests
     [TestMethod]
     public void Validate_NoImageDataWithLeftoverImageData_ReturnsSingleError()
     {
-        var file = new TgaFile(0, 0);
+        var file = new TgaFile();
+        file.ToNewFormat();
         file.ImageArea.ImageData = new byte[5];
 
         var errors = Validator.Validate(file);
@@ -501,7 +503,7 @@ public class TgaValidatorTests
     public void Validate_JobTimeMinutesOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtensionArea!.JobTime = new TgaTime(5, 60, 10);
+        file.ExtensionArea!.JobTime = new TgaTime { Hours = 5, Minutes = 60, Seconds = 10 };
 
         var errors = Validator.Validate(file);
 
@@ -513,7 +515,7 @@ public class TgaValidatorTests
     public void Validate_JobTimeSecondsOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtensionArea!.JobTime = new TgaTime(5, 10, 60);
+        file.ExtensionArea!.JobTime = new TgaTime { Hours = 5, Minutes = 10, Seconds = 60 };
 
         var errors = Validator.Validate(file);
 

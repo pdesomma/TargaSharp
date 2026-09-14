@@ -52,6 +52,21 @@ public class TgaDeveloperEntryTests
     }
 
     [TestMethod]
+    public void Ctor_FieldSizeAboveIntMaxValue_ThrowsArgumentOutOfRangeException()
+    {
+        // FieldSize 0xFFFFFFFF used to wrap to -1 and surface as OverflowException from the placeholder allocation.
+        byte[] bytes = [0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF];
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaDeveloperEntry(bytes));
+    }
+
+    [TestMethod]
+    public void CopyCtor_Null_ThrowsArgumentNullException()
+    {
+        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaDeveloperEntry((TgaDeveloperEntry)null!));
+    }
+
+    [TestMethod]
     public void Ctor_LongerThanMinimum_RoundTripsThroughDataAndEquals()
     {
         ushort tag = 7;

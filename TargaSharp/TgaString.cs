@@ -87,6 +87,7 @@ namespace TargaSharp
         /// <param name="bytes">Raw ASCII bytes read from a TGA file field.</param>
         /// <param name="useEnding">Whether the last byte is a mandatory ending character (see <see cref="UseEndingChar"/>).</param>
         /// <exception cref="ArgumentNullException"><paramref name="bytes"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="bytes"/> is empty while <paramref name="useEnding"/> is <see langword="true"/>.</exception>
         /// <remarks>
         /// This is the file-reader path: bytes read from disk are decoded leniently with
         /// <see cref="Encoding.ASCII"/> (which maps code points >= 128 to '?') instead of
@@ -96,6 +97,8 @@ namespace TargaSharp
         public TgaString(byte[] bytes, bool useEnding = false)
         {
             ArgumentNullException.ThrowIfNull(bytes);
+            if (useEnding && bytes.Length == 0)
+                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, "Must hold at least the ending character.");
 
             _useEndingChar = useEnding;
             _length = bytes.Length;
@@ -144,7 +147,7 @@ namespace TargaSharp
         /// too small to hold <paramref name="str"/> plus the optional ending character.</exception>
         public TgaString(string str, int length, bool useEnding = false, char blankSpaceChar = DefaultBlankSpaceChar)
         {
-            if (str == null) throw new ArgumentNullException(nameof(str) + " = null!");
+            ArgumentNullException.ThrowIfNull(str);
 
             _useEndingChar = useEnding;
             _originalString = str;

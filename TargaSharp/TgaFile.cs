@@ -51,30 +51,32 @@ namespace TargaSharp
         /// <param name="imgType">Image Type (is RLE compressed, ColorMapped or GrayScaled).</param>
         /// <param name="attrBits">Set number of Attribute bits (Alpha channel bits), default: 0, 1, 8.</param>
         /// <param name="newFormat">Use new 2.0 TGA XFile format?</param>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="width"/> or <paramref name="height"/> is 0,
+        /// <paramref name="pixDepth"/> is <see cref="TgaPixelDepth.Other"/>, or the image data would exceed <see cref="int.MaxValue"/> bytes.</exception>
         public TgaFile(ushort width, ushort height, TgaPixelDepth pixDepth = TgaPixelDepth.Bpp24, TgaImageType imgType = TgaImageType.UncompressedTrueColor, byte attrBits = 0, bool newFormat = true)
         {
-            if (width <= 0 || height <= 0 || pixDepth == TgaPixelDepth.Other)
-            {
-                width = height = 0;
-                pixDepth = TgaPixelDepth.Other;
-                imgType = TgaImageType.NoImageData;
-                attrBits = 0;
-            }
-            else
-            {
-                int bytesPerPixel = pixDepth.BytesPerPixel();
-                ImageArea.ImageData = new byte[width * height * bytesPerPixel];
+            if (width == 0)
+                throw new ArgumentOutOfRangeException(nameof(width), width, "Must be > 0.");
+            if (height == 0)
+                throw new ArgumentOutOfRangeException(nameof(height), height, "Must be > 0.");
+            if (pixDepth == TgaPixelDepth.Other)
+                throw new ArgumentOutOfRangeException(nameof(pixDepth), pixDepth, "Must be 8, 16, 24 or 32 bits per pixel.");
 
-                if (imgType == TgaImageType.UncompressedColorMapped || imgType == TgaImageType.RleColorMapped)
-                {
-                    Header.ColorMapType = TgaColorMapType.ColorMap;
-                    Header.ColorMapSpec.FirstEntryIndex = 0;
-                    // Default color-mapped images to 24-bit (R8G8B8) palette entries, a valid TgaColorMapEntrySize.
-                    // pixDepth is the *indexed pixel* depth, not the palette entry depth, so it must not be used
-                    // here directly (e.g. Bpp8 => ceil(8/8) = 1, which is not a valid entry size). The palette's
-                    // length and actual entry data are left for the caller to fill in.
-                    Header.ColorMapSpec.ColorMapEntrySize = TgaColorMapEntrySize.R8G8B8;
-                }
+            // ushort * ushort * 4 exceeds int.MaxValue, so size in long before allocating.
+            long imageDataSize = (long)width * height * pixDepth.BytesPerPixel();
+            if (imageDataSize > int.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(width), $"Image data of {imageDataSize} bytes ({width}x{height}x{(byte)pixDepth}bpp) exceeds the supported size.");
+            ImageArea.ImageData = new byte[imageDataSize];
+
+            if (imgType.IsColorMapped())
+            {
+                Header.ColorMapType = TgaColorMapType.ColorMap;
+                Header.ColorMapSpec.FirstEntryIndex = 0;
+                // Default color-mapped images to 24-bit (R8G8B8) palette entries, a valid TgaColorMapEntrySize.
+                // pixDepth is the *indexed pixel* depth, not the palette entry depth, so it must not be used
+                // here directly (e.g. Bpp8 => ceil(8/8) = 1, which is not a valid entry size). The palette's
+                // length and actual entry data are left for the caller to fill in.
+                Header.ColorMapSpec.ColorMapEntrySize = TgaColorMapEntrySize.R8G8B8;
             }
 
             Header.ImageType = imgType;
@@ -99,8 +101,10 @@ namespace TargaSharp
         /// Equal to <see cref="TgaFile.Clone()"/> function.
         /// </summary>
         /// <param name="tga">Original <see cref="TgaFile"/> instance.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="tga"/> is <see langword="null"/>.</exception>
         public TgaFile(TgaFile tga)
         {
+            ArgumentNullException.ThrowIfNull(tga);
             Header = tga.Header.Copy();
             ImageArea = tga.ImageArea.Copy();
             DeveloperArea = tga.DeveloperArea?.Copy();

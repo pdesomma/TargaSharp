@@ -66,7 +66,8 @@ public class TgaDrawingTests
     public void ToBitmap_NoImageDataFile_ThrowsInvalidOperationException()
     {
         // Used to surface as GDI+'s opaque ArgumentException "Parameter is not valid" from new Bitmap(0, 0, ...).
-        var tga = new TgaFile(0, 0);
+        var tga = new TgaFile();
+        tga.ToNewFormat();
 
         Assert.ThrowsExactly<InvalidOperationException>(() => tga.ToBitmap());
     }

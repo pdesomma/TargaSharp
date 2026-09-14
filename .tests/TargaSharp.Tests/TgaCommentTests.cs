@@ -112,6 +112,45 @@ public class TgaCommentTests
     }
 
     [TestMethod]
+    public void Ctor_Bytes_SpacePadded_RoundTripsWithEqualsAndBytes()
+    {
+        // The byte ctor used to leave BlankSpaceChar at its default, so a space-padded comment
+        // re-serialized NUL-padded and compared unequal to its source.
+        var original = new TgaComment("a", "bb") { BlankSpaceChar = ' ' };
+        byte[] bytes = original.ToBytes();
+
+        var parsed = new TgaComment(bytes);
+
+        Assert.AreEqual(' ', parsed.BlankSpaceChar);
+        Assert.AreEqual(original, parsed);
+        CollectionAssert.AreEqual(bytes, parsed.ToBytes());
+    }
+
+    [TestMethod]
+    public void Ctor_Bytes_NulPadded_KeepsDefaultBlankSpaceChar()
+    {
+        var parsed = new TgaComment(new TgaComment("a").ToBytes());
+
+        Assert.AreEqual(TgaString.DefaultBlankSpaceChar, parsed.BlankSpaceChar);
+    }
+
+    [TestMethod]
+    public void Equals_SameLinesAndBlankChar_ReturnsTrueWithEqualHashCodes()
+    {
+        var a = new TgaComment("x", "y");
+        var b = new TgaComment("x", "y");
+
+        Assert.AreEqual(a, b);
+        Assert.AreEqual(a.GetHashCode(), b.GetHashCode());
+    }
+
+    [TestMethod]
+    public void GetString_TrailingEmptyLines_JoinsAndTrims()
+    {
+        Assert.AreEqual("a" + (char)10 + "b", new TgaComment("a", "b").GetString());
+    }
+
+    [TestMethod]
     public void ToBytes_LineShorterThan80Chars_PadsWithBlankSpaceCharAndNulTerminates()
     {
         var comment = new TgaComment("AB");

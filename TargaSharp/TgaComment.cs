@@ -83,6 +83,11 @@ namespace TargaSharp
                 string slot = Encoding.ASCII.GetString(bytes, i * SlotLength, LineLength);
                 int nulIndex = slot.IndexOf('\0');
                 _lines[i] = nulIndex >= 0 ? slot.Substring(0, nulIndex) : slot.TrimEnd(' ');
+
+                // ToBytes fills with BlankSpaceChar then NUL-terminates at byte 81, so a space-filled slot has no
+                // NUL in its first 80 bytes; infer ' ' from that so ToBytes reproduces the input (and Equals holds).
+                if (nulIndex < 0 && slot.EndsWith(' '))
+                    _blankSpaceChar = ' ';
             }
         }
 

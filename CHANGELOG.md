@@ -8,8 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Breaking Changes
 - `TgaDateTime.ToDateTime()` now returns `DateTime?` and yields `null` for the spec's all-zero "not set" value instead of throwing `ArgumentOutOfRangeException`.
+- `new TgaFile(width, height, ...)` throws `ArgumentOutOfRangeException` for a zero dimension or `TgaPixelDepth.Other` instead of silently producing a 0x0 `NoImageData` file; use `new TgaFile()` + `ToNewFormat()` for an empty v2.0 file.
+- `new TgaTime(int, int, int)` and `new TgaTime(TimeSpan)` throw `ArgumentOutOfRangeException` for out-of-range values instead of silently narrowing (`new TgaTime(70000, 0, 0).Hours` was 4464).
+- `TgaImageType.IsRunLengthEncoded()` is true only for spec values 9-11; reserved values with bit 3 set (25, 27, 41, ...) no longer decode as RLE.
 
 ### Fixed
+- `new TgaFile(65535, 65535, Bpp32)` overflowed the `int` buffer size and threw `OverflowException`; the size is now computed in `long` and rejected with `ArgumentOutOfRangeException`.
+- `new TgaDeveloperEntry(byte[])` with a field size above `int.MaxValue` threw `OverflowException` from the placeholder allocation; now `ArgumentOutOfRangeException`.
+- `new TgaComment(byte[])` lost a space `BlankSpaceChar`, so a space-padded comment re-serialized NUL-padded and compared unequal to its source.
+- `TgaExtensionArea.ToBytes()` stamped `DateTime.UtcNow` into a null `DateTimeStamp`; it now serializes the spec's "not set" value (the writer still stamps an unset timestamp at save time).
+- `TgaDeveloperArea.ToBytes()` threw a bare `Exception` for a null `Entries` list; now `InvalidOperationException`. `TgaDeveloperArea`, `TgaPostageStampImage` and `TgaString` null-argument exceptions carried a bogus `ParamName`.
+- `new TgaString(Array.Empty<byte>(), useEnding: true)` threw an `ArgumentOutOfRangeException` naming `count`; it now names `bytes`.
 - `TgaDrawing.FromBitmap` crashed the process (fatal CLR error) on 1bpp/4bpp indexed bitmaps and produced invalid files for 48/64bpp; those formats now throw `NotSupportedException` up front.
 - `Width * Height * bytes-per-pixel` overflowed `int` in `TgaReader` and `TgaValidator` (32768x32768x32bpp wrapped to 0, so a header with no pixel bytes loaded and validated clean); now sized in `long`.
 - `TgaReader` allocated header-declared sizes (image data, RLE output, developer fields) before checking them against the stream, so a few hundred bytes could force a multi-GB allocation and `OutOfMemoryException`; declared sizes are now checked against the remaining stream first and rejected with `TgaFormatException`.

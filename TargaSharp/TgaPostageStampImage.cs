@@ -55,7 +55,7 @@
         /// <paramref name="height"/> is 0 or greater than <see cref="MaxSize"/> (a corrupt stamp).</exception>
         public TgaPostageStampImage(byte width, byte height, byte[] bytes)
         {
-            if (bytes == null) throw new ArgumentNullException(nameof(bytes) + " = null!");
+            ArgumentNullException.ThrowIfNull(bytes);
 
             Width = width;
             Height = height;

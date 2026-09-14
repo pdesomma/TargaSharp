@@ -19,8 +19,12 @@ public class TgaImageTypeExtensionsTests
     [DataRow((byte)4, false)]
     [DataRow((byte)8, false)]
     [DataRow((byte)12, false)]
+    [DataRow((byte)25, false)] // bit 3 set with low bits 1: reserved, not RLE
+    [DataRow((byte)27, false)]
+    [DataRow((byte)41, false)]
     [DataRow((byte)127, false)]
     [DataRow((byte)128, false)]
+    [DataRow((byte)137, false)]
     [DataRow((byte)200, false)]
     [DataRow((byte)255, false)]
     public void IsRunLengthEncoded_BoundaryValues_ReturnsExpected(byte value, bool expected)
