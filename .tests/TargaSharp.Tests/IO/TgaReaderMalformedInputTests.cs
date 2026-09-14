@@ -228,4 +228,15 @@ public class TgaReaderMalformedInputTests
 
         Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
     }
+
+    [TestMethod]
+    public void Read_RleImageWithUnknownPixelDepth_LoadsEmptyImageDataForValidatorToReport()
+    {
+        byte[] bytes = HeaderOnly(2, 2, TgaPixelDepth.Other, TgaImageType.RleTrueColor);
+
+        TgaFile file = new TgaReader().Read(bytes);
+
+        Assert.AreEqual(0, file.ImageArea.ImageData!.Length);
+        Assert.IsTrue(file.Validate().Any(e => e.Path == "Header.ImageSpec.PixelDepth"));
+    }
 }

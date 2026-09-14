@@ -136,11 +136,17 @@
         /// (<c>width * height * bytesPerPixel</c>).</param>
         /// <returns>Bytes array of exactly <paramref name="expectedLength"/> decoded bytes.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="reader"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="bytesPerPixel"/> is &lt;= 0 or <paramref name="expectedLength"/> is &lt; 0.</exception>
         /// <exception cref="EndOfStreamException">The stream ends inside a packet.</exception>
         /// <exception cref="TgaFormatException">A packet would write past <paramref name="expectedLength"/>.</exception>
         internal static byte[] Decode(BinaryReader reader, int bytesPerPixel, int expectedLength)
         {
             ArgumentNullException.ThrowIfNull(reader);
+            // A 0-byte pixel would never advance the output and read the stream to its end.
+            if (bytesPerPixel <= 0)
+                throw new ArgumentOutOfRangeException(nameof(bytesPerPixel), bytesPerPixel, "Must be > 0.");
+            if (expectedLength < 0)
+                throw new ArgumentOutOfRangeException(nameof(expectedLength), expectedLength, "Must be >= 0.");
 
             // A packet costs at least 1 + bytesPerPixel bytes and yields at most MaxPacketPixels pixels, so the
             // stream can never decode to more than MaxPacketPixels times its remaining length. Checking that

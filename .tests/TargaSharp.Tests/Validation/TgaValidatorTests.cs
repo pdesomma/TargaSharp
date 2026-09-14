@@ -401,6 +401,17 @@ public class TgaValidatorTests
     }
 
     [TestMethod]
+    public void Validate_AlphaChannelBitsWithNoImageData_ReturnsNoError()
+    {
+        // The attribute-bit rules are meaningless without pixels, like every other pixel-format rule.
+        var file = new TgaFile();
+        file.Header.ImageSpec.PixelDepth = TgaPixelDepth.Bpp32;
+        file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits = 4;
+
+        Assert.AreEqual(0, Validator.Validate(file).Count);
+    }
+
+    [TestMethod]
     public void Validate_ZeroDimensionsWithNoImageData_ReturnsNoError()
     {
         var file = new TgaFile();
@@ -616,6 +627,19 @@ public class TgaValidatorTests
 
         var errors = Validator.Validate(file);
 
+        Assert.AreEqual("DeveloperArea.Entries", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_NullDeveloperEntriesList_ReturnsSingleError()
+    {
+        // Used to throw NullReferenceException from TgaDeveloperArea.Count.
+        var file = CreateValidBaseline();
+        file.DeveloperArea = new TgaDeveloperArea { Entries = null! };
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
         Assert.AreEqual("DeveloperArea.Entries", errors[0].Path);
     }
 
@@ -851,16 +875,16 @@ public class TgaValidatorTests
     }
 
     [TestMethod]
-    public void Validate_PostageStampWithZeroDimensions_ReturnsSingleError()
+    public void Validate_DefaultPostageStamp_ReturnsSingleDataLengthError()
     {
-        // The parameterless ctor yields 0x0, which the setters themselves refuse.
+        // The parameterless ctor yields 1x1 with empty Data; only the data length is wrong.
         var file = CreateValidBaseline();
         file.ExtensionArea!.PostageStampImage = new TgaPostageStampImage();
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtensionArea.PostageStampImage", errors[0].Path);
+        Assert.AreEqual("ExtensionArea.PostageStampImage.Data", errors[0].Path);
     }
 
     #endregion
