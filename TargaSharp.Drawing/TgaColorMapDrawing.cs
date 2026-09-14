@@ -11,26 +11,18 @@ namespace TargaSharp.Drawing
     internal static class TgaColorMapDrawing
     {
         /// <summary>
-        /// GDI+ aligns every bitmap row to 32 bits (4 bytes).
+        /// Shrinks an 8-bit color component to 5 bits by dropping the low bits.
         /// </summary>
-        private const int RowAlignment = 4;
+        /// <param name="value">8-bit component.</param>
+        /// <returns>5-bit component (0-31).</returns>
+        private static int To5Bit(byte value) => value >> 3;
 
         /// <summary>
-        /// Gets the padding bytes GDI+ appends to a row of <paramref name="strideBytes"/> to reach 4-byte alignment.
+        /// Grows a 5-bit color component to 8 bits by bit replication, so 0 maps to 0 and 31 to 255 exactly.
         /// </summary>
-        /// <param name="strideBytes">Unpadded row length in bytes.</param>
-        /// <returns>Padding byte count, 0-3.</returns>
-        internal static int RowPadding(int strideBytes) => (RowAlignment - strideBytes % RowAlignment) % RowAlignment;
-
-        /// <summary>
-        /// Scale factor used to shrink an 8 bit color component down to 5 bits.
-        /// </summary>
-        private const float To5Bit = 32f / 256f;
-
-        /// <summary>
-        /// Scale factor used to grow a 5 bit color component up to 8 bits.
-        /// </summary>
-        private const float To8Bit = 255f / 31f;
+        /// <param name="value">5-bit component (0-31).</param>
+        /// <returns>8-bit component.</returns>
+        private static int To8Bit(int value) => (value << 3) | (value >> 2);
 
         /// <summary>
         /// Packs <paramref name="color"/> into the byte layout for one TGA color map entry.
@@ -49,9 +41,9 @@ namespace TargaSharp.Drawing
                 case TgaColorMapEntrySize.X1R5G5B5:
                 {
                     // Spec layout ARRRRRGGGGGBBBBB (R in bits 10-14, B in bits 0-4), the mirror of ReadEntry.
-                    int r = (int)(color.R * To5Bit) << 10;
-                    int g = (int)(color.G * To5Bit) << 5;
-                    int b = (int)(color.B * To5Bit);
+                    int r = To5Bit(color.R) << 10;
+                    int g = To5Bit(color.G) << 5;
+                    int b = To5Bit(color.B);
                     // Source alpha's top bit (bit 7) becomes bit 15 of the packed value.
                     int a = entrySize == TgaColorMapEntrySize.A1R5G5B5 ? (color.A & 0x80) << 8 : 0;
 
@@ -95,10 +87,12 @@ namespace TargaSharp.Drawing
                 case TgaColorMapEntrySize.A1R5G5B5:
                     {
                         ushort packed = BinaryPrimitives.ReadUInt16LittleEndian(colorMapData.AsSpan(index * 2));
-                        int a = (useAlpha ? (packed & 0x8000) >> 15 : 1) * 255; // (0 or 1) * 255
-                        int r = (int)(((packed & 0x7C00) >> 10) * To8Bit);
-                        int g = (int)(((packed & 0x3E0) >> 5) * To8Bit);
-                        int b = (int)((packed & 0x1F) * To8Bit);
+                        // X1R5G5B5 has no alpha: bit 15 is padding (WriteEntry always clears it) and must be ignored.
+                        bool hasAlphaBit = entrySize == TgaColorMapEntrySize.A1R5G5B5 && useAlpha;
+                        int a = hasAlphaBit ? ((packed & 0x8000) >> 15) * 255 : 255;
+                        int r = To8Bit((packed & 0x7C00) >> 10);
+                        int g = To8Bit((packed & 0x3E0) >> 5);
+                        int b = To8Bit(packed & 0x1F);
                         return Color.FromArgb(a, r, g, b);
                     }
 
