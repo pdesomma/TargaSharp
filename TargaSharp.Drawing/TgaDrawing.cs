@@ -12,7 +12,8 @@ namespace TargaSharp.Drawing
         /// <summary>
         /// Makes a new <see cref="TgaFile"/> from a <see cref="Bitmap"/>.
         /// </summary>
-        /// <param name="bmp">Input Bitmap, supported a lot of bitmaps types: 8/15/16/24/32 Bpp's.</param>
+        /// <param name="bmp">Input Bitmap. Supported <see cref="PixelFormat"/>s: 8bpp indexed, 16bpp grayscale/RGB555/ARGB1555,
+        /// 24bpp RGB and 32bpp RGB/ARGB/PARGB.</param>
         /// <param name="useRle">Use RLE Compression?</param>
         /// <param name="newFormat">Use new 2.0 TGA XFile format?</param>
         /// <param name="colorMap2BytesEntry">Is Color Map Entry size equal 15 or 16 Bpp, else - 24 or 32.</param>
@@ -39,11 +40,16 @@ namespace TargaSharp.Drawing
                 case PixelFormat.Max:
                 case PixelFormat.Canonical:
                 case PixelFormat.Format16bppRgb565:
+                // 1/4bpp pack several pixels per byte and 48/64bpp use 16-bit channels; neither maps onto a
+                // TGA pixel depth (8/16/24/32) and the byte-per-pixel copy below assumes >= 8bpp.
+                case PixelFormat.Format1bppIndexed:
+                case PixelFormat.Format4bppIndexed:
+                case PixelFormat.Format48bppRgb:
+                case PixelFormat.Format64bppArgb:
+                case PixelFormat.Format64bppPArgb:
                 default:
                     throw new NotSupportedException($"{nameof(PixelFormat)} {bmp.PixelFormat} is not supported.");
 
-                case PixelFormat.Format1bppIndexed:
-                case PixelFormat.Format4bppIndexed:
                 case PixelFormat.Format8bppIndexed:
                 case PixelFormat.Format16bppGrayScale:
                 case PixelFormat.Format16bppRgb555:
@@ -52,11 +58,8 @@ namespace TargaSharp.Drawing
                 case PixelFormat.Format32bppRgb:
                 case PixelFormat.Format32bppArgb:
                 case PixelFormat.Format32bppPArgb:
-                case PixelFormat.Format48bppRgb:
-                case PixelFormat.Format64bppArgb:
-                case PixelFormat.Format64bppPArgb:
 
-                    int bpp = Math.Max(8, Image.GetPixelFormatSize(bmp.PixelFormat));
+                    int bpp = Image.GetPixelFormatSize(bmp.PixelFormat);
                     int bytesPP = bpp / 8;
 
                     bool isAlpha = Image.IsAlphaPixelFormat(bmp.PixelFormat);

@@ -21,6 +21,42 @@ public class TgaDrawingTests
     }
 
     [TestMethod]
+    [DataRow(PixelFormat.Format1bppIndexed)]
+    [DataRow(PixelFormat.Format4bppIndexed)]
+    [DataRow(PixelFormat.Format48bppRgb)]
+    [DataRow(PixelFormat.Format64bppArgb)]
+    [DataRow(PixelFormat.Format64bppPArgb)]
+    public void FromBitmap_PixelFormatWithoutTgaEquivalent_ThrowsNotSupportedException(PixelFormat pixelFormat)
+    {
+        // 1/4bpp used to be copied as if they were 8bpp, reading past the end of the locked GDI+ buffer
+        // (a fatal, uncatchable CLR error); 48/64bpp produced an invalid PixelDepth or threw from
+        // AlphaChannelBits. All five must be rejected up front instead.
+        using var bmp = new Bitmap(64, 64, pixelFormat);
+
+        Assert.ThrowsExactly<NotSupportedException>(() => TgaDrawing.FromBitmap(bmp));
+    }
+
+    [TestMethod]
+    [DataRow(PixelFormat.Format8bppIndexed, TgaPixelDepth.Bpp8)]
+    [DataRow(PixelFormat.Format16bppRgb555, TgaPixelDepth.Bpp16)]
+    [DataRow(PixelFormat.Format16bppArgb1555, TgaPixelDepth.Bpp16)]
+    [DataRow(PixelFormat.Format24bppRgb, TgaPixelDepth.Bpp24)]
+    [DataRow(PixelFormat.Format32bppRgb, TgaPixelDepth.Bpp32)]
+    [DataRow(PixelFormat.Format32bppArgb, TgaPixelDepth.Bpp32)]
+    [DataRow(PixelFormat.Format32bppPArgb, TgaPixelDepth.Bpp32)]
+    public void FromBitmap_SupportedPixelFormat_ProducesValidFileWithMatchingDepth(PixelFormat pixelFormat, TgaPixelDepth expectedDepth)
+    {
+        using var bmp = new Bitmap(5, 3, pixelFormat); // width 5 forces GDI+ row padding on every depth
+
+        var tga = TgaDrawing.FromBitmap(bmp);
+
+        Assert.AreEqual(expectedDepth, tga.Header.ImageSpec.PixelDepth);
+        Assert.AreEqual(5 * 3 * expectedDepth.BytesPerPixel(), tga.ImageArea.ImageData!.Length);
+        var errors = tga.Validate();
+        Assert.AreEqual(0, errors.Count, string.Join("; ", errors.Select(e => $"{e.Path}: {e.Message}")));
+    }
+
+    [TestMethod]
     public void FromBitmap_BitmapWithA1R5G5B5Palette_PreservesAlphaBitInColorMapData()
     {
         // Format8bppIndexed => IsColorMapped, and colorMap2BytesEntry: true + a palette that mixes

@@ -1,8 +1,13 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### Fixed
+- `TgaDrawing.FromBitmap` crashed the process (fatal CLR error) on 1bpp/4bpp indexed bitmaps and produced invalid files for 48/64bpp; those formats now throw `NotSupportedException` up front.
 
 ## [0.2.0]
 
