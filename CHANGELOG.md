@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `TgaReader` allocated header-declared sizes (image data, RLE output, developer fields) before checking them against the stream, so a few hundred bytes could force a multi-GB allocation and `OutOfMemoryException`; declared sizes are now checked against the remaining stream first and rejected with `TgaFormatException`.
 - An RLE stream that ended inside a run packet leaked `IndexOutOfRangeException` from the reader; truncated and overrunning RLE packets now raise `TgaFormatException`.
 - `TgaValidator` threw `NullReferenceException` on a `null` element in `DeveloperArea.Entries`; it is now reported as a `TgaValidationError`.
+- `Save`/`ToBytes` removed empty entries from and re-sorted the caller's `DeveloperArea.Entries` list; the file is still written tag-ordered without empty entries, but the in-memory list is no longer modified.
 
 ## [0.2.0]
 
