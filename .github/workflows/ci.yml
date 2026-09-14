@@ -68,4 +68,10 @@ jobs:
           user: bigguy3311
 
       - name: Push to nuget.org
-        run: dotnet nuget push "nupkg/*.nupkg" --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        # NuGet does not expand a forward-slash glob on Windows; push each package explicitly
+        # (TargaSharp sorts before TargaSharp.Drawing, which depends on it). Matching .snupkg go along automatically.
+        run: |
+          Get-ChildItem nupkg -Filter *.nupkg | Sort-Object Name | ForEach-Object {
+            dotnet nuget push $_.FullName --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
