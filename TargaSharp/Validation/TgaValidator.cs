@@ -217,7 +217,9 @@
 
         /// <summary>
         /// Spec Field 9 (Developer Area Tag): tags &gt;= 32768 are reserved for Truevision, and no
-        /// tag may appear twice in the directory.
+        /// tag may appear twice in the directory. <see cref="TgaDeveloperArea.Entries"/> is a plain
+        /// mutable list, so a <see langword="null"/> element is reported as an error rather than
+        /// dereferenced.
         /// </summary>
         private static void ValidateDeveloperArea(TgaFile file, List<TgaValidationError> errors)
         {
@@ -226,7 +228,14 @@
             var seenTags = new HashSet<ushort>();
             for (int i = 0; i < file.DeveloperArea.Count; i++)
             {
-                ushort tag = file.DeveloperArea[i].Tag;
+                TgaDeveloperEntry? entry = file.DeveloperArea[i];
+                if (entry is null)
+                {
+                    errors.Add(new TgaValidationError($"DeveloperArea.Entries[{i}]", "Entry must not be null."));
+                    continue;
+                }
+
+                ushort tag = entry.Tag;
 
                 if (tag >= MinReservedDevTag)
                     errors.Add(new TgaValidationError($"DeveloperArea.Entries[{i}].Tag", $"Tag {tag} is reserved for Truevision (valid developer range is 0-{MinReservedDevTag - 1})."));
