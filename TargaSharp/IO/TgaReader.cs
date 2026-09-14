@@ -60,16 +60,9 @@
                     throw new EndOfStreamException($"Image data of {imageDataSizeLong} bytes ({file.Width}x{file.Height}x{bytesPerPixel}) exceeds the supported size.");
                 int imageDataSize = (int)imageDataSizeLong;
 
-                if (file.Header.ImageType.IsRunLengthEncoded())
-                {
-                    file.ImageArea.ImageData = RleCodec.Decode(binaryReader, bytesPerPixel, imageDataSize);
-                }
-                else
-                {
-                    file.ImageArea.ImageData = binaryReader.ReadBytes(imageDataSize);
-                    if (file.ImageArea.ImageData.Length != imageDataSize)
-                        throw new EndOfStreamException($"Image data truncated: expected {imageDataSize} bytes, got {file.ImageArea.ImageData.Length}.");
-                }
+                file.ImageArea.ImageData = file.Header.ImageType.IsRunLengthEncoded()
+                    ? RleCodec.Decode(binaryReader, bytesPerPixel, imageDataSize)
+                    : ReadExactly(binaryReader, imageDataSize, "Image data");
             }
 
             // Try parse Footer (a v1.0 file may legitimately be shorter than a footer)
@@ -104,7 +97,7 @@
                     for (int i = 0; i < numberOfTags; i++)
                     {
                         stream.Seek(tagOffsets[i], SeekOrigin.Begin);
-                        var entry = new TgaDeveloperEntry(tags[i], tagOffsets[i], binaryReader.ReadBytes((int)tagSizes[i]));
+                        var entry = new TgaDeveloperEntry(tags[i], tagOffsets[i], ReadExactly(binaryReader, tagSizes[i], $"Developer field {tags[i]}"));
                         file.DeveloperArea.Entries.Add(entry);
                     }
                 }
@@ -155,6 +148,26 @@
             }
 
             return file;
+        }
+
+        /// <summary>
+        /// Reads exactly <paramref name="count"/> bytes. The count comes from a header field in the file
+        /// itself, so it is checked against what the stream can still supply <em>before</em> anything is
+        /// allocated: a hostile or corrupt file must not be able to force a multi-GB allocation, and a
+        /// truncated one must fail here rather than hand back a silently shortened field.
+        /// </summary>
+        /// <param name="reader">Reader positioned at the start of the field.</param>
+        /// <param name="count">Declared byte length of the field.</param>
+        /// <param name="what">Field name for the error message.</param>
+        /// <returns>Exactly <paramref name="count"/> bytes.</returns>
+        /// <exception cref="EndOfStreamException">Fewer than <paramref name="count"/> bytes remain.</exception>
+        private static byte[] ReadExactly(BinaryReader reader, long count, string what)
+        {
+            long remaining = reader.BaseStream.Length - reader.BaseStream.Position;
+            if (count > remaining)
+                throw new EndOfStreamException($"{what} declares {count} bytes but only {Math.Max(remaining, 0)} remain in the stream.");
+
+            return reader.ReadBytes((int)count);
         }
 
         /// <inheritdoc />

@@ -124,6 +124,16 @@
         {
             ArgumentNullException.ThrowIfNull(reader);
 
+            // A packet costs at least 1 + bytesPerPixel bytes and yields at most MaxPacketPixels pixels, so the
+            // stream can never decode to more than MaxPacketPixels times its remaining length. Checking that
+            // before allocating stops a small hostile file from declaring a multi-GB image.
+            if (reader.BaseStream.CanSeek)
+            {
+                long remaining = reader.BaseStream.Length - reader.BaseStream.Position;
+                if (expectedLength > remaining * MaxPacketPixels)
+                    throw new EndOfStreamException($"RLE image data declares {expectedLength} decoded bytes but only {Math.Max(remaining, 0)} encoded bytes remain in the stream.");
+            }
+
             byte[] result = new byte[expectedLength];
             int dataOffset = 0;
 
