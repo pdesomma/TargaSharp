@@ -54,7 +54,12 @@
             int bytesPerPixel = file.Header.ImageSpec.PixelDepth.BytesPerPixel();
             if (file.Header.ImageType != TgaImageType.NoImageData)
             {
-                int imageDataSize = file.Width * file.Height * bytesPerPixel;
+                // ushort * ushort * 4 exceeds int.MaxValue (32768 x 32768 x 32bpp wraps to exactly 0), so size in long.
+                long imageDataSizeLong = (long)file.Width * file.Height * bytesPerPixel;
+                if (imageDataSizeLong > int.MaxValue)
+                    throw new EndOfStreamException($"Image data of {imageDataSizeLong} bytes ({file.Width}x{file.Height}x{bytesPerPixel}) exceeds the supported size.");
+                int imageDataSize = (int)imageDataSizeLong;
+
                 if (file.Header.ImageType.IsRunLengthEncoded())
                 {
                     file.ImageArea.ImageData = RleCodec.Decode(binaryReader, bytesPerPixel, imageDataSize);

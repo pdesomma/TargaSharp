@@ -114,6 +114,20 @@ public class TgaReaderTests
     }
 
     [TestMethod]
+    public void Read_HeaderWhoseImageSizeOverflowsInt_ThrowsTgaFormatException()
+    {
+        // 32768 x 32768 x 4 == 2^32, which wraps to 0 in int arithmetic: the reader used to accept this
+        // header with zero image bytes as a successfully loaded 32768x32768 image.
+        var header = new TgaHeader { ImageType = TgaImageType.UncompressedTrueColor };
+        header.ImageSpec.ImageWidth = 32768;
+        header.ImageSpec.ImageHeight = 32768;
+        header.ImageSpec.PixelDepth = TgaPixelDepth.Bpp32;
+        header.ImageSpec.ImageDescriptor.AlphaChannelBits = 8;
+
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(header.ToBytes()));
+    }
+
+    [TestMethod]
     public void Read_StreamShorterThanHeader_ThrowsTgaFormatException()
     {
         Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(new byte[5]));

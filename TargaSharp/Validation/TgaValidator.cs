@@ -192,10 +192,11 @@
         /// </summary>
         private static void ValidateImageData(TgaFile file, List<TgaValidationError> errors)
         {
-            int expected = file.Header.ImageType == TgaImageType.NoImageData
+            // ushort * ushort * 4 exceeds int.MaxValue (32768 x 32768 x 32bpp wraps to exactly 0), so size in long.
+            long expected = file.Header.ImageType == TgaImageType.NoImageData
                 ? 0
-                : file.Header.ImageSpec.ImageWidth * file.Header.ImageSpec.ImageHeight * file.Header.ImageSpec.PixelDepth.BytesPerPixel();
-            int actual = file.ImageArea.ImageData?.Length ?? 0;
+                : (long)file.Header.ImageSpec.ImageWidth * file.Header.ImageSpec.ImageHeight * file.Header.ImageSpec.PixelDepth.BytesPerPixel();
+            long actual = file.ImageArea.ImageData?.Length ?? 0;
 
             if (actual != expected)
                 errors.Add(new TgaValidationError("ImageArea.ImageData", $"ImageData.Length must be {expected} (Width * Height * bytes-per-pixel, or 0 when ImageType is NoImageData) but was {actual}."));

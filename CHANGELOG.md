@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - `TgaDrawing.FromBitmap` crashed the process (fatal CLR error) on 1bpp/4bpp indexed bitmaps and produced invalid files for 48/64bpp; those formats now throw `NotSupportedException` up front.
+- `Width * Height * bytes-per-pixel` overflowed `int` in `TgaReader` and `TgaValidator` (32768x32768x32bpp wrapped to 0, so a header with no pixel bytes loaded and validated clean); now sized in `long`.
 
 ## [0.2.0]
 

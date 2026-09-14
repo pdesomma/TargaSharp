@@ -316,6 +316,21 @@ public class TgaValidatorTests
     }
 
     [TestMethod]
+    public void Validate_ImageSizeOverflowsIntWithEmptyImageData_ReturnsSingleError()
+    {
+        // 32768 x 32768 x 4 wraps to 0 in int arithmetic, so a file with no pixel data used to validate clean.
+        var file = new TgaFile(1, 1, TgaPixelDepth.Bpp32, TgaImageType.UncompressedTrueColor, attrBits: 8);
+        file.Width = 32768;
+        file.Height = 32768;
+        file.ImageArea.ImageData = [];
+
+        var errors = new TgaValidator().Validate(file);
+
+        Assert.AreEqual(1, errors.Count);
+        Assert.AreEqual("ImageArea.ImageData", errors[0].Path);
+    }
+
+    [TestMethod]
     public void Validate_NoImageDataWithLeftoverImageData_ReturnsSingleError()
     {
         var file = new TgaFile(0, 0);
