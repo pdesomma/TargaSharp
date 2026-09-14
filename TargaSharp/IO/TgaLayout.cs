@@ -82,6 +82,9 @@ namespace TargaSharp.IO
             {
                 uint at = offset;
                 pending.Add(new PendingSection(name, at, size, materialize));
+                // Offsets are 32-bit on disk; wrapping would silently corrupt the footer pointers.
+                if (uint.MaxValue - offset < size)
+                    throw Fail(name, $"section would end past the {uint.MaxValue} byte limit of a TGA file.");
                 offset += size;
                 return at;
             }
@@ -235,7 +238,6 @@ namespace TargaSharp.IO
             if (otherDataLength > ushort.MaxValue - TgaExtensionArea.MinSize)
                 throw Fail("ExtensionArea.OtherDataInExtensionArea", $"length {otherDataLength} exceeds the {ushort.MaxValue - TgaExtensionArea.MinSize} bytes the Extension Size field can hold.");
 
-            ext.ExtensionSize = (ushort)(TgaExtensionArea.MinSize + otherDataLength);
             // A caller-supplied timestamp is preserved; only an unset one is stamped with "now".
             if (ext.DateTimeStamp.IsUnset)
                 ext.DateTimeStamp = new TgaDateTime(DateTime.UtcNow);

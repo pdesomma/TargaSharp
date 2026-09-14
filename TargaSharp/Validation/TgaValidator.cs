@@ -215,6 +215,9 @@
         /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateAlphaChannelBits(TgaFile file, List<TgaValidationError> errors)
         {
+            // No pixels, no attribute bits to be consistent with (matches the other pixel-format rules).
+            if (file.Header.ImageType == TgaImageType.NoImageData) return;
+
             byte alphaBits = file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits;
             bool isBlackAndWhite = file.Header.ImageType.IsGrayscale();
 
@@ -302,6 +305,11 @@
         private static void ValidateDeveloperArea(TgaFile file, List<TgaValidationError> errors)
         {
             if (file.DeveloperArea is null) return;
+            if (file.DeveloperArea.Entries is null)
+            {
+                errors.Add(new TgaValidationError("DeveloperArea.Entries", "Entries must not be null."));
+                return;
+            }
 
             if (file.DeveloperArea.Count > ushort.MaxValue)
                 errors.Add(new TgaValidationError("DeveloperArea.Entries", $"Entries.Count ({file.DeveloperArea.Count}) exceeds the {ushort.MaxValue} tags the directory's Number of Tags field can hold."));
@@ -471,12 +479,6 @@
         {
             var postageStampImage = file.ExtensionArea?.PostageStampImage;
             if (postageStampImage is null) return;
-
-            if (postageStampImage.Width == 0 || postageStampImage.Height == 0)
-            {
-                errors.Add(new TgaValidationError("ExtensionArea.PostageStampImage", $"Width and Height must be 1-{TgaPostageStampImage.MaxSize} (was {postageStampImage.Width}x{postageStampImage.Height})."));
-                return;
-            }
 
             int expected = postageStampImage.Width * postageStampImage.Height * file.Header.ImageSpec.PixelDepth.BytesPerPixel();
             if (postageStampImage.Data.Length != expected)

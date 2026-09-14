@@ -19,15 +19,15 @@
         /// <summary>
         /// Backing field for <see cref="Width"/>.
         /// </summary>
-        private byte _width;
+        private byte _width = 1;
 
         /// <summary>
         /// Backing field for <see cref="Height"/>.
         /// </summary>
-        private byte _height;
+        private byte _height = 1;
 
         /// <summary>
-        /// Make empty <see cref="TgaPostageStampImage"/>.
+        /// Make a 1x1 <see cref="TgaPostageStampImage"/> with empty <see cref="Data"/> (the smallest size the setters allow).
         /// </summary>
         public TgaPostageStampImage() { }
 
@@ -121,7 +121,7 @@
         {
             if (other is null) return false;
             return Width == other.Width && Height == other.Height &&
-                (ReferenceEquals(Data, other.Data) || (Data is not null && other.Data is not null && Data.AsSpan().SequenceEqual(other.Data)));
+                TgaArrayEquality.Equals(Data, other.Data);
         }
 
         /// <summary>
@@ -135,9 +135,7 @@
                 int hash = 27;
                 hash = (13 * hash) + Width.GetHashCode();
                 hash = (13 * hash) + Height.GetHashCode();
-                if (Data != null)
-                    for (int i = 0; i < Data.Length; i++)
-                        hash = (13 * hash) + Data[i].GetHashCode();
+                hash = TgaArrayEquality.Hash(hash, Data);
                 return hash;
             }
         }

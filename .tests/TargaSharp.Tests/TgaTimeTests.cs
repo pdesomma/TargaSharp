@@ -62,4 +62,10 @@ public class TgaTimeTests
     {
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaTime(TimeSpan.FromHours(65536)));
     }
+
+    [TestMethod]
+    public void Ctor_NegativeSubHourTimeSpan_ThrowsArgumentOutOfRangeException()
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaTime(TimeSpan.FromMinutes(-30)));
+    }
 }

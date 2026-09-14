@@ -35,7 +35,6 @@
             if (bytes.Length < MinSize)
                 throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be >= {MinSize}.");
 
-            ExtensionSize = TgaBinary.ReadUInt16(bytes, 0);
             AuthorName = new TgaString(bytes.AsSpan(2, NameFieldLength).ToArray(), true);
             AuthorComments = new TgaComment(bytes.AsSpan(43, TgaComment.Size).ToArray());
             DateTimeStamp = new TgaDateTime(bytes.AsSpan(367, TgaDateTime.Size).ToArray());
@@ -51,7 +50,8 @@
             ScanLineOffset = TgaBinary.ReadUInt32(bytes, 490);
             AttributesType = (TgaAttributeType)bytes[494];
 
-            if (ExtensionSize > MinSize) OtherDataInExtensionArea = bytes.AsSpan(495, bytes.Length - MinSize).ToArray();
+            // Everything past the fixed body is kept regardless of the size field, so a stale size never drops data.
+            if (bytes.Length > MinSize) OtherDataInExtensionArea = bytes.AsSpan(MinSize, bytes.Length - MinSize).ToArray();
 
             ScanLineTable = slt;
             this.PostageStampImage = postageStampImage;
@@ -67,18 +67,12 @@
 
         #region Properties
         /// <summary>
-        /// Extension Size - Field 10 (2 Bytes):
-        /// This field is a SHORT field which specifies the number of BYTES in the fixedlength portion of
-        /// the Extension Area. For Version 2.0 of the TGA File Format, this number should be set to 495.
-        /// If the number found in this field is not 495, then the file will be assumed to be of a
-        /// version other than 2.0. If it ever becomes necessary to alter this number, the change
-        /// will be controlled by Truevision, and will be accompanied by a revision to the TGA File
-        /// Format with an accompanying change in the version number. This is a derived field: it is
-        /// computed by <see cref="TargaSharp.IO.TgaWriter"/> from <see cref="MinSize"/> plus
-        /// <see cref="OtherDataInExtensionArea"/>'s length during layout (or read from the file by
-        /// <see cref="TargaSharp.IO.TgaReader"/>), so consumers cannot set it directly.
+        /// Gets the extension area size in bytes: <see cref="MinSize"/> (495) plus the length of
+        /// <see cref="OtherDataInExtensionArea"/>. Per the TGA 2.0 spec the value is 495 for a standard
+        /// extension area; Truevision reserves any other value for future revisions. Derived, so it
+        /// always matches what <see cref="ToBytes"/> writes.
         /// </summary>
-        public ushort ExtensionSize { get; internal set; } = MinSize;
+        public ushort ExtensionSize => (ushort)Math.Min(ushort.MaxValue, MinSize + (OtherDataInExtensionArea?.Length ?? 0));
 
         /// <summary>
         /// Author Name - Field 11 (41 Bytes):
@@ -349,8 +343,7 @@
         public bool Equals(TgaExtensionArea? other)
         {
             if (other is null) return false;
-            return ExtensionSize == other.ExtensionSize &&
-                AuthorName == other.AuthorName &&
+            return AuthorName == other.AuthorName &&
                 AuthorComments == other.AuthorComments &&
                 DateTimeStamp == other.DateTimeStamp &&
                 JobNameOrId == other.JobNameOrId &&
@@ -365,11 +358,11 @@
                 ScanLineOffset == other.ScanLineOffset &&
                 AttributesType == other.AttributesType &&
 
-                (ReferenceEquals(ScanLineTable, other.ScanLineTable) || (ScanLineTable is not null && other.ScanLineTable is not null && ScanLineTable.AsSpan().SequenceEqual(other.ScanLineTable))) &&
+                TgaArrayEquality.Equals(ScanLineTable, other.ScanLineTable) &&
                 PostageStampImage == other.PostageStampImage &&
-                (ReferenceEquals(ColorCorrectionTable, other.ColorCorrectionTable) || (ColorCorrectionTable is not null && other.ColorCorrectionTable is not null && ColorCorrectionTable.AsSpan().SequenceEqual(other.ColorCorrectionTable))) &&
+                TgaArrayEquality.Equals(ColorCorrectionTable, other.ColorCorrectionTable) &&
 
-                (ReferenceEquals(OtherDataInExtensionArea, other.OtherDataInExtensionArea) || (OtherDataInExtensionArea is not null && other.OtherDataInExtensionArea is not null && OtherDataInExtensionArea.AsSpan().SequenceEqual(other.OtherDataInExtensionArea)));
+                TgaArrayEquality.Equals(OtherDataInExtensionArea, other.OtherDataInExtensionArea);
         }
 
 
@@ -382,7 +375,6 @@
             unchecked
             {
                 int hash = 27;
-                hash = (13 * hash) + ExtensionSize.GetHashCode();
                 hash = (13 * hash) + AuthorName.GetHashCode();
                 hash = (13 * hash) + AuthorComments.GetHashCode();
                 hash = (13 * hash) + DateTimeStamp.GetHashCode();
@@ -398,20 +390,14 @@
                 hash = (13 * hash) + ScanLineOffset.GetHashCode();
                 hash = (13 * hash) + AttributesType.GetHashCode();
 
-                if (ScanLineTable != null)
-                    for (int i = 0; i < ScanLineTable.Length; i++)
-                        hash = (13 * hash) + ScanLineTable[i].GetHashCode();
+                hash = TgaArrayEquality.Hash(hash, ScanLineTable);
 
                 if (PostageStampImage != null)
                     hash = (13 * hash) + PostageStampImage.GetHashCode();
 
-                if (ColorCorrectionTable != null)
-                    for (int i = 0; i < ColorCorrectionTable.Length; i++)
-                        hash = (13 * hash) + ColorCorrectionTable[i].GetHashCode();
+                hash = TgaArrayEquality.Hash(hash, ColorCorrectionTable);
 
-                if (OtherDataInExtensionArea != null)
-                    for (int i = 0; i < OtherDataInExtensionArea.Length; i++)
-                        hash = (13 * hash) + OtherDataInExtensionArea[i].GetHashCode();
+                hash = TgaArrayEquality.Hash(hash, OtherDataInExtensionArea);
 
                 return hash;
             }

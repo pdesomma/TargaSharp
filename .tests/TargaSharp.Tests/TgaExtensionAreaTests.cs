@@ -10,11 +10,45 @@ namespace TargaSharp.Tests;
 public class TgaExtensionAreaTests
 {
     [TestMethod]
-    public void ExtensionSize_Property_HasInternalSetter()
+    public void ExtensionSize_Property_IsReadOnly()
     {
         PropertyInfo property = typeof(TgaExtensionArea).GetProperty(nameof(TgaExtensionArea.ExtensionSize))!;
 
-        Assert.IsTrue(property.SetMethod!.IsAssembly);
+        Assert.IsNull(property.SetMethod);
+    }
+
+    [TestMethod]
+    public void ExtensionSize_WithOtherData_IsMinSizePlusOtherDataLength()
+    {
+        var extArea = new TgaExtensionArea { OtherDataInExtensionArea = new byte[7] };
+
+        Assert.AreEqual((ushort)(TgaExtensionArea.MinSize + 7), extArea.ExtensionSize);
+    }
+
+    [TestMethod]
+    public void ToBytes_WithOtherData_WritesComputedExtensionSizeAndRoundTrips()
+    {
+        var original = new TgaExtensionArea { OtherDataInExtensionArea = [1, 2, 3] };
+
+        byte[] bytes = original.ToBytes();
+        var parsed = new TgaExtensionArea(bytes);
+
+        Assert.AreEqual(TgaExtensionArea.MinSize + 3, bytes.Length);
+        Assert.AreEqual((ushort)(TgaExtensionArea.MinSize + 3), TgaBinary.ReadUInt16(bytes, 0));
+        CollectionAssert.AreEqual(new byte[] { 1, 2, 3 }, parsed.OtherDataInExtensionArea);
+        Assert.AreEqual(original, parsed);
+    }
+
+    [TestMethod]
+    public void Ctor_StaleSizeFieldWithTrailingBytes_KeepsTrailingBytes()
+    {
+        byte[] bytes = new TgaExtensionArea { OtherDataInExtensionArea = [9, 9] }.ToBytes();
+        TgaBinary.WriteUInt16(bytes, 0, TgaExtensionArea.MinSize);
+
+        var parsed = new TgaExtensionArea(bytes);
+
+        CollectionAssert.AreEqual(new byte[] { 9, 9 }, parsed.OtherDataInExtensionArea);
+        Assert.AreEqual((ushort)(TgaExtensionArea.MinSize + 2), parsed.ExtensionSize);
     }
 
     [TestMethod]
@@ -114,7 +148,6 @@ public class TgaExtensionAreaTests
             AttributesType = TgaAttributeType.PreMultipliedAlpha,
             OtherDataInExtensionArea = [7, 8, 9],
         };
-        original.ExtensionSize = (ushort)(TgaExtensionArea.MinSize + 3);
 
         var parsed = new TgaExtensionArea(original.ToBytes());
 

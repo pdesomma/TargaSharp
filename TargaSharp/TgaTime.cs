@@ -21,7 +21,7 @@ namespace TargaSharp
         /// </summary>
         /// <param name="time">Some <see cref="TimeSpan"/> variable.</param>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="time"/> is negative or exceeds 65535 hours.</exception>
-        public TgaTime(TimeSpan time) : this(CheckedHours((long)time.TotalHours, nameof(time)), (ushort)time.Minutes, (ushort)time.Seconds) { }
+        public TgaTime(TimeSpan time) : this(CheckedHours((long)CheckedNonNegative(time).TotalHours, nameof(time)), (ushort)time.Minutes, (ushort)time.Seconds) { }
         /// <summary>
         /// Make <see cref="TgaTime"/> from int values.
         /// </summary>
@@ -96,6 +96,19 @@ namespace TargaSharp
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();
+
+        /// <summary>
+        /// Rejects a negative span; a sub-hour one would otherwise truncate to 0 hours with wrapped minutes/seconds.
+        /// </summary>
+        /// <param name="time">Span to check.</param>
+        /// <returns><paramref name="time"/> unchanged.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="time"/> is negative.</exception>
+        private static TimeSpan CheckedNonNegative(TimeSpan time)
+        {
+            if (time < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(time), time, "Must not be negative.");
+            return time;
+        }
 
         /// <summary>
         /// Narrows an hour count to <see cref="ushort"/>, rejecting values outside 0-65535.

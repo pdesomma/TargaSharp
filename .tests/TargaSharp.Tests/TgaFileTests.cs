@@ -226,11 +226,11 @@ public class TgaFileTests
     }
 
     [TestMethod]
-    public void DeveloperArea_Property_HasInternalSetter()
+    public void DeveloperArea_Property_HasPublicSetter()
     {
         PropertyInfo property = typeof(TgaFile).GetProperty(nameof(TgaFile.DeveloperArea))!;
 
-        Assert.IsTrue(property.SetMethod!.IsAssembly);
+        Assert.IsTrue(property.SetMethod!.IsPublic);
     }
 
     [TestMethod]
