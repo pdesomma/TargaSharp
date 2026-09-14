@@ -445,4 +445,78 @@ public class TgaDrawingTests
         Assert.AreEqual(255, roundTrippedPalette[0].A);
         Assert.AreEqual(0, roundTrippedPalette[1].A);
     }
+
+    [TestMethod]
+    public void ToBitmap_16BppColorMapped_ThrowsNotSupportedException()
+    {
+        // GDI+ has no 16-bit indexed format; the indices used to be rendered as RGB555.
+        var tga = new TgaFile(1, 1, TgaPixelDepth.Bpp16, TgaImageType.UncompressedColorMapped, newFormat: false);
+        tga.Header.ColorMapSpec.ColorMapLength = 1;
+        tga.ImageArea.ColorMapData = [30, 20, 10];
+        tga.ImageArea.ImageData = [0, 0];
+
+        Assert.ThrowsExactly<NotSupportedException>(() => tga.ToBitmap());
+    }
+
+    [TestMethod]
+    public void ToBitmap_NullColorMapData_ThrowsInvalidOperationException()
+    {
+        // Used to leak NullReferenceException from the palette reader.
+        var tga = new TgaFile(1, 1, TgaPixelDepth.Bpp8, TgaImageType.UncompressedColorMapped, newFormat: false);
+        tga.Header.ColorMapSpec.ColorMapLength = 256;
+        tga.ImageArea.ColorMapData = null;
+        tga.ImageArea.ImageData = [0];
+
+        Assert.ThrowsExactly<InvalidOperationException>(() => tga.ToBitmap());
+    }
+
+    [TestMethod]
+    public void ToBitmap_ShortColorMapData_ThrowsInvalidOperationException()
+    {
+        // Used to leak IndexOutOfRangeException from the palette reader.
+        var tga = new TgaFile(1, 1, TgaPixelDepth.Bpp8, TgaImageType.UncompressedColorMapped, newFormat: false);
+        tga.Header.ColorMapSpec.ColorMapLength = 256;
+        tga.ImageArea.ColorMapData = [1, 2, 3];
+        tga.ImageArea.ImageData = [0];
+
+        Assert.ThrowsExactly<InvalidOperationException>(() => tga.ToBitmap());
+    }
+
+    [TestMethod]
+    public void ToBitmap_PartialColorMap_FillsUncoveredPaletteSlotsWithBlack()
+    {
+        // Slots outside the file's map used to keep GDI+'s default halftone palette.
+        var tga = new TgaFile(1, 1, TgaPixelDepth.Bpp8, TgaImageType.UncompressedColorMapped, newFormat: false);
+        tga.Header.ColorMapSpec.ColorMapLength = 1;
+        tga.ImageArea.ColorMapData = [30, 20, 10];
+        tga.ImageArea.ImageData = [0];
+
+        using Bitmap bmp = tga.ToBitmap();
+
+        Assert.AreEqual(Color.FromArgb(10, 20, 30), bmp.Palette.Entries[0]);
+        Assert.AreEqual(Color.FromArgb(0, 0, 0).ToArgb(), bmp.Palette.Entries[255].ToArgb());
+    }
+
+    [TestMethod]
+    public void ToBitmap_KeyColorOn24Bpp_ReturnsFormat32bppArgb()
+    {
+        // MakeTransparent rebuilds the bitmap as 32bppArgb; the promotion is part of the documented contract.
+        var tga = new TgaFile(1, 1, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);
+        tga.ExtensionArea!.KeyColor = new TgaColorKey(255, 1, 2, 3);
+        tga.ImageArea.ImageData = [3, 2, 1];
+
+        using Bitmap bmp = tga.ToBitmap();
+
+        Assert.AreEqual(PixelFormat.Format32bppArgb, bmp.PixelFormat);
+        Assert.AreEqual(0, bmp.GetPixel(0, 0).A);
+    }
+
+    [TestMethod]
+    public void FromBitmap_PArgbWithLegacyFormat_ThrowsNotSupportedException()
+    {
+        // Without an extension area nothing records that the alpha is pre-multiplied.
+        using var bmp = new Bitmap(1, 1, PixelFormat.Format32bppPArgb);
+
+        Assert.ThrowsExactly<NotSupportedException>(() => TgaDrawing.FromBitmap(bmp, newFormat: false));
+    }
 }

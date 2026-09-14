@@ -22,7 +22,9 @@ namespace TargaSharp.Drawing
         /// <returns>New <see cref="TgaFile"/> built from <paramref name="bmp"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="bmp"/> is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="bmp"/> is wider or taller than <see cref="ushort.MaxValue"/> pixels.</exception>
-        /// <exception cref="NotSupportedException"><paramref name="bmp"/>'s <see cref="PixelFormat"/> is not supported.</exception>
+        /// <exception cref="NotSupportedException"><paramref name="bmp"/>'s <see cref="PixelFormat"/> is not supported, or it is
+        /// <see cref="PixelFormat.Format32bppPArgb"/> with <paramref name="newFormat"/> <see langword="false"/> (only the
+        /// extension area's <see cref="TgaExtensionArea.AttributesType"/> can record that the alpha is pre-multiplied).</exception>
         public static TgaFile FromBitmap(Bitmap bmp, bool useRle = false, bool newFormat = true, bool colorMap2BytesEntry = false)
         {
             ArgumentNullException.ThrowIfNull(bmp);
@@ -56,6 +58,9 @@ namespace TargaSharp.Drawing
             int bytesPP = Image.GetPixelFormatSize(bmp.PixelFormat) / 8;
             bool isAlpha = Image.IsAlphaPixelFormat(bmp.PixelFormat);
             bool isPreAlpha = bmp.PixelFormat == PixelFormat.Format32bppPArgb;
+            // Without an extension area the pre-multiplied flag is lost and ToBitmap would read the bytes as straight alpha.
+            if (isPreAlpha && !newFormat)
+                throw new NotSupportedException($"{nameof(PixelFormat.Format32bppPArgb)} requires {nameof(newFormat)} = true so the extension area can record {nameof(TgaAttributeType.PreMultipliedAlpha)}.");
             bool isIndexed = bmp.PixelFormat == PixelFormat.Format8bppIndexed;
 
             tga.Header.ImageSpec.PixelDepth = (TgaPixelDepth)(bytesPP * 8);

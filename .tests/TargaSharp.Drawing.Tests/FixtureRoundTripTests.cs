@@ -63,7 +63,7 @@ public class FixtureRoundTripTests
         // that non-shared handle intermittently collided with "file in use" IOExceptions.
         var tga = new TgaFile(File.ReadAllBytes(filePath));
 
-        var bitmap = tga.ToBitmap();
+        using var bitmap = tga.ToBitmap();
 
         Assert.IsNotNull(bitmap);
         Assert.AreEqual(tga.Width, (ushort)bitmap.Width);
