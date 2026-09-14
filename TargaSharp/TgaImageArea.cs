@@ -89,8 +89,8 @@
         {
             if (other is null) return false;
             return ImageId == other.ImageId &&
-                (ReferenceEquals(ColorMapData, other.ColorMapData) || (ColorMapData is not null && other.ColorMapData is not null && ColorMapData.AsSpan().SequenceEqual(other.ColorMapData))) &&
-                (ReferenceEquals(ImageData, other.ImageData) || (ImageData is not null && other.ImageData is not null && ImageData.AsSpan().SequenceEqual(other.ImageData)));
+                TgaArrayEquality.Equals(ColorMapData, other.ColorMapData) &&
+                TgaArrayEquality.Equals(ImageData, other.ImageData);
         }
 
         /// <summary>
@@ -103,12 +103,8 @@
             {
                 int hash = 27;
                 if (ImageId is not null) hash = (13 * hash) + ImageId.GetHashCode();
-                if (ColorMapData is not null)
-                    for (int i = 0; i < ColorMapData.Length; i++)
-                        hash = (13 * hash) + ColorMapData[i].GetHashCode();
-                if (ImageData is not null)
-                    for (int i = 0; i < ImageData.Length; i++)
-                        hash = (13 * hash) + ImageData[i].GetHashCode();
+                hash = TgaArrayEquality.Hash(hash, ColorMapData);
+                hash = TgaArrayEquality.Hash(hash, ImageData);
                 return hash;
             }
         }

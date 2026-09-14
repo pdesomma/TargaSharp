@@ -117,7 +117,7 @@
         {
             if (other is null) return false;
             return Tag == other.Tag && Offset == other.Offset &&
-                (ReferenceEquals(Data, other.Data) || (Data is not null && other.Data is not null && Data.AsSpan().SequenceEqual(other.Data)));
+                TgaArrayEquality.Equals(Data, other.Data);
         }
 
         /// <summary>
@@ -131,9 +131,7 @@
                 int hash = 17;
                 hash = hash * 23 + Tag.GetHashCode();
                 hash = hash * 23 + Offset.GetHashCode();
-                if (Data is not null)
-                    for (int i = 0; i < Data.Length; i++)
-                        hash = hash * 23 + Data[i].GetHashCode();
+                hash = TgaArrayEquality.Hash(hash, Data, 23);
                 return hash;
             }
         }
