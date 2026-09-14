@@ -14,8 +14,26 @@ namespace TargaSharp.Drawing
         /// </summary>
         /// <param name="tga">Source <see cref="TgaFile"/>.</param>
         /// <param name="forceUseAlpha">Force use alpha channel.</param>
-        /// <returns>Bitmap or null, on error.</returns>
-        public static Bitmap ToBitmap(this TgaFile tga, bool forceUseAlpha = false) => ToBitmapCore(tga, forceUseAlpha, false);
+        /// <returns>The image as a <see cref="Bitmap"/>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="tga"/> is <see langword="null"/>.</exception>
+        /// <exception cref="InvalidOperationException"><paramref name="tga"/> has no image: its
+        /// <see cref="TgaHeader.ImageType"/> is <see cref="TgaImageType.NoImageData"/>, its width or height
+        /// is 0, or <see cref="TgaImageArea.ImageData"/> is <see langword="null"/>.</exception>
+        public static Bitmap ToBitmap(this TgaFile tga, bool forceUseAlpha = false)
+        {
+            ArgumentNullException.ThrowIfNull(tga);
+
+            // GDI+ would otherwise fail with an opaque "Parameter is not valid" from new Bitmap(0, 0, ...),
+            // or the copy below would NRE on a null ImageData.
+            if (tga.Header.ImageType == TgaImageType.NoImageData)
+                throw new InvalidOperationException($"{nameof(TgaFile)} has {nameof(TgaImageType.NoImageData)}; there is no image to convert.");
+            if (tga.Width == 0 || tga.Height == 0)
+                throw new InvalidOperationException($"{nameof(TgaFile)} is {tga.Width}x{tga.Height}; a Bitmap needs both dimensions > 0.");
+            if (tga.ImageArea.ImageData is null)
+                throw new InvalidOperationException($"{nameof(TgaFile)}.{nameof(TgaFile.ImageArea)}.{nameof(TgaImageArea.ImageData)} is null; there is no image to convert.");
+
+            return ToBitmapCore(tga, forceUseAlpha, false);
+        }
 
         /// <summary>
         /// Converts <paramref name="tga"/>'s postage stamp (thumbnail) image to a <see cref="Bitmap"/>.
