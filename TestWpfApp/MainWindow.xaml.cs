@@ -35,12 +35,15 @@ namespace TestWpfApp
         {
             if (T is null) return;
 
-            T = TgaDrawing.FromBitmap(T.ToBitmap());
+            using Bitmap bitmap = T.ToBitmap();
+            T = TgaDrawing.FromBitmap(bitmap);
             ShowTga();
         }
 
         private void ListBoxSelectedIndexChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (listBox1.SelectedIndex < 0) return;
+
             string tgaFilePath = Files[listBox1.SelectedIndex];
             if (File.Exists(tgaFilePath))
             {
@@ -77,16 +80,11 @@ namespace TestWpfApp
         {
             if (T is null) return;
 
-            Bitmap bitmap = T.ToBitmap();
-            Bitmap? thumb = T.GetPostageStampBitmap();
-
-            // Convert image if Format16bppGrayScale
-            if (bitmap.PixelFormat == System.Drawing.Imaging.PixelFormat.Format16bppGrayScale)
-            {
-                bitmap = Gray16To8bppIndexed(bitmap);
-                if (thumb != null)
-                    thumb = Gray16To8bppIndexed(thumb);
-            }
+            using Bitmap converted = T.ToBitmap();
+            // WPF's BMP decoder cannot show Format16bppGrayScale; downsample to 8bpp indexed for display.
+            using Bitmap bitmap = converted.PixelFormat == System.Drawing.Imaging.PixelFormat.Format16bppGrayScale
+                ? Gray16To8bppIndexed(converted)
+                : converted;
 
             richTextBox1.Document.Blocks.Clear();
             richTextBox1.AppendText(TgaJson.Serialize(T));
@@ -111,20 +109,24 @@ namespace TestWpfApp
             if (bitmap.PixelFormat != System.Drawing.Imaging.PixelFormat.Format16bppGrayScale)
                 throw new BadImageFormatException();
 
-            byte[] ImageData = new byte[bitmap.Width * bitmap.Height * 2];
-            Rectangle Re = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            // Copy row by row: GDI+ pads rows to 4 bytes, so a flat Width * Height copy shears odd widths.
+            int width = bitmap.Width, height = bitmap.Height;
+            Rectangle Re = new Rectangle(0, 0, width, height);
 
+            byte[] ImageData = new byte[width * height * 2];
             BitmapData BmpData = bitmap.LockBits(Re, ImageLockMode.ReadOnly, bitmap.PixelFormat);
-            Marshal.Copy(BmpData.Scan0, ImageData, 0, ImageData.Length);
+            for (int y = 0; y < height; y++)
+                Marshal.Copy(BmpData.Scan0 + (nint)y * BmpData.Stride, ImageData, y * width * 2, width * 2);
             bitmap.UnlockBits(BmpData);
 
-            byte[] ImageData2 = new byte[bitmap.Width * bitmap.Height];
-            for (long i = 0; i < ImageData2.LongLength; i++)
+            byte[] ImageData2 = new byte[width * height];
+            for (int i = 0; i < ImageData2.Length; i++)
                 ImageData2[i] = ImageData[i * 2 + 1];
 
-            Bitmap BmpOut = new Bitmap(bitmap.Width, bitmap.Height, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
+            Bitmap BmpOut = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
             BmpData = BmpOut.LockBits(Re, ImageLockMode.WriteOnly, BmpOut.PixelFormat);
-            Marshal.Copy(ImageData2, 0, BmpData.Scan0, ImageData2.Length);
+            for (int y = 0; y < height; y++)
+                Marshal.Copy(ImageData2, y * width, BmpData.Scan0 + (nint)y * BmpData.Stride, width);
             BmpOut.UnlockBits(BmpData);
 
             ColorPalette GrayPalette = BmpOut.Palette;

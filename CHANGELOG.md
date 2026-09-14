@@ -26,6 +26,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `TgaExtensionArea.ToBytes()` stamped `DateTime.UtcNow` into a null `DateTimeStamp`; it now serializes the spec's "not set" value (the writer still stamps an unset timestamp at save time).
 - `TgaDeveloperArea.ToBytes()` threw a bare `Exception` for a null `Entries` list; now `InvalidOperationException`. `TgaDeveloperArea`, `TgaPostageStampImage` and `TgaString` null-argument exceptions carried a bogus `ParamName`.
 - `new TgaString(Array.Empty<byte>(), useEnding: true)` threw an `ArgumentOutOfRangeException` naming `count`; it now names `bytes`.
+- `ToBitmap()` copied `ImageData` into the GDI+ buffer unchecked: an oversized array corrupted the heap and killed the process, an undersized one left rows uninitialized; the length is now verified up front (`InvalidOperationException`) and rows are copied by GDI+'s own stride.
+- `TgaDrawing.FromBitmap` on an 8bpp bitmap with an all-gray palette produced `ImageType` Grayscale *plus* a color map, which `Save` rejects; the identity gray ramp now yields a grayscale image with no color map and any other palette a color-mapped image.
+- `ToBitmap()` ignored `ColorMapSpec.FirstEntryIndex`, so palettes not starting at 0 mapped every pixel to the wrong color.
+- `ToBitmap(forceUseAlpha: true)` read bit 15 of `X1R5G5B5` palette entries (always written as 0) as alpha, making every entry transparent; 15-bit entries are now always opaque.
+- Palette alpha (`A1R5G5B5`/`A8R8G8B8` entries) was dropped by a plain `ToBitmap()` because only the descriptor's attribute bits were consulted; `FromBitmap` now marks such files `UsefulAlpha` and `ToBitmap` keys palette alpha on the entry size.
+- `GetPostageStampBitmap()` returned a zero-filled bitmap for a stamp whose `Data` was shorter than declared; it now returns `null`.
+- `TgaDrawing.FromBitmap` silently truncated bitmaps wider or taller than 65535 (now `ArgumentOutOfRangeException`) and assumed GDI+'s stride equals the padded row width (rows are now copied by the reported stride).
+- `ToBitmap()` on an unsupported pixel depth or color-map entry size failed with GDI+'s "Parameter is not valid" or silently kept the default halftone palette; both now throw `NotSupportedException`. A key color on a 16bpp grayscale image no longer throws from `MakeTransparent`.
+- 5-bit palette channels are expanded by bit replication (`v << 3 | v >> 2`) instead of float scaling.
 - `TgaDrawing.FromBitmap` crashed the process (fatal CLR error) on 1bpp/4bpp indexed bitmaps and produced invalid files for 48/64bpp; those formats now throw `NotSupportedException` up front.
 - `Width * Height * bytes-per-pixel` overflowed `int` in `TgaReader` and `TgaValidator` (32768x32768x32bpp wrapped to 0, so a header with no pixel bytes loaded and validated clean); now sized in `long`.
 - `TgaReader` allocated header-declared sizes (image data, RLE output, developer fields) before checking them against the stream, so a few hundred bytes could force a multi-GB allocation and `OutOfMemoryException`; declared sizes are now checked against the remaining stream first and rejected with `TgaFormatException`.
