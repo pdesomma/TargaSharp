@@ -37,13 +37,28 @@ namespace TargaSharp.IO
     }
 
     /// <summary>
+    /// Computes a <see cref="TgaFile"/>'s on-disk layout for <see cref="TgaWriter"/>.
+    /// </summary>
+    internal interface ITgaLayoutPlanner
+    {
+        /// <summary>
+        /// Plans <paramref name="file"/>'s layout, assigning its writer-owned derived fields (ID length,
+        /// extension size, offsets) in the process.
+        /// </summary>
+        /// <param name="file">The file to lay out. Expected to have passed <see cref="ITgaValidator"/> validation.</param>
+        /// <returns>The layout, ready to be written section by section.</returns>
+        /// <exception cref="TgaValidationException">A structural inconsistency was found that validation did not model.</exception>
+        TgaLayout Plan(TgaFile file);
+    }
+
+    /// <summary>
     /// Computes a <see cref="TgaFile"/>'s on-disk layout. This is the single source of truth for section order
     /// (spec: header, image ID, color map, image data, developer fields, developer directory, extension area,
     /// scan line table, postage stamp, color correction table, footer). As a side effect it assigns every
     /// writer-owned derived field on the file (ID length, extension size, all offsets) so that the bytes it
     /// returns and the fields the file now carries always agree.
     /// </summary>
-    internal sealed class TgaLayoutPlanner
+    internal sealed class TgaLayoutPlanner : ITgaLayoutPlanner
     {
         /// <summary>
         /// A section whose offset is known but whose bytes are produced later, once every offset has been assigned.
@@ -54,13 +69,8 @@ namespace TargaSharp.IO
         /// <param name="Materialize">Produces the section's bytes; called after all offsets are assigned.</param>
         private sealed record PendingSection(string Name, uint Offset, uint Size, Func<byte[]> Materialize);
 
-        /// <summary>
-        /// Plans <paramref name="file"/>'s layout, assigning its derived fields in the process.
-        /// </summary>
-        /// <param name="file">The file to lay out. Expected to have passed <see cref="ITgaValidator"/> validation.</param>
-        /// <returns>The layout, ready to be written section by section.</returns>
-        /// <exception cref="TgaValidationException">A structural inconsistency was found that validation did not model.</exception>
-        internal TgaLayout Plan(TgaFile file)
+        /// <inheritdoc />
+        public TgaLayout Plan(TgaFile file)
         {
             ArgumentNullException.ThrowIfNull(file);
 
@@ -170,16 +180,17 @@ namespace TargaSharp.IO
 
         /// <summary>
         /// Plans the developer fields followed by the developer directory, and records the directory offset in the footer.
-        /// Empty entries are left out of the file and the remainder written in tag order, as the spec requires a
-        /// tag-ordered directory - but on a private copy: the caller's <see cref="TgaDeveloperArea.Entries"/> list
-        /// is never reordered or shortened by writing. Only each written entry's derived <see cref="TgaDeveloperEntry.Offset"/> is assigned.
+        /// Entries are written in tag order, as the spec requires a tag-ordered directory - but on a private copy: the
+        /// caller's <see cref="TgaDeveloperArea.Entries"/> list is never reordered by writing. A zero-length entry keeps its
+        /// directory slot (the spec does not forbid one) so a file round-trips with the entry count it declared.
+        /// Only each entry's derived <see cref="TgaDeveloperEntry.Offset"/> is assigned.
         /// </summary>
         /// <param name="file">File being planned.</param>
         /// <param name="add">Section sink.</param>
         private static void PlanDeveloperArea(TgaFile file, Func<string, uint, Func<byte[]>, uint> add)
         {
             List<TgaDeveloperEntry> entries = file.DeveloperArea?.Entries
-                .Where(e => e is not null && e.FieldSize > 0)
+                .Where(e => e is not null)
                 .OrderBy(e => e.Tag)
                 .ToList() ?? [];
 
@@ -220,7 +231,11 @@ namespace TargaSharp.IO
                 return;
             }
 
-            ext.ExtensionSize = (ushort)(TgaExtensionArea.MinSize + (ext.OtherDataInExtensionArea?.Length ?? 0));
+            int otherDataLength = ext.OtherDataInExtensionArea?.Length ?? 0;
+            if (otherDataLength > ushort.MaxValue - TgaExtensionArea.MinSize)
+                throw Fail("ExtensionArea.OtherDataInExtensionArea", $"length {otherDataLength} exceeds the {ushort.MaxValue - TgaExtensionArea.MinSize} bytes the Extension Size field can hold.");
+
+            ext.ExtensionSize = (ushort)(TgaExtensionArea.MinSize + otherDataLength);
             // A caller-supplied timestamp is preserved; only an unset one is stamped with "now".
             if (ext.DateTimeStamp.IsUnset)
                 ext.DateTimeStamp = new TgaDateTime(DateTime.UtcNow);

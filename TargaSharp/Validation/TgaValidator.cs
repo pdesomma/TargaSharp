@@ -35,6 +35,7 @@
 
             ValidateImageDimensions(file, errors);
             ValidatePixelDepth(file, errors);
+            ValidatePixelDepthMatchesImageType(file, errors);
             ValidateColorMapTypeKnown(file, errors);
             ValidateColorMapSpec(file, errors);
             ValidateColorMappedImageTypeHasColorMap(file, errors);
@@ -58,6 +59,7 @@
             ValidateColorCorrectionTable(file, errors);
             ValidatePostageStampImage(file, errors);
             ValidateSoftwareVersion(file, errors);
+            ValidateNameFields(file, errors);
 
             return errors;
         }
@@ -106,6 +108,27 @@
             var depth = file.Header.ImageSpec.PixelDepth;
             if (depth is not (TgaPixelDepth.Bpp8 or TgaPixelDepth.Bpp16 or TgaPixelDepth.Bpp24 or TgaPixelDepth.Bpp32))
                 errors.Add(new TgaValidationError("Header.ImageSpec.PixelDepth", $"PixelDepth must be 8, 16, 24 or 32 when ImageType is not NoImageData (was {(byte)depth})."));
+        }
+
+        /// <summary>
+        /// Spec Field 8: color-mapped and black-and-white pixels are 8- or 16-bit, true-color pixels 16-, 24- or 32-bit.
+        /// Other combinations have no pixel layout the spec defines (and no GDI+ equivalent).
+        /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
+        private static void ValidatePixelDepthMatchesImageType(TgaFile file, List<TgaValidationError> errors)
+        {
+            var imageType = file.Header.ImageType;
+            var depth = file.Header.ImageSpec.PixelDepth;
+            if (!imageType.IsKnown() || imageType == TgaImageType.NoImageData) return;
+            // A non-standard depth is already reported by ValidatePixelDepth.
+            if (depth is not (TgaPixelDepth.Bpp8 or TgaPixelDepth.Bpp16 or TgaPixelDepth.Bpp24 or TgaPixelDepth.Bpp32)) return;
+
+            bool valid = imageType.IsTrueColor()
+                ? depth is TgaPixelDepth.Bpp16 or TgaPixelDepth.Bpp24 or TgaPixelDepth.Bpp32
+                : depth is TgaPixelDepth.Bpp8 or TgaPixelDepth.Bpp16;
+            if (!valid)
+                errors.Add(new TgaValidationError("Header.ImageSpec.PixelDepth", $"PixelDepth {(byte)depth} is not valid for ImageType {imageType} ({(imageType.IsTrueColor() ? "16, 24 or 32" : "8 or 16")})."));
         }
 
         /// <summary>
@@ -318,8 +341,12 @@
 
             if (dateTime.Month is < 1 or > 12)
                 errors.Add(new TgaValidationError("ExtensionArea.DateTimeStamp.Month", $"Month must be 1-12 (was {dateTime.Month})."));
-            if (dateTime.Day is < 1 or > 31)
-                errors.Add(new TgaValidationError("ExtensionArea.DateTimeStamp.Day", $"Day must be 1-31 (was {dateTime.Day})."));
+            // Day is bounded by the month's length when both are usable; otherwise only by the spec's 1-31.
+            int maxDay = dateTime.Month is >= 1 and <= 12 && dateTime.Year >= 1 && dateTime.Year <= 9999
+                ? DateTime.DaysInMonth(dateTime.Year, dateTime.Month)
+                : 31;
+            if (dateTime.Day < 1 || dateTime.Day > maxDay)
+                errors.Add(new TgaValidationError("ExtensionArea.DateTimeStamp.Day", $"Day must be 1-{maxDay} (was {dateTime.Day})."));
             if (dateTime.Hour > 23)
                 errors.Add(new TgaValidationError("ExtensionArea.DateTimeStamp.Hour", $"Hour must be 0-23 (was {dateTime.Hour})."));
             if (dateTime.Minute > 59)
@@ -457,6 +484,38 @@
         }
 
         /// <summary>
+        /// Spec Fields 11, 14 and 16 as a group; see <see cref="ValidateNameField"/>.
+        /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
+        private static void ValidateNameFields(TgaFile file, List<TgaValidationError> errors)
+        {
+            var ext = file.ExtensionArea;
+            if (ext is null) return;
+
+            ValidateNameField("ExtensionArea.AuthorName", ext.AuthorName, errors);
+            ValidateNameField("ExtensionArea.JobNameOrId", ext.JobNameOrId, errors);
+            ValidateNameField("ExtensionArea.SoftwareId", ext.SoftwareId, errors);
+        }
+
+        /// <summary>
+        /// Spec Fields 11, 14 and 16: a 41-byte ASCII field whose last byte is NUL. Any other
+        /// <see cref="TgaString.Length"/> would shift every field after it in the extension area.
+        /// </summary>
+        /// <param name="path">Field path for the error.</param>
+        /// <param name="name">Field value; <see langword="null"/> is serialized as the empty field and is valid.</param>
+        /// <param name="errors">Sink for rule violations.</param>
+        private static void ValidateNameField(string path, TgaString? name, List<TgaValidationError> errors)
+        {
+            if (name is null) return;
+
+            if (name.Length != TgaExtensionArea.NameFieldLength)
+                errors.Add(new TgaValidationError(path, $"Length must be {TgaExtensionArea.NameFieldLength} (was {name.Length})."));
+            if (!name.UseEndingChar)
+                errors.Add(new TgaValidationError(path, "UseEndingChar must be true; the field's last byte is NUL per spec."));
+        }
+
+        /// <summary>
         /// Spec Field 17: the release-letter byte must be a space (unused, per spec) or an ASCII
         /// letter. NUL is also accepted as "unused": several real-world writers (e.g. the
         /// <c>Alpha Premult.tga</c>/<c>Alpha Straight.tga</c> fixtures) zero-fill this byte instead
@@ -470,8 +529,10 @@
             var softwareVersion = file.ExtensionArea?.SoftwareVersion;
             if (softwareVersion is null) return;
 
-            if (softwareVersion.VersionLetter is not (' ' or '\0') && !char.IsLetter(softwareVersion.VersionLetter))
-                errors.Add(new TgaValidationError("ExtensionArea.SoftwareVersion.VersionLetter", $"VersionLetter must be ' ', NUL or a letter (was '{softwareVersion.VersionLetter}')."));
+            // char.IsLetter accepts non-ASCII letters that the 1-byte field would serialize as '?'.
+            char letter = softwareVersion.VersionLetter;
+            if (letter is not (' ' or '\0' or (>= 'A' and <= 'Z') or (>= 'a' and <= 'z')))
+                errors.Add(new TgaValidationError("ExtensionArea.SoftwareVersion.VersionLetter", $"VersionLetter must be ' ', NUL or an ASCII letter (was '{letter}')."));
         }
     }
 }

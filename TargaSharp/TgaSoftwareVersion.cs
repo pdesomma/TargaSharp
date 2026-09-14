@@ -27,20 +27,27 @@ namespace TargaSharp
         /// </summary>
         /// <param name="str">Input string, example: "123d".</param>
         /// <exception cref="ArgumentNullException"><paramref name="str"/> is <see langword="null"/>.</exception>
-        /// <exception cref="ArgumentOutOfRangeException"><paramref name="str"/> is not 3 or 4 characters long.</exception>
-        /// <exception cref="FormatException">The first three characters are not decimal digits.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="str"/> is shorter than 3 characters, or its
+        /// digits exceed <see cref="ushort.MaxValue"/>.</exception>
+        /// <exception cref="FormatException"><paramref name="str"/> is not 3+ decimal digits followed by at most one letter.</exception>
         public TgaSoftwareVersion(string str)
         {
             ArgumentNullException.ThrowIfNull(str);
-            if (str.Length < 3 || str.Length > 4)
-                throw new ArgumentOutOfRangeException(nameof(str), str.Length, "Length must be 3 or 4 (three digits and an optional version letter).");
+            if (str.Length < 3)
+                throw new ArgumentOutOfRangeException(nameof(str), str.Length, "Length must be >= 3 (three digits and an optional version letter).");
 
-            // A failed parse used to be swallowed, silently turning "1.0a" into version 000 with no letter.
-            if (!ushort.TryParse(str.AsSpan(0, 3), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out ushort versionNumber))
-                throw new FormatException($"\"{str}\" must start with three decimal digits, e.g. \"117\" or \"117b\".");
+            // Inverse of ToString: every leading digit is the number (so "1234" is not 123 + '4'), an optional trailing char the letter.
+            int digits = 0;
+            while (digits < str.Length && str[digits] is >= '0' and <= '9')
+                digits++;
+            if (digits < 3 || digits < str.Length - 1)
+                throw new FormatException($"\"{str}\" must be three or more decimal digits followed by at most one version letter, e.g. \"117\" or \"117b\".");
+
+            if (!ushort.TryParse(str.AsSpan(0, digits), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out ushort versionNumber))
+                throw new ArgumentOutOfRangeException(nameof(str), str, $"Version number must be <= {ushort.MaxValue}.");
 
             VersionNumber = versionNumber;
-            if (str.Length == 4) VersionLetter = str[3];
+            if (digits < str.Length) VersionLetter = str[digits];
         }
 
         /// <summary>

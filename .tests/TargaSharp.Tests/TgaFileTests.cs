@@ -25,6 +25,41 @@ public class TgaFileTests
     }
 
     [TestMethod]
+    public void Ctor_NoImageDataType_ThrowsArgumentException()
+    {
+        var e = Assert.ThrowsExactly<ArgumentException>(() => new TgaFile(4, 4, TgaPixelDepth.Bpp24, TgaImageType.NoImageData));
+
+        Assert.AreEqual("imgType", e.ParamName);
+    }
+
+    [TestMethod]
+    public void Ctor_AttrBitsAbove15_ThrowsArgumentOutOfRangeExceptionNamingAttrBits()
+    {
+        var e = Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaFile(4, 4, TgaPixelDepth.Bpp32, attrBits: 16));
+
+        Assert.AreEqual("attrBits", e.ParamName);
+    }
+
+    [TestMethod]
+    public void UpdatePostageStampImage_ImageDataShorterThanHeaderDeclares_ThrowsInvalidOperationException()
+    {
+        var tga = new TgaFile(100, 100);
+        tga.ImageArea.ImageData = new byte[3];
+
+        Assert.ThrowsExactly<InvalidOperationException>(tga.UpdatePostageStampImage);
+    }
+
+    [TestMethod]
+    public void UpdatePostageStampImage_ZeroHeight_ThrowsInvalidOperationException()
+    {
+        var tga = new TgaFile(10, 10);
+        tga.Height = 0;
+        tga.ImageArea.ImageData = [];
+
+        Assert.ThrowsExactly<InvalidOperationException>(tga.UpdatePostageStampImage);
+    }
+
+    [TestMethod]
     public void Ctor_WidthAndHeight_PopulatesHeaderAndImageArea()
     {
         var tga = new TgaFile(2, 2);

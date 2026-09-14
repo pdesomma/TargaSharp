@@ -74,7 +74,7 @@
                 int hash = 27;
                 if (Entries != null)
                     for (int i = 0; i < Entries.Count; i++)
-                        hash = (13 * hash) + Entries[i].GetHashCode();
+                        hash = (13 * hash) + (Entries[i]?.GetHashCode() ?? 0);
                 return hash;
             }
         }

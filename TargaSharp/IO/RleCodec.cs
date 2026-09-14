@@ -55,9 +55,10 @@
         }
 
         /// <summary>
-        /// Encodes one scanline. Runs of 2+ identical pixels become run-length packets; everything else is
-        /// gathered into raw packets that end where the next run begins. Packets never exceed
-        /// <see cref="MaxPacketPixels"/> pixels and never cross into the next scanline.
+        /// Encodes one scanline. A run becomes a run-length packet only when that is no larger than
+        /// carrying the same pixels raw: a run packet costs 1 + bpp bytes, and splitting a raw packet
+        /// to insert one costs a further header byte. Everything else is gathered into raw packets.
+        /// Packets never exceed <see cref="MaxPacketPixels"/> pixels and never cross into the next scanline.
         /// </summary>
         /// <param name="row">Exactly one scanline of pixels.</param>
         /// <param name="bytesPerPixel">Bytes per pixel.</param>
@@ -69,7 +70,7 @@
             while (pos < width)
             {
                 int run = RunLength(row, bytesPerPixel, width, pos);
-                if (run >= 2)
+                if (RunPacketIsSmaller(run, bytesPerPixel, splitsRawPacket: false))
                 {
                     encoded.Add((byte)(RunLengthFlag | (run - 1)));
                     encoded.AddRange(row.Slice(pos * bytesPerPixel, bytesPerPixel).ToArray());
@@ -77,17 +78,35 @@
                     continue;
                 }
 
-                // Raw span: advance until a run of 2+ starts, the packet fills, or the row ends.
+                // Raw span: advance until a run worth a packet of its own starts, the packet fills, or the row ends.
                 int start = pos;
                 pos++;
-                while (pos < width && pos - start < MaxPacketPixels && RunLength(row, bytesPerPixel, width, pos) < 2)
+                while (pos < width && pos - start < MaxPacketPixels)
+                {
+                    int next = RunLength(row, bytesPerPixel, width, pos);
+                    // A run that ends the row closes this raw packet for free; one mid-row costs another raw header after it.
+                    if (RunPacketIsSmaller(next, bytesPerPixel, splitsRawPacket: pos + next < width))
+                        break;
                     pos++;
+                }
 
                 int count = pos - start;
                 encoded.Add((byte)(count - 1));
                 encoded.AddRange(row.Slice(start * bytesPerPixel, count * bytesPerPixel).ToArray());
             }
         }
+
+        /// <summary>
+        /// Decides whether <paramref name="run"/> identical pixels are cheaper as a run packet (1 + bpp bytes)
+        /// than carried raw (run * bpp bytes, plus one more raw header when the run splits an open raw packet).
+        /// At 1 bpp a 2-pixel run only breaks even, so it stays raw; at 3+ bpp every run of 2 wins.
+        /// </summary>
+        /// <param name="run">Run length in pixels.</param>
+        /// <param name="bytesPerPixel">Bytes per pixel.</param>
+        /// <param name="splitsRawPacket">Whether raw pixels follow the run inside the same row.</param>
+        /// <returns><see langword="true"/> when a run packet is strictly smaller.</returns>
+        private static bool RunPacketIsSmaller(int run, int bytesPerPixel, bool splitsRawPacket) =>
+            run * bytesPerPixel > bytesPerPixel + 1 + (splitsRawPacket ? 1 : 0);
 
         /// <summary>
         /// Counts how many consecutive pixels from <paramref name="pos"/> equal the pixel at <paramref name="pos"/>, capped at <see cref="MaxPacketPixels"/>.

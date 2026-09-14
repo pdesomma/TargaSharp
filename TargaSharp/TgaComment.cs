@@ -139,8 +139,13 @@ namespace TargaSharp
                 throw new ArgumentOutOfRangeException(nameof(text), text.Length, $"text must be <= {LineLength} characters (TGA Field 12 line width).");
 
             foreach (char c in text)
+            {
                 if (c >= 128)
                     throw new ArgumentException($"text must be ASCII (all chars < 128); TGA comment lines are ASCII-only per spec. Found '{c}' (0x{(int)c:X2}).", nameof(text));
+                // The byte ctor reads a line up to its first NUL, so an embedded one would not round-trip.
+                if (c == TgaString.DefaultEndingChar)
+                    throw new ArgumentException("text must not contain NUL; readers treat it as the end of the line.", nameof(text));
+            }
 
             _lines[index] = text;
         }

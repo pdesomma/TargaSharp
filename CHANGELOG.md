@@ -11,12 +11,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `new TgaFile(width, height, ...)` throws `ArgumentOutOfRangeException` for a zero dimension or `TgaPixelDepth.Other` instead of silently producing a 0x0 `NoImageData` file; use `new TgaFile()` + `ToNewFormat()` for an empty v2.0 file.
 - `new TgaTime(int, int, int)` and `new TgaTime(TimeSpan)` throw `ArgumentOutOfRangeException` for out-of-range values instead of silently narrowing (`new TgaTime(70000, 0, 0).Hours` was 4464).
 - `TgaImageType.IsRunLengthEncoded()` is true only for spec values 9-11; reserved values with bit 3 set (25, 27, 41, ...) no longer decode as RLE.
+- `new TgaFile(width, height, ...)` throws `ArgumentException` for `TgaImageType.NoImageData` (it allocated pixel data the validator then rejected) and `ArgumentOutOfRangeException` naming `attrBits` for values above 15.
+- `TgaString` and `TgaComment` reject an embedded NUL (`ArgumentException`); every reader treats it as the end of the text, so such a value never round-tripped.
+- `new TgaSoftwareVersion(string)` parses every leading digit as the number, so it is the inverse of `ToString()` for versions above 999 (`"1234"` was 123 + letter `'4'`); a number above 65535 throws `ArgumentOutOfRangeException`.
+- Developer entries with empty `Data` are now written (with field size 0) instead of silently dropped, so a file round-trips with the entry count it declared.
+- `TgaFile.UpdatePostageStampImage()` throws `InvalidOperationException` for a zero dimension or an `ImageData` length that disagrees with the header instead of a raw `ArgumentException`/garbage stamp.
 
 ### Added
 - `TgaHeader.ImageDataLength` and `TgaHeader.ColorMapDataLength`: the byte lengths the header declares for Fields 8 and 7, now the single definition used by the reader, writer and validator.
 - `TgaValidator` rules: non-zero width/height for image types with pixel data (previously passed validation and failed inside `Save`), unknown `ColorMapType` values, `AttributesType = NoAlpha` with non-zero descriptor attribute bits (spec Field 24), `OtherDataInExtensionArea` too large for the 2-byte Extension Size, more than 65535 developer entries, and a 0x0 postage stamp.
+- `TgaValidator` rules: `PixelDepth` must suit the `ImageType` (true-color 16/24/32, color-mapped and grayscale 8/16); `AuthorName`/`JobNameOrId`/`SoftwareId` must be 41 bytes with a NUL terminator (any other length shifted every following extension-area field and failed inside `Save` with an unnamed error); `DateTimeStamp.Day` is checked against the month's length; `SoftwareVersion.VersionLetter` must be an ASCII letter (a non-ASCII letter passed and was written as `'?'`).
+- `TgaImageDescriptor.MaxAlphaChannelBits`.
 
 ### Fixed
+- `TgaString` setters assigned before validating, so a rejected value (caught `ArgumentException`) left the instance in a state whose `ToBytes()` silently truncated; the candidate is now validated first and the instance is untouched on failure.
+- RLE encoding of 8bpp images expanded data with isolated 2-pixel runs (a run packet is no smaller than two raw bytes, and splitting the raw packet costs a header): `(a, b, c, c)` across a 128-pixel row encoded to 160 bytes, now 129. Run packets are emitted only when they are strictly smaller.
+- `TgaDeveloperArea.GetHashCode()` threw `NullReferenceException` for a null entry that `Equals` accepted.
 - `TgaReader` read color-map bytes whenever `ColorMapLength > 0`, even with `ColorMapType = NoColorMap`, shifting the image data of files with a stale color-map spec; the color map is now gated on `ColorMapType` as the spec requires (and as the writer already did).
 - `TgaReader` on an RLE image with a zero dimension always consumed one packet, eating the first footer/extension byte or failing at end of stream; a zero-length decode now reads nothing.
 - `Save`/`ToBytes` shortened a padded image ID (e.g. `IdLength` 6 for `"abc"`) to its text length, so files did not round-trip byte-for-byte; the field's `Length` is now written as-is.
