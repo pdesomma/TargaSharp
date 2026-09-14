@@ -76,6 +76,24 @@
         public TgaImageType ImageType { get; set; }
 
         /// <summary>
+        /// Gets the byte length of the color map data (Field 7) this header declares:
+        /// <see cref="TgaColorMapSpec.ColorMapLength"/> entries of <see cref="TgaColorMapSpec.ColorMapEntrySize"/>,
+        /// or 0 when <see cref="ColorMapType"/> is <see cref="TgaColorMapType.NoColorMap"/>.
+        /// </summary>
+        public int ColorMapDataLength => ColorMapType == TgaColorMapType.NoColorMap
+            ? 0
+            : ColorMapSpec.ColorMapLength * ColorMapSpec.ColorMapEntrySize.BytesPerPixel();
+
+        /// <summary>
+        /// Gets the byte length of the decoded image data (Field 8) this header declares:
+        /// Width * Height * bytes-per-pixel, or 0 when <see cref="ImageType"/> is <see cref="TgaImageType.NoImageData"/>.
+        /// Computed in <see cref="long"/> because 65535 x 65535 x 4 exceeds <see cref="int.MaxValue"/>.
+        /// </summary>
+        public long ImageDataLength => ImageType == TgaImageType.NoImageData
+            ? 0
+            : (long)ImageSpec.ImageWidth * ImageSpec.ImageHeight * ImageSpec.PixelDepth.BytesPerPixel();
+
+        /// <summary>
         /// Make full copy of <see cref="TgaHeader"/>. Named <c>Copy</c> rather than
         /// <c>Clone</c> because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>

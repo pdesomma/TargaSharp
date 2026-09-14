@@ -139,7 +139,7 @@ namespace TargaSharp.IO
                 return;
 
             byte[]? data = file.ImageArea.ColorMapData;
-            int expected = file.Header.ColorMapSpec.ColorMapLength * file.Header.ColorMapSpec.ColorMapEntrySize.BytesPerPixel();
+            int expected = file.Header.ColorMapDataLength;
             if (data is null || data.Length != expected)
                 throw Fail("ImageArea.ColorMapData", $"expected {expected} bytes, found {data?.Length.ToString() ?? "null"}.");
 
@@ -158,8 +158,7 @@ namespace TargaSharp.IO
 
             byte[]? data = file.ImageArea.ImageData;
             int bytesPerPixel = file.Header.ImageSpec.PixelDepth.BytesPerPixel();
-            // ushort * ushort * 4 exceeds int.MaxValue, so size in long.
-            long expected = (long)file.Width * file.Height * bytesPerPixel;
+            long expected = file.Header.ImageDataLength;
             if (file.Width == 0 || file.Height == 0 || data is null || data.Length != expected)
                 throw Fail("ImageArea.ImageData", $"expected {expected} bytes for {file.Width}x{file.Height}, found {data?.Length.ToString() ?? "null"}.");
 

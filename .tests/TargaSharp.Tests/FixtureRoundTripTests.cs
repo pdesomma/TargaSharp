@@ -45,12 +45,12 @@ public class FixtureRoundTripTests
 
     /// <summary>
     /// Loads a real-world .tga fixture and round-trips it through a <see cref="MemoryStream"/>
-    /// save/reload, asserting the header survives unchanged.
+    /// save/reload, asserting the header, image area (ID, palette, pixels) and extension area survive unchanged.
     /// </summary>
     /// <param name="filePath">Absolute path to the .tga fixture under test.</param>
     [TestMethod]
     [DynamicData(nameof(GetFixtureFiles), DynamicDataDisplayName = nameof(GetFixtureDisplayName))]
-    public void LoadAndRoundTrip_RealWorldFixture_ProducesMatchingHeader(string filePath)
+    public void LoadAndRoundTrip_RealWorldFixture_ProducesMatchingHeaderImageAreaAndExtensionArea(string filePath)
     {
         // Read the fixture bytes with a shared-read handle (File.ReadAllBytes) rather than
         // TgaFile(string), whose FileStream defaults to non-shared write access: with the sibling
@@ -65,6 +65,8 @@ public class FixtureRoundTripTests
         var reloaded = new TgaFile(stream);
 
         Assert.AreEqual(tga.Header, reloaded.Header);
+        Assert.AreEqual(tga.ImageArea, reloaded.ImageArea);
+        Assert.AreEqual(tga.ExtensionArea, reloaded.ExtensionArea);
     }
 
     /// <summary>

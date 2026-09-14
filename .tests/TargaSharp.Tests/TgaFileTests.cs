@@ -424,6 +424,52 @@ public class TgaFileTests
     }
 
     [TestMethod]
+    public void UpdatePostageStampImage_ImageSmallerThanMaxSize_CopiesPixelsOneToOne()
+    {
+        var tga = new TgaFile(4, 4, TgaPixelDepth.Bpp8, TgaImageType.UncompressedGrayscale);
+        for (int i = 0; i < 16; i++) tga.ImageArea.ImageData![i] = (byte)i;
+
+        tga.UpdatePostageStampImage();
+
+        TgaPostageStampImage stamp = tga.ExtensionArea!.PostageStampImage!;
+        Assert.AreEqual((byte)4, stamp.Width);
+        Assert.AreEqual((byte)4, stamp.Height);
+        CollectionAssert.AreEqual(tga.ImageArea.ImageData, stamp.Data);
+        Assert.AreEqual(0, tga.Validate().Count);
+    }
+
+    [TestMethod]
+    public void UpdatePostageStampImage_NoImageData_ClearsExistingStamp()
+    {
+        var tga = new TgaFile();
+        tga.ToNewFormat();
+        tga.ExtensionArea!.PostageStampImage = new TgaPostageStampImage(1, 1, [1]);
+
+        tga.UpdatePostageStampImage();
+
+        Assert.IsNull(tga.ExtensionArea.PostageStampImage);
+    }
+
+    [TestMethod]
+    public void Ctor_Path_MissingFile_ThrowsFileNotFoundException()
+    {
+        Assert.ThrowsExactly<FileNotFoundException>(() => new TgaFile(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".tga")));
+    }
+
+    [TestMethod]
+    public void Validate_InvalidFile_ReturnsSameErrorsAsSaveThrows()
+    {
+        var tga = new TgaFile(2, 2);
+        tga.ImageArea.ImageData = new byte[1];
+
+        var errors = tga.Validate();
+        var ex = Assert.ThrowsExactly<TgaValidationException>(() => tga.ToBytes());
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual(errors[0].Path, ex.Errors[0].Path);
+    }
+
+    [TestMethod]
     public void Save_ToPath_ThenReload_ProducesEqualHeader()
     {
         var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp24, TgaImageType.UncompressedTrueColor);

@@ -45,19 +45,15 @@
 
             // Spec Field 7: the color map is present only when Field 2 says so; a stale non-zero
             // ColorMapLength on a NoColorMap file must not shift the image data.
-            if (file.Header.ColorMapType != TgaColorMapType.NoColorMap && file.Header.ColorMapSpec.ColorMapLength > 0)
-            {
-                int cmBytesPerPixel = file.Header.ColorMapSpec.ColorMapEntrySize.BytesPerPixel();
-                int lenBytes = file.Header.ColorMapSpec.ColorMapLength * cmBytesPerPixel;
-                file.ImageArea.ColorMapData = ReadExactly(binaryReader, lenBytes, "Color map");
-            }
+            int colorMapDataLength = file.Header.ColorMapDataLength;
+            if (colorMapDataLength > 0)
+                file.ImageArea.ColorMapData = ReadExactly(binaryReader, colorMapDataLength, "Color map");
 
             // Read Image Data
             int bytesPerPixel = file.Header.ImageSpec.PixelDepth.BytesPerPixel();
             if (file.Header.ImageType != TgaImageType.NoImageData)
             {
-                // ushort * ushort * 4 exceeds int.MaxValue (32768 x 32768 x 32bpp wraps to exactly 0), so size in long.
-                long imageDataSizeLong = (long)file.Width * file.Height * bytesPerPixel;
+                long imageDataSizeLong = file.Header.ImageDataLength;
                 if (imageDataSizeLong > int.MaxValue)
                     throw new EndOfStreamException($"Image data of {imageDataSizeLong} bytes ({file.Width}x{file.Height}x{bytesPerPixel}) exceeds the supported size.");
                 int imageDataSize = (int)imageDataSizeLong;

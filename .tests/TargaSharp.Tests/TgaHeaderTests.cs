@@ -37,6 +37,48 @@ public class TgaHeaderTests
     }
 
     [TestMethod]
+    public void ImageDataLength_WidthHeightDepth_MultipliesInLong()
+    {
+        var header = new TgaHeader { ImageType = TgaImageType.UncompressedTrueColor };
+        header.ImageSpec.ImageWidth = ushort.MaxValue;
+        header.ImageSpec.ImageHeight = ushort.MaxValue;
+        header.ImageSpec.PixelDepth = TgaPixelDepth.Bpp32;
+
+        Assert.AreEqual(65535L * 65535 * 4, header.ImageDataLength);
+    }
+
+    [TestMethod]
+    public void ImageDataLength_NoImageData_ReturnsZero()
+    {
+        var header = new TgaHeader { ImageType = TgaImageType.NoImageData };
+        header.ImageSpec.ImageWidth = 4;
+        header.ImageSpec.ImageHeight = 4;
+        header.ImageSpec.PixelDepth = TgaPixelDepth.Bpp24;
+
+        Assert.AreEqual(0L, header.ImageDataLength);
+    }
+
+    [TestMethod]
+    public void ColorMapDataLength_ColorMap_MultipliesLengthByEntryBytes()
+    {
+        var header = new TgaHeader { ColorMapType = TgaColorMapType.ColorMap };
+        header.ColorMapSpec.ColorMapLength = 256;
+        header.ColorMapSpec.ColorMapEntrySize = TgaColorMapEntrySize.A1R5G5B5;
+
+        Assert.AreEqual(512, header.ColorMapDataLength);
+    }
+
+    [TestMethod]
+    public void ColorMapDataLength_NoColorMapWithStaleSpec_ReturnsZero()
+    {
+        var header = new TgaHeader { ColorMapType = TgaColorMapType.NoColorMap };
+        header.ColorMapSpec.ColorMapLength = 256;
+        header.ColorMapSpec.ColorMapEntrySize = TgaColorMapEntrySize.R8G8B8;
+
+        Assert.AreEqual(0, header.ColorMapDataLength);
+    }
+
+    [TestMethod]
     public void Ctor_ByteContract_Holds()
     {
         ByteSerializableContract.AssertByteCtorContract(

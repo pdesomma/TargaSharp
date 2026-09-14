@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `TgaImageType.IsRunLengthEncoded()` is true only for spec values 9-11; reserved values with bit 3 set (25, 27, 41, ...) no longer decode as RLE.
 
 ### Added
+- `TgaHeader.ImageDataLength` and `TgaHeader.ColorMapDataLength`: the byte lengths the header declares for Fields 8 and 7, now the single definition used by the reader, writer and validator.
 - `TgaValidator` rules: non-zero width/height for image types with pixel data (previously passed validation and failed inside `Save`), unknown `ColorMapType` values, `AttributesType = NoAlpha` with non-zero descriptor attribute bits (spec Field 24), `OtherDataInExtensionArea` too large for the 2-byte Extension Size, more than 65535 developer entries, and a 0x0 postage stamp.
 
 ### Fixed
