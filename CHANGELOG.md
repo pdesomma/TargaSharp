@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-13
+
 ### Breaking Changes
 - `TgaDateTime.ToDateTime()` now returns `DateTime?` and yields `null` for the spec's all-zero "not set" value instead of throwing `ArgumentOutOfRangeException`.
 - `new TgaFile(width, height, ...)` throws `ArgumentOutOfRangeException` for a zero dimension or `TgaPixelDepth.Other` instead of silently producing a 0x0 `NoImageData` file; use `new TgaFile()` + `ToNewFormat()` for an empty v2.0 file.

@@ -3,7 +3,9 @@
   <PropertyGroup>
     <TargetFrameworks>net48;net6.0;net8.0;net10.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>0.2.0</Version>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Version>0.3.0</Version>
     <Title>TargaSharp</Title>
     <Authors>Patrick DeSomma</Authors>
     <Description>.NET Framework 4.8 / .NET 6/8/10 library for reading and writing .tga image files.</Description>
@@ -12,7 +14,7 @@
     <RepositoryUrl>https://github.com/pdesomma/TargaSharp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>tga;targa</PackageTags>
-    <PackageReleaseNotes>0.2.0: records, validation, typed exceptions, TargaSharp.Drawing split, naming cleanup. Breaking changes from 0.1.0.</PackageReleaseNotes>
+    <PackageReleaseNotes>0.3.0: net48 target, ToOldFormat(), stricter validation and model invariants. See CHANGELOG.md for breaking changes.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
