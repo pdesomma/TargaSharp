@@ -51,7 +51,7 @@
         /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Full independent copy of <see cref="TgaDeveloperArea"/>.</returns>
-        public TgaDeveloperArea Copy() => this with { Entries = new List<TgaDeveloperEntry>(Entries.Select(x => x.Copy())) };
+        public TgaDeveloperArea Copy() => this with { Entries = new List<TgaDeveloperEntry>(Entries.Select(x => x?.Copy()!)) };
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();
@@ -84,8 +84,8 @@
         /// </summary>
         /// <returns>Byte array, Len = (NUMBER_OF_TAGS_IN_THE_DIRECTORY * 10) + 2 bytes in size.
         /// The "+ 2" includes the 2 bytes for the number of tags in the directory.</returns>
-        /// <exception cref="InvalidOperationException"><see cref="Entries"/> is <see langword="null"/>, or has more than <see cref="ushort.MaxValue"/>
-        /// items, which is more than the TGA spec's Number of Tags field (a USHORT) can represent.</exception>
+        /// <exception cref="InvalidOperationException"><see cref="Entries"/> is <see langword="null"/>, contains a <see langword="null"/> entry,
+        /// or has more than <see cref="ushort.MaxValue"/> items, which is more than the TGA spec's Number of Tags field (a USHORT) can represent.</exception>
         public byte[] ToBytes()
         {
             if (Entries is null) throw new InvalidOperationException($"{nameof(Entries)} is null.");
@@ -96,6 +96,7 @@
             var devDir = new TgaByteBuilder(sizeof(ushort) + Entries.Count * TgaDeveloperEntry.Size).Add(numEntries);
             for (int i = 0; i < Entries.Count; i++)
             {
+                if (Entries[i] is null) throw new InvalidOperationException($"{nameof(Entries)}[{i}] is null.");
                 devDir.Add(Entries[i].Tag);
                 devDir.Add(Entries[i].Offset);
                 devDir.Add(unchecked((uint)Entries[i].FieldSize));

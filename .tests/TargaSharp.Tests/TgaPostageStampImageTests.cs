@@ -96,4 +96,14 @@ public class TgaPostageStampImageTests
 
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => image.Height = 65);
     }
+
+    [TestMethod]
+    public void DefaultCtor_NewInstance_Is1x1AndRoundTrips()
+    {
+        var image = new TgaPostageStampImage();
+
+        Assert.AreEqual((byte)1, image.Width);
+        Assert.AreEqual((byte)1, image.Height);
+        Assert.AreEqual(image, new TgaPostageStampImage(image.ToBytes()));
+    }
 }

@@ -21,8 +21,9 @@ namespace TargaSharp
 
         /// <summary>
         /// Gets or sets the optional developer area, or <see langword="null"/> when the file has none.
+        /// It is only written for new-format files (see <see cref="ToNewFormat"/>); <see cref="ToOldFormat"/> discards it.
         /// </summary>
-        public TgaDeveloperArea? DeveloperArea { get; internal set; } = null;
+        public TgaDeveloperArea? DeveloperArea { get; set; } = null;
 
         /// <summary>
         /// Gets or sets the optional TGA 2.0 extension area, or <see langword="null"/> when the file has none.
@@ -194,9 +195,9 @@ namespace TargaSharp
         /// <summary>
         /// Save <see cref="TgaFile"/> to <see cref="Stream"/>. Equivalent to <see cref="TgaWriter.Write(TgaFile, Stream)"/> with a default writer.
         /// </summary>
-        /// <param name="stream">A writable, seekable stream.</param>
+        /// <param name="stream">A writable stream; it need not be seekable.</param>
         /// <exception cref="TgaValidationException">This instance fails validation or layout computation.</exception>
-        /// <exception cref="ArgumentException"><paramref name="stream"/> is not writable or not seekable.</exception>
+        /// <exception cref="ArgumentException"><paramref name="stream"/> is not writable.</exception>
         public void Save(Stream stream) => new TgaWriter().Write(this, stream);
 
         /// <summary>

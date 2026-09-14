@@ -80,4 +80,27 @@ public class TgaDeveloperAreaTests
 
         Assert.ThrowsExactly<InvalidOperationException>(() => area.ToBytes());
     }
+
+    [TestMethod]
+    public void Copy_NullEntry_PreservesNullWithoutThrowing()
+    {
+        var area = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [9]), null!]);
+
+        TgaDeveloperArea copy = area.Copy();
+
+        Assert.AreEqual(2, copy.Count);
+        Assert.IsNull(copy[1]);
+        Assert.AreEqual(area[0], copy[0]);
+        Assert.AreNotSame(area[0], copy[0]);
+    }
+
+    [TestMethod]
+    public void ToBytes_NullEntry_ThrowsInvalidOperationExceptionNamingIndex()
+    {
+        var area = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [9]), null!]);
+
+        var ex = Assert.ThrowsExactly<InvalidOperationException>(() => area.ToBytes());
+
+        StringAssert.Contains(ex.Message, "[1]");
+    }
 }
