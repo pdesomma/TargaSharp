@@ -12,7 +12,9 @@ namespace TargaSharp.Drawing.Tests;
 /// Bitmap-free load/save/reload/Header-equals round trip.
 /// </summary>
 [TestClass]
+#if !NETFRAMEWORK
 [SupportedOSPlatform("windows")]
+#endif
 public class FixtureRoundTripTests
 {
     /// <summary>

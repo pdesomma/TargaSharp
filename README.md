@@ -1,4 +1,4 @@
-# TargaSharp
+﻿# TargaSharp
 
 [![CI](https://github.com/pdesomma/TargaSharp/actions/workflows/ci.yml/badge.svg)](https://github.com/pdesomma/TargaSharp/actions/workflows/ci.yml)
 
@@ -10,8 +10,8 @@ Derived from [TGASharpLib](https://gitlab.com/Alex_Green/TGASharpLib) by Alex Gr
 
 | Package | Targets | Purpose |
 |---|---|---|
-| `TargaSharp` | net6.0, net8.0, net10.0 | Core: file model, reader, writer, validation. No native or OS-specific dependencies. |
-| `TargaSharp.Drawing` | net6.0, net8.0, net10.0 (Windows) | `System.Drawing.Bitmap` ↔ `TgaFile` conversion via GDI+. |
+| `TargaSharp` | net48, net6.0, net8.0, net10.0 | Core: file model, reader, writer, validation. No native or OS-specific dependencies. |
+| `TargaSharp.Drawing` | net48, net6.0, net8.0, net10.0 (Windows) | `System.Drawing.Bitmap` ↔ `TgaFile` conversion via GDI+. |
 
 ```
 dotnet add package TargaSharp
@@ -33,6 +33,7 @@ var origin    = tga.Header.ImageSpec.ImageDescriptor.ImageOrigin;
 
 tga.ExtensionArea!.AuthorName = new TgaString("me", 41, true);
 tga.Flip(vertical: true);                     // toggles the origin bit; pixel data is untouched
+tga.ToOldFormat();                            // drop footer/extension/developer areas -> plain TGA 1.0; ToNewFormat() is the inverse
 
 tga.Save("output.tga");                       // or tga.Save(Stream) / byte[] bytes = tga.ToBytes()
 ```

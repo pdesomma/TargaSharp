@@ -43,7 +43,7 @@ namespace TargaSharp
             if (digits < 3 || digits < str.Length - 1)
                 throw new FormatException($"\"{str}\" must be three or more decimal digits followed by at most one version letter, e.g. \"117\" or \"117b\".");
 
-            if (!ushort.TryParse(str.AsSpan(0, digits), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out ushort versionNumber))
+            if (!ushort.TryParse(str.Substring(0, digits), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out ushort versionNumber))
                 throw new ArgumentOutOfRangeException(nameof(str), str, $"Version number must be <= {ushort.MaxValue}.");
 
             VersionNumber = versionNumber;

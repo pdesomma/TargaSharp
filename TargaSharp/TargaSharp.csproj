@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net48;net6.0;net8.0;net10.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Version>0.2.0</Version>
     <Title>TargaSharp</Title>
     <Authors>Patrick DeSomma</Authors>
-    <Description>.NET 6/8/10 library for reading and writing .tga image files.</Description>
+    <Description>.NET Framework 4.8 / .NET 6/8/10 library for reading and writing .tga image files.</Description>
     <PackageProjectUrl>https://github.com/pdesomma/TargaSharp</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/pdesomma/TargaSharp</RepositoryUrl>
@@ -14,8 +14,11 @@
     <PackageTags>tga;targa</PackageTags>
     <PackageReleaseNotes>0.2.0: records, validation, typed exceptions, TargaSharp.Drawing split, naming cleanup. Breaking changes from 0.1.0.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release'">true</GeneratePackageOnBuild>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="System.Memory" Version="4.6.3" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Include="..\README.md">

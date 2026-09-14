@@ -319,8 +319,8 @@ public class TgaFileTests
         byte[] baseBytes = baseStream.ToArray();
 
         int headerAndExtensionAreaLength = baseBytes.Length - TgaFooter.Size;
-        byte[] headerAndExtensionArea = baseBytes[..headerAndExtensionAreaLength];
-        byte[] originalFooter = baseBytes[headerAndExtensionAreaLength..];
+        byte[] headerAndExtensionArea = baseBytes.Take(headerAndExtensionAreaLength).ToArray();
+        byte[] originalFooter = baseBytes.Skip(headerAndExtensionAreaLength).ToArray();
 
         // One byte of field data per entry, placed right after the ext area.
         byte[] fieldData = new byte[tags.Length];
@@ -417,6 +417,76 @@ public class TgaFileTests
 
         Assert.IsNotNull(tga.ExtensionArea);
         Assert.IsNotNull(tga.Footer);
+    }
+
+    [TestMethod]
+    public void ToOldFormat_NewFormatFile_ClearsFooterExtensionAndDeveloperAreas()
+    {
+        var tga = new TgaFile(2, 2);
+        tga.DeveloperArea = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [9])]);
+
+        tga.ToOldFormat();
+
+        Assert.IsNull(tga.Footer);
+        Assert.IsNull(tga.ExtensionArea);
+        Assert.IsNull(tga.DeveloperArea);
+    }
+
+    [TestMethod]
+    public void ToOldFormat_LegacyFile_IsNoOp()
+    {
+        var tga = new TgaFile(2, 2, newFormat: false);
+
+        tga.ToOldFormat();
+
+        Assert.IsNull(tga.Footer);
+        Assert.IsNull(tga.ExtensionArea);
+        Assert.IsNull(tga.DeveloperArea);
+    }
+
+    [TestMethod]
+    public void ToOldFormat_ThenSave_WritesHeaderAndImageDataOnly()
+    {
+        var tga = new TgaFile(2, 2);
+        tga.ImageArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        tga.DeveloperArea = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [9])]);
+        tga.UpdatePostageStampImage();
+
+        tga.ToOldFormat();
+        byte[] bytes = tga.ToBytes();
+
+        Assert.AreEqual(TgaHeader.Size + 12, bytes.Length);
+        Assert.IsFalse(System.Text.Encoding.ASCII.GetString(bytes).Contains(TgaString.XFileSignatureText), "no v2.0 footer signature");
+    }
+
+    [TestMethod]
+    public void ToOldFormat_SaveThenReload_RoundTripsAsLegacyFile()
+    {
+        var tga = new TgaFile(2, 2);
+        tga.ImageArea.ImageData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        tga.ToOldFormat();
+
+        var reloaded = new TgaFile(tga.ToBytes());
+
+        Assert.IsNull(reloaded.Footer);
+        Assert.IsNull(reloaded.ExtensionArea);
+        Assert.IsNull(reloaded.DeveloperArea);
+        Assert.AreEqual(tga.Header, reloaded.Header);
+        CollectionAssert.AreEqual(tga.ImageArea.ImageData, reloaded.ImageArea.ImageData);
+    }
+
+    [TestMethod]
+    public void ToOldFormat_ThenToNewFormat_RestoresV2Structure()
+    {
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp32, attrBits: 8);
+
+        tga.ToOldFormat();
+        tga.ToNewFormat();
+
+        Assert.IsNotNull(tga.Footer);
+        Assert.IsNotNull(tga.ExtensionArea);
+        Assert.AreEqual(TgaAttributeType.UsefulAlpha, tga.ExtensionArea.AttributesType);
+        Assert.IsNull(tga.DeveloperArea);
     }
 
     [TestMethod]

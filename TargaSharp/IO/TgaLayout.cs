@@ -33,7 +33,7 @@ namespace TargaSharp.IO
         /// <summary>
         /// Gets the total file size in bytes.
         /// </summary>
-        internal uint TotalSize => Sections.Count == 0 ? 0 : Sections[^1].Offset + (uint)Sections[^1].Bytes.Length;
+        internal uint TotalSize => Sections.Count == 0 ? 0 : Sections[Sections.Count - 1].Offset + (uint)Sections[Sections.Count - 1].Bytes.Length;
     }
 
     /// <summary>
