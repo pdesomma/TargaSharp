@@ -396,6 +396,18 @@ public class TgaValidatorTests
     }
 
     [TestMethod]
+    public void Validate_DeveloperAreaWithNullEntry_ReturnsSingleErrorInsteadOfThrowing()
+    {
+        var file = new TgaFile(1, 1);
+        file.DeveloperArea = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [1]), null!]);
+
+        var errors = new TgaValidator().Validate(file);
+
+        Assert.AreEqual(1, errors.Count);
+        Assert.AreEqual("DeveloperArea.Entries[1]", errors[0].Path);
+    }
+
+    [TestMethod]
     public void Validate_DeveloperAreaWithDistinctDeveloperTags_ReturnsNoError()
     {
         var file = CreateValidBaseline();
