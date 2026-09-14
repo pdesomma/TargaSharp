@@ -25,6 +25,21 @@ public class TgaDateTimeTests
     }
 
     [TestMethod]
+    public void ToDateTime_UnsetInstance_ReturnsNull()
+    {
+        // Used to throw ArgumentOutOfRangeException from the DateTime ctor (year/month/day 0).
+        Assert.IsNull(new TgaDateTime().ToDateTime());
+    }
+
+    [TestMethod]
+    public void ToDateTime_SetInstance_RoundTripsThroughDateTimeCtor()
+    {
+        var expected = new DateTime(1989, 1, 2, 3, 4, 5);
+
+        Assert.AreEqual(expected, new TgaDateTime(expected).ToDateTime());
+    }
+
+    [TestMethod]
     public void IsUnset_AnyFieldNonZero_ReturnsFalse()
     {
         Assert.IsFalse(new TgaDateTime { Second = 1 }.IsUnset);
