@@ -49,6 +49,34 @@ public class TgaStringTests
     }
 
     [TestMethod]
+    public void Ctor_EmptyBytesWithUseEnding_ThrowsArgumentOutOfRangeExceptionNamingBytes()
+    {
+        var ex = Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaString(Array.Empty<byte>(), true));
+
+        Assert.AreEqual("bytes", ex.ParamName);
+    }
+
+    [TestMethod]
+    public void Ctor_Bytes_SpacePadded_RoundTripsBytesAndEquals()
+    {
+        var original = new TgaString("ab", 5, true, ' ');
+        byte[] bytes = original.ToBytes();
+
+        var parsed = new TgaString(bytes, true);
+
+        Assert.AreEqual(original, parsed);
+        CollectionAssert.AreEqual(bytes, parsed.ToBytes());
+    }
+
+    [TestMethod]
+    public void Ctor_NonAsciiBytes_DecodesLeniently()
+    {
+        var parsed = new TgaString([0x41, 0xE9, 0x42]);
+
+        Assert.AreEqual("A?B", parsed.OriginalString);
+    }
+
+    [TestMethod]
     public void Ctor_StringAndLength_ValidCombination_SetsProperties()
     {
         var str = new TgaString("ABC", 4, true);

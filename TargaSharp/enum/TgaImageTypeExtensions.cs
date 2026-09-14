@@ -14,10 +14,7 @@
         /// <param name="imageType">The image type to test.</param>
         /// <returns><see langword="true" /> if the image type is one of the three RLE variants; otherwise, <see langword="false" />.</returns>
         public static bool IsRunLengthEncoded(this TgaImageType imageType)
-        {
-            byte value = (byte)imageType;
-            return (value & 0x08) != 0 && (value & 0x07) is >= 1 and <= 3;
-        }
+            => imageType is TgaImageType.RleColorMapped or TgaImageType.RleTrueColor or TgaImageType.RleGrayscale;
 
         /// <summary>
         /// Determines whether the image type stores color-mapped pixel data

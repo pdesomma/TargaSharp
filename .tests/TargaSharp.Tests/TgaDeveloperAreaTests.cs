@@ -24,6 +24,44 @@ public class TgaDeveloperAreaTests
     }
 
     [TestMethod]
+    public void Ctor_NullEntries_ThrowsArgumentNullException()
+    {
+        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaDeveloperArea((List<TgaDeveloperEntry>)null!));
+    }
+
+    [TestMethod]
+    public void ToBytes_NullEntries_ThrowsInvalidOperationException()
+    {
+        var area = new TgaDeveloperArea { Entries = null! };
+
+        Assert.ThrowsExactly<InvalidOperationException>(() => area.ToBytes());
+    }
+
+    [TestMethod]
+    public void Copy_MutatedCopy_DoesNotAffectOriginal()
+    {
+        var area = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [1, 2, 3])]);
+
+        TgaDeveloperArea copy = area.Copy();
+        copy[0].Data[0] = 99;
+        copy.Entries.Add(new TgaDeveloperEntry(2, 0, [4]));
+
+        Assert.AreEqual((byte)1, area[0].Data[0]);
+        Assert.AreEqual(1, area.Count);
+        Assert.AreNotEqual(area, copy);
+    }
+
+    [TestMethod]
+    public void Equals_SameEntries_ReturnsTrueWithEqualHashCodes()
+    {
+        var a = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [1, 2, 3])]);
+        var b = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [1, 2, 3])]);
+
+        Assert.AreEqual(a, b);
+        Assert.AreEqual(a.GetHashCode(), b.GetHashCode());
+    }
+
+    [TestMethod]
     public void ToBytes_MoreThanUshortMaxEntries_ThrowsInvalidOperationException()
     {
         var entries = new List<TgaDeveloperEntry>(ushort.MaxValue + 1);

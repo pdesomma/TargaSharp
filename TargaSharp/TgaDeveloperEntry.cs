@@ -46,6 +46,9 @@
         /// round-trips through <see cref="ToBytes"/>.
         /// </summary>
         /// <param name="bytes">Array of bytes, must be exactly <see cref="Size"/> (10) bytes long.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="bytes"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="bytes"/> is not <see cref="Size"/> long,
+        /// or the declared field size exceeds <see cref="int.MaxValue"/> (used to wrap negative and throw <see cref="OverflowException"/>).</exception>
         public TgaDeveloperEntry(byte[] bytes)
         {
             ArgumentNullException.ThrowIfNull(bytes);
@@ -54,7 +57,9 @@
 
             Tag = TgaBinary.ReadUInt16(bytes, 0);
             Offset = TgaBinary.ReadUInt32(bytes, 2);
-            int fieldSize = unchecked((int)TgaBinary.ReadUInt32(bytes, 6));
+            uint fieldSize = TgaBinary.ReadUInt32(bytes, 6);
+            if (fieldSize > int.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(bytes), fieldSize, $"FieldSize must be <= {int.MaxValue}.");
             Data = new byte[fieldSize];
         }
 

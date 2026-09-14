@@ -20,14 +20,16 @@ namespace TargaSharp
         /// Make <see cref="TgaTime"/> from <see cref="TimeSpan"/>.
         /// </summary>
         /// <param name="time">Some <see cref="TimeSpan"/> variable.</param>
-        public TgaTime(TimeSpan time) : this((ushort)time.TotalHours, (ushort)time.Minutes, (ushort)time.Seconds) { }
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="time"/> is negative or exceeds 65535 hours.</exception>
+        public TgaTime(TimeSpan time) : this(CheckedHours((long)time.TotalHours, nameof(time)), (ushort)time.Minutes, (ushort)time.Seconds) { }
         /// <summary>
         /// Make <see cref="TgaTime"/> from int values.
         /// </summary>
         /// <param name="hours">Hour (0 - 65535).</param>
         /// <param name="minutes">Minute (0 - 59).</param>
         /// <param name="seconds">Second (0 - 59).</param>
-        public TgaTime(int hours, int minutes, int seconds) : this((ushort)hours, (ushort)minutes, (ushort)seconds) { }
+        /// <exception cref="ArgumentOutOfRangeException">A value is outside its documented range.</exception>
+        public TgaTime(int hours, int minutes, int seconds) : this(CheckedHours(hours, nameof(hours)), CheckedSexagesimal(minutes, nameof(minutes)), CheckedSexagesimal(seconds, nameof(seconds))) { }
         /// <summary>
         /// Make <see cref="TgaTime"/> from ushort values.
         /// </summary>
@@ -94,5 +96,31 @@ namespace TargaSharp
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();
+
+        /// <summary>
+        /// Narrows an hour count to <see cref="ushort"/>, rejecting values outside 0-65535.
+        /// </summary>
+        /// <param name="hours">Hour count.</param>
+        /// <param name="paramName">Caller's parameter name for the exception.</param>
+        /// <returns><paramref name="hours"/> as <see cref="ushort"/>.</returns>
+        private static ushort CheckedHours(long hours, string paramName)
+        {
+            if (hours is < 0 or > ushort.MaxValue)
+                throw new ArgumentOutOfRangeException(paramName, hours, $"Hours must be 0-{ushort.MaxValue}.");
+            return (ushort)hours;
+        }
+
+        /// <summary>
+        /// Narrows a minute or second count to <see cref="ushort"/>, rejecting values outside 0-59.
+        /// </summary>
+        /// <param name="value">Minute or second count.</param>
+        /// <param name="paramName">Caller's parameter name for the exception.</param>
+        /// <returns><paramref name="value"/> as <see cref="ushort"/>.</returns>
+        private static ushort CheckedSexagesimal(int value, string paramName)
+        {
+            if (value is < 0 or > 59)
+                throw new ArgumentOutOfRangeException(paramName, value, "Must be 0-59.");
+            return (ushort)value;
+        }
     }
 }

@@ -36,6 +36,33 @@ public class TgaFileTests
     }
 
     [TestMethod]
+    [DataRow((ushort)0, (ushort)4)]
+    [DataRow((ushort)4, (ushort)0)]
+    public void Ctor_ZeroDimension_ThrowsArgumentOutOfRangeException(ushort width, ushort height)
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaFile(width, height));
+    }
+
+    [TestMethod]
+    public void Ctor_PixelDepthOther_ThrowsArgumentOutOfRangeException()
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaFile(2, 2, TgaPixelDepth.Other));
+    }
+
+    [TestMethod]
+    public void Ctor_ImageDataExceedsIntMaxValue_ThrowsArgumentOutOfRangeException()
+    {
+        // 65535 x 65535 x 4 = 17 GB; used to wrap the int size and throw OverflowException from the allocation.
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaFile(ushort.MaxValue, ushort.MaxValue, TgaPixelDepth.Bpp32));
+    }
+
+    [TestMethod]
+    public void CopyCtor_Null_ThrowsArgumentNullException()
+    {
+        Assert.ThrowsExactly<ArgumentNullException>(() => new TgaFile((TgaFile)null!));
+    }
+
+    [TestMethod]
     public void Clone_DefaultFormatTga_DoesNotThrowAndHasNoExtensionAreaOrFooter()
     {
         var tga = new TgaFile(2, 2, newFormat: false);
@@ -250,7 +277,8 @@ public class TgaFileTests
     /// <returns>A <see cref="TgaFile"/> loaded from the crafted bytes, with DeveloperArea populated.</returns>
     private static TgaFile LoadTgaWithDeveloperArea(ushort[] tags)
     {
-        var baseTga = new TgaFile(0, 0); // No image data; newFormat: true => Header + ExtensionArea + Footer only.
+        var baseTga = new TgaFile(); // No image data; ToNewFormat => Header + ExtensionArea + Footer only.
+        baseTga.ToNewFormat();
         using var baseStream = new MemoryStream();
         baseTga.Save(baseStream);
         byte[] baseBytes = baseStream.ToArray();

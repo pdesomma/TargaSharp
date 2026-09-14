@@ -427,7 +427,7 @@
         {
             AuthorName ??= new TgaString(NameFieldLength, true);
             AuthorComments ??= new TgaComment();
-            DateTimeStamp ??= new TgaDateTime(DateTime.UtcNow);
+            DateTimeStamp ??= new TgaDateTime();
             JobNameOrId ??= new TgaString(NameFieldLength, true);
             JobTime ??= new TgaTime();
             SoftwareId ??= new TgaString(NameFieldLength, true);
