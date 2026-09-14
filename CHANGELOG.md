@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `new TgaTime(int, int, int)` and `new TgaTime(TimeSpan)` throw `ArgumentOutOfRangeException` for out-of-range values instead of silently narrowing (`new TgaTime(70000, 0, 0).Hours` was 4464).
 - `TgaImageType.IsRunLengthEncoded()` is true only for spec values 9-11; reserved values with bit 3 set (25, 27, 41, ...) no longer decode as RLE.
 
+### Added
+- `TgaValidator` rules: non-zero width/height for image types with pixel data (previously passed validation and failed inside `Save`), unknown `ColorMapType` values, `AttributesType = NoAlpha` with non-zero descriptor attribute bits (spec Field 24), `OtherDataInExtensionArea` too large for the 2-byte Extension Size, more than 65535 developer entries, and a 0x0 postage stamp.
+
 ### Fixed
 - `TgaReader` read color-map bytes whenever `ColorMapLength > 0`, even with `ColorMapType = NoColorMap`, shifting the image data of files with a stale color-map spec; the color map is now gated on `ColorMapType` as the spec requires (and as the writer already did).
 - `TgaReader` on an RLE image with a zero dimension always consumed one packet, eating the first footer/extension byte or failing at end of stream; a zero-length decode now reads nothing.
@@ -27,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `Width * Height * bytes-per-pixel` overflowed `int` in `TgaReader` and `TgaValidator` (32768x32768x32bpp wrapped to 0, so a header with no pixel bytes loaded and validated clean); now sized in `long`.
 - `TgaReader` allocated header-declared sizes (image data, RLE output, developer fields) before checking them against the stream, so a few hundred bytes could force a multi-GB allocation and `OutOfMemoryException`; declared sizes are now checked against the remaining stream first and rejected with `TgaFormatException`.
 - An RLE stream that ended inside a run packet leaked `IndexOutOfRangeException` from the reader; truncated and overrunning RLE packets now raise `TgaFormatException`.
+- `TgaValidator` limited the image ID by text length; it now checks the field's full `Length` (padding included), matching what is written.
 - `TgaValidator` threw `NullReferenceException` on a `null` element in `DeveloperArea.Entries`; it is now reported as a `TgaValidationError`.
 - `Save`/`ToBytes` removed empty entries from and re-sorted the caller's `DeveloperArea.Entries` list; the file is still written tag-ordered without empty entries, but the in-memory list is no longer modified.
 - `ToBitmap()` on a file with `NoImageData`, a zero dimension or `null` `ImageData` failed with GDI+'s opaque "Parameter is not valid" (or a `NullReferenceException`); it now throws `InvalidOperationException` saying why.

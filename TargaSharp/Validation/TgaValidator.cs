@@ -9,10 +9,16 @@
     public sealed class TgaValidator : ITgaValidator
     {
         /// <summary>
-        /// Minimum valid <see cref="TgaAttributeType"/> value; 5-127 are reserved and 128-255 are
+        /// Maximum valid <see cref="TgaAttributeType"/> value; 5-127 are reserved and 128-255 are
         /// unassigned (spec Field 24).
         /// </summary>
         private const byte MaxAttributesType = 4;
+
+        /// <summary>
+        /// Largest <see cref="TgaExtensionArea.OtherDataInExtensionArea"/> that still fits the
+        /// 2-byte Extension Size field together with the fixed <see cref="TgaExtensionArea.MinSize"/> bytes.
+        /// </summary>
+        private const int MaxOtherDataLength = ushort.MaxValue - TgaExtensionArea.MinSize;
 
         /// <summary>
         /// Developer Area tag values &gt;= this are reserved for Truevision; 0-32767 are available
@@ -27,7 +33,9 @@
 
             var errors = new List<TgaValidationError>();
 
+            ValidateImageDimensions(file, errors);
             ValidatePixelDepth(file, errors);
+            ValidateColorMapTypeKnown(file, errors);
             ValidateColorMapSpec(file, errors);
             ValidateColorMappedImageTypeHasColorMap(file, errors);
             ValidateTrueColorImageTypeHasNoColorMap(file, errors);
@@ -44,6 +52,8 @@
             ValidateJobTime(file, errors);
             ValidateGammaValue(file, errors);
             ValidateAttributesType(file, errors);
+            ValidateAttributesTypeMatchesAlphaChannelBits(file, errors);
+            ValidateOtherDataInExtensionArea(file, errors);
             ValidateScanLineTable(file, errors);
             ValidateColorCorrectionTable(file, errors);
             ValidatePostageStampImage(file, errors);
@@ -53,9 +63,42 @@
         }
 
         /// <summary>
+        /// Spec Fields 5.3/5.4: an image that carries pixel data must have non-zero width and height
+        /// (<see cref="TgaImageType.NoImageData"/> leaves them unconstrained). Without this rule a
+        /// 0xN file validates clean and only fails inside layout.
+        /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
+        private static void ValidateImageDimensions(TgaFile file, List<TgaValidationError> errors)
+        {
+            if (file.Header.ImageType == TgaImageType.NoImageData) return;
+
+            if (file.Header.ImageSpec.ImageWidth == 0)
+                errors.Add(new TgaValidationError("Header.ImageSpec.ImageWidth", "ImageWidth must be > 0 when ImageType is not NoImageData."));
+            if (file.Header.ImageSpec.ImageHeight == 0)
+                errors.Add(new TgaValidationError("Header.ImageSpec.ImageHeight", "ImageHeight must be > 0 when ImageType is not NoImageData."));
+        }
+
+        /// <summary>
+        /// Spec Field 2: only 0 (no color map) and 1 (color map) are defined; 2-127 are reserved
+        /// for Truevision and 128-255 for developers.
+        /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
+        private static void ValidateColorMapTypeKnown(TgaFile file, List<TgaValidationError> errors)
+        {
+            var colorMapType = file.Header.ColorMapType;
+
+            if (!colorMapType.IsKnown())
+                errors.Add(new TgaValidationError("Header.ColorMapType", $"{(byte)colorMapType} is a reserved/unknown color map type."));
+        }
+
+        /// <summary>
         /// Spec Field 5.5: <see cref="TgaImageSpec.PixelDepth"/> must be 8, 16, 24 or 32, unless
         /// <see cref="TgaImageType.NoImageData"/> (no pixel data, so the field is unconstrained).
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidatePixelDepth(TgaFile file, List<TgaValidationError> errors)
         {
             if (file.Header.ImageType == TgaImageType.NoImageData) return;
@@ -70,6 +113,8 @@
         /// Specification bytes should be zero; when <see cref="TgaColorMapType.ColorMap"/>, the
         /// entry size must be one of the spec's typical values and the map must be non-empty.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateColorMapSpec(TgaFile file, List<TgaValidationError> errors)
         {
             var colorMapType = file.Header.ColorMapType;
@@ -97,12 +142,13 @@
         /// Color-mapped image types (<see cref="TgaImageType.UncompressedColorMapped"/>,
         /// <see cref="TgaImageType.RleColorMapped"/>) require a color map to be present.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateColorMappedImageTypeHasColorMap(TgaFile file, List<TgaValidationError> errors)
         {
             var imageType = file.Header.ImageType;
-            bool isColorMapped = imageType is TgaImageType.UncompressedColorMapped or TgaImageType.RleColorMapped;
 
-            if (isColorMapped && file.Header.ColorMapType != TgaColorMapType.ColorMap)
+            if (imageType.IsColorMapped() && file.Header.ColorMapType != TgaColorMapType.ColorMap)
                 errors.Add(new TgaValidationError("Header.ColorMapType", $"ColorMapType must be ColorMap when ImageType is {imageType}."));
         }
 
@@ -110,13 +156,13 @@
         /// True-color and black-and-white image types should not carry a color map (spec: "True-Color
         /// images do not normally make use of the color map field... set it to Zero to ensure compatibility").
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateTrueColorImageTypeHasNoColorMap(TgaFile file, List<TgaValidationError> errors)
         {
             var imageType = file.Header.ImageType;
-            bool isTrueColorOrGrayscale = imageType is TgaImageType.UncompressedTrueColor or TgaImageType.UncompressedGrayscale
-                or TgaImageType.RleTrueColor or TgaImageType.RleGrayscale;
 
-            if (isTrueColorOrGrayscale && file.Header.ColorMapType != TgaColorMapType.NoColorMap)
+            if ((imageType.IsTrueColor() || imageType.IsGrayscale()) && file.Header.ColorMapType != TgaColorMapType.NoColorMap)
                 errors.Add(new TgaValidationError("Header.ColorMapType", $"ColorMapType must be NoColorMap when ImageType is {imageType}."));
         }
 
@@ -124,6 +170,8 @@
         /// Spec Field 3: only image type codes 0, 1, 2, 3, 9, 10 and 11 are currently defined by
         /// Truevision; every other code is reserved or unknown.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateImageTypeKnown(TgaFile file, List<TgaValidationError> errors)
         {
             var imageType = file.Header.ImageType;
@@ -140,10 +188,12 @@
         /// layout - see real-world fixtures <c>monochrome16_top_left*.tga</c>, which are not
         /// representable in the 5-5-5-1 layout); 8bpp: 0).
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateAlphaChannelBits(TgaFile file, List<TgaValidationError> errors)
         {
             byte alphaBits = file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits;
-            bool isBlackAndWhite = file.Header.ImageType is TgaImageType.UncompressedGrayscale or TgaImageType.RleGrayscale;
+            bool isBlackAndWhite = file.Header.ImageType.IsGrayscale();
 
             switch (file.Header.ImageSpec.PixelDepth)
             {
@@ -169,6 +219,8 @@
         /// Spec Field 7: present (and correctly sized) only when <see cref="TgaColorMapType.ColorMap"/>;
         /// absent/empty otherwise.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateColorMapData(TgaFile file, List<TgaValidationError> errors)
         {
             var colorMapData = file.ImageArea.ColorMapData;
@@ -190,6 +242,8 @@
         /// decoded in <see cref="TgaImageArea.ImageData"/> (re-encoded only when written), so the
         /// same raw-size rule applies to every image type.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateImageData(TgaFile file, List<TgaValidationError> errors)
         {
             // ushort * ushort * 4 exceeds int.MaxValue (32768 x 32768 x 32bpp wraps to exactly 0), so size in long.
@@ -203,27 +257,34 @@
         }
 
         /// <summary>
-        /// Spec Field 1/6: the Image ID is limited to 255 bytes since ID Length is a single byte.
+        /// Spec Field 1/6: the Image ID field (its full <see cref="TgaString.Length"/>, padding and
+        /// terminator included) is limited to 255 bytes since ID Length is a single byte.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateImageId(TgaFile file, List<TgaValidationError> errors)
         {
             var imageId = file.ImageArea.ImageId;
             if (imageId is null) return;
 
-            int length = imageId.OriginalString.Length + (imageId.UseEndingChar ? 1 : 0);
-            if (length > byte.MaxValue)
-                errors.Add(new TgaValidationError("ImageArea.ImageId", $"ImageId length ({length}) exceeds the {byte.MaxValue} byte maximum."));
+            if (imageId.Length > byte.MaxValue)
+                errors.Add(new TgaValidationError("ImageArea.ImageId", $"ImageId length ({imageId.Length}) exceeds the {byte.MaxValue} byte maximum."));
         }
 
         /// <summary>
-        /// Spec Field 9 (Developer Area Tag): tags &gt;= 32768 are reserved for Truevision, and no
-        /// tag may appear twice in the directory. <see cref="TgaDeveloperArea.Entries"/> is a plain
+        /// Spec Field 9 (Developer Area Tag): the directory holds at most 65535 entries, tags &gt;= 32768
+        /// are reserved for Truevision, and no tag may appear twice in the directory. <see cref="TgaDeveloperArea.Entries"/> is a plain
         /// mutable list, so a <see langword="null"/> element is reported as an error rather than
         /// dereferenced.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateDeveloperArea(TgaFile file, List<TgaValidationError> errors)
         {
             if (file.DeveloperArea is null) return;
+
+            if (file.DeveloperArea.Count > ushort.MaxValue)
+                errors.Add(new TgaValidationError("DeveloperArea.Entries", $"Entries.Count ({file.DeveloperArea.Count}) exceeds the {ushort.MaxValue} tags the directory's Number of Tags field can hold."));
 
             var seenTags = new HashSet<ushort>();
             for (int i = 0; i < file.DeveloperArea.Count; i++)
@@ -249,6 +310,8 @@
         /// Spec Field 13: an all-zero <see cref="TgaDateTime"/> means "not used" and is always
         /// valid; otherwise Month, Day, Hour, Minute and Second must be in their spec ranges.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateDateTimeStamp(TgaFile file, List<TgaValidationError> errors)
         {
             var dateTime = file.ExtensionArea?.DateTimeStamp;
@@ -271,6 +334,8 @@
         /// <summary>
         /// Spec Field 15: Minutes and Seconds must be 0-59 (Hours may be any ushort value).
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateJobTime(TgaFile file, List<TgaValidationError> errors)
         {
             var jobTime = file.ExtensionArea?.JobTime;
@@ -286,19 +351,23 @@
         /// Spec Field 20: a zero denominator means "not used" and is always valid; otherwise the
         /// resulting gamma value must be in the spec's 0.0-10.0 range.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateGammaValue(TgaFile file, List<TgaValidationError> errors)
         {
             var gammaValue = file.ExtensionArea?.GammaValue;
             if (gammaValue is null || gammaValue.IsUnspecified) return;
 
             float value = gammaValue.Numerator / (float)gammaValue.Denominator;
-            if (value is < 0f or > 10f)
+            if (value > 10f)
                 errors.Add(new TgaValidationError("ExtensionArea.GammaValue", $"GammaValue must be 0.0-10.0 when specified (was {value})."));
         }
 
         /// <summary>
         /// Spec Field 24: only 0-4 are defined; 5-127 are reserved and 128-255 are unassigned.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateAttributesType(TgaFile file, List<TgaValidationError> errors)
         {
             if (file.ExtensionArea is null) return;
@@ -309,9 +378,42 @@
         }
 
         /// <summary>
+        /// Spec Field 24: <see cref="TgaAttributeType.NoAlpha"/> declares that no alpha data is
+        /// included, in which case the descriptor's attribute bits (Field 5.6) must also be zero.
+        /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
+        private static void ValidateAttributesTypeMatchesAlphaChannelBits(TgaFile file, List<TgaValidationError> errors)
+        {
+            if (file.ExtensionArea is null) return;
+
+            byte alphaBits = file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits;
+            if (file.ExtensionArea.AttributesType == TgaAttributeType.NoAlpha && alphaBits != 0)
+                errors.Add(new TgaValidationError("ExtensionArea.AttributesType", $"AttributesType is NoAlpha but the image descriptor declares {alphaBits} attribute bits per pixel."));
+        }
+
+        /// <summary>
+        /// Spec Field 10: Extension Size is a 2-byte field covering the fixed 495 bytes plus any
+        /// trailing data, so <see cref="TgaExtensionArea.OtherDataInExtensionArea"/> cannot exceed
+        /// 65535 - 495 bytes without the size wrapping.
+        /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
+        private static void ValidateOtherDataInExtensionArea(TgaFile file, List<TgaValidationError> errors)
+        {
+            var otherData = file.ExtensionArea?.OtherDataInExtensionArea;
+            if (otherData is null) return;
+
+            if (otherData.Length > MaxOtherDataLength)
+                errors.Add(new TgaValidationError("ExtensionArea.OtherDataInExtensionArea", $"OtherDataInExtensionArea.Length ({otherData.Length}) exceeds the {MaxOtherDataLength} bytes the Extension Size field can represent."));
+        }
+
+        /// <summary>
         /// Spec Field 25: when present, one 4-byte offset per scan line, so its length must equal
         /// the image height.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateScanLineTable(TgaFile file, List<TgaValidationError> errors)
         {
             var scanLineTable = file.ExtensionArea?.ScanLineTable;
@@ -324,6 +426,8 @@
         /// <summary>
         /// Spec Field 27: when present, a fixed 256 x 4 SHORT block (1024 <see cref="ushort"/> values).
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateColorCorrectionTable(TgaFile file, List<TgaValidationError> errors)
         {
             var colorCorrectionTable = file.ExtensionArea?.ColorCorrectionTable;
@@ -334,13 +438,21 @@
         }
 
         /// <summary>
-        /// Spec Field 26: when present, an uncompressed image stored in the same pixel depth as
-        /// the main image, so its data length must equal Width * Height * bytes-per-pixel.
+        /// Spec Field 26: when present, a 1-64 pixel uncompressed image stored in the same pixel
+        /// depth as the main image, so its data length must equal Width * Height * bytes-per-pixel.
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidatePostageStampImage(TgaFile file, List<TgaValidationError> errors)
         {
             var postageStampImage = file.ExtensionArea?.PostageStampImage;
             if (postageStampImage is null) return;
+
+            if (postageStampImage.Width == 0 || postageStampImage.Height == 0)
+            {
+                errors.Add(new TgaValidationError("ExtensionArea.PostageStampImage", $"Width and Height must be 1-{TgaPostageStampImage.MaxSize} (was {postageStampImage.Width}x{postageStampImage.Height})."));
+                return;
+            }
 
             int expected = postageStampImage.Width * postageStampImage.Height * file.Header.ImageSpec.PixelDepth.BytesPerPixel();
             if (postageStampImage.Data.Length != expected)
@@ -354,6 +466,8 @@
         /// of writing a space, matching the '\0' blank-fill convention this library itself uses
         /// elsewhere (see <see cref="TgaString.DefaultBlankSpaceChar"/>).
         /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateSoftwareVersion(TgaFile file, List<TgaValidationError> errors)
         {
             var softwareVersion = file.ExtensionArea?.SoftwareVersion;

@@ -205,6 +205,7 @@ public class TgaValidatorTests
     {
         var file = new TgaFile(4, 4, TgaPixelDepth.Bpp32, TgaImageType.UncompressedTrueColor);
         file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits = 3;
+        file.ExtensionArea!.AttributesType = TgaAttributeType.UsefulAlpha; // keep the Field 24 cross-check quiet
 
         var errors = Validator.Validate(file);
 
@@ -217,6 +218,7 @@ public class TgaValidatorTests
     {
         var file = CreateValidBaseline();
         file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits = 4;
+        file.ExtensionArea!.AttributesType = TgaAttributeType.UsefulAlpha; // keep the Field 24 cross-check quiet
 
         var errors = Validator.Validate(file);
 
@@ -229,6 +231,7 @@ public class TgaValidatorTests
     {
         var file = new TgaFile(4, 4, TgaPixelDepth.Bpp16, TgaImageType.UncompressedTrueColor);
         file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits = 3;
+        file.ExtensionArea!.AttributesType = TgaAttributeType.UsefulAlpha; // keep the Field 24 cross-check quiet
 
         var errors = Validator.Validate(file);
 
@@ -241,6 +244,7 @@ public class TgaValidatorTests
     {
         var file = new TgaFile(4, 4, TgaPixelDepth.Bpp16, TgaImageType.UncompressedGrayscale);
         file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits = 3;
+        file.ExtensionArea!.AttributesType = TgaAttributeType.UsefulAlpha; // keep the Field 24 cross-check quiet
 
         var errors = Validator.Validate(file);
 
@@ -258,6 +262,7 @@ public class TgaValidatorTests
     {
         var file = new TgaFile(4, 4, TgaPixelDepth.Bpp16, TgaImageType.UncompressedGrayscale);
         file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits = 8;
+        file.ExtensionArea!.AttributesType = TgaAttributeType.UsefulAlpha; // keep the Field 24 cross-check quiet
 
         var errors = Validator.Validate(file);
 
@@ -269,11 +274,106 @@ public class TgaValidatorTests
     {
         var file = CreateValidColorMappedBaseline();
         file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits = 1;
+        file.ExtensionArea!.AttributesType = TgaAttributeType.UsefulAlpha; // keep the Field 24 cross-check quiet
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
         Assert.AreEqual("Header.ImageSpec.ImageDescriptor.AlphaChannelBits", errors[0].Path);
+    }
+
+    #endregion
+
+    #region ImageDimensions / ColorMapType / AttributesType cross-check / OtherData
+
+    [TestMethod]
+    public void Validate_ZeroWidthWithImageType_ReturnsSingleError()
+    {
+        // Used to validate clean (0 * h * bpp == empty ImageData) and only fail inside layout on Save.
+        var file = CreateValidBaseline();
+        file.Width = 0;
+        file.ImageArea.ImageData = [];
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("Header.ImageSpec.ImageWidth", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_ZeroHeightWithImageType_ReturnsSingleError()
+    {
+        var file = CreateValidBaseline();
+        file.Height = 0;
+        file.ImageArea.ImageData = [];
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("Header.ImageSpec.ImageHeight", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_ZeroDimensionsWithNoImageData_ReturnsNoError()
+    {
+        var file = new TgaFile();
+
+        Assert.AreEqual(0, Validator.Validate(file).Count);
+    }
+
+    [TestMethod]
+    public void Validate_UnknownColorMapTypeWithNoImageData_ReturnsSingleError()
+    {
+        var file = new TgaFile();
+        file.Header.ColorMapType = (TgaColorMapType)7;
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("Header.ColorMapType", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_NoAlphaAttributesTypeWithAlphaBits_ReturnsSingleError()
+    {
+        // Spec Field 24: AttributesType 0 requires descriptor attribute bits of 0.
+        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp32, TgaImageType.UncompressedTrueColor, attrBits: 8);
+        file.ExtensionArea!.AttributesType = TgaAttributeType.NoAlpha;
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("ExtensionArea.AttributesType", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_NoAlphaAttributesTypeWithoutExtensionArea_ReturnsNoError()
+    {
+        var file = new TgaFile(4, 4, TgaPixelDepth.Bpp32, TgaImageType.UncompressedTrueColor, attrBits: 8, newFormat: false);
+
+        Assert.AreEqual(0, Validator.Validate(file).Count);
+    }
+
+    [TestMethod]
+    public void Validate_OtherDataTooLargeForExtensionSize_ReturnsSingleError()
+    {
+        // 495 + 65041 wraps the ushort Extension Size; used to surface as an obscure layout failure.
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.OtherDataInExtensionArea = new byte[ushort.MaxValue - TgaExtensionArea.MinSize + 1];
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("ExtensionArea.OtherDataInExtensionArea", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_OtherDataAtMaxLength_ReturnsNoError()
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.OtherDataInExtensionArea = new byte[ushort.MaxValue - TgaExtensionArea.MinSize];
+
+        Assert.AreEqual(0, Validator.Validate(file).Count);
     }
 
     #endregion
@@ -418,6 +518,18 @@ public class TgaValidatorTests
         var errors = Validator.Validate(file);
 
         Assert.AreEqual(0, errors.Count);
+    }
+
+    [TestMethod]
+    public void Validate_MoreThanUshortMaxDeveloperEntries_ReturnsSingleError()
+    {
+        // Used to leak InvalidOperationException from TgaDeveloperArea.ToBytes during Save.
+        var file = CreateValidBaseline();
+        file.DeveloperArea = new TgaDeveloperArea(Enumerable.Range(0, ushort.MaxValue + 1).Select(i => new TgaDeveloperEntry((ushort)(i % 32768), 0, [1])).ToList());
+
+        var errors = Validator.Validate(file);
+
+        Assert.AreEqual("DeveloperArea.Entries", errors[0].Path);
     }
 
     #endregion
@@ -615,6 +727,19 @@ public class TgaValidatorTests
 
         Assert.HasCount(1, errors);
         Assert.AreEqual("ExtensionArea.PostageStampImage.Data", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_PostageStampWithZeroDimensions_ReturnsSingleError()
+    {
+        // The parameterless ctor yields 0x0, which the setters themselves refuse.
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.PostageStampImage = new TgaPostageStampImage();
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("ExtensionArea.PostageStampImage", errors[0].Path);
     }
 
     #endregion
