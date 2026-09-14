@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `ToBitmap()` on a file with `NoImageData`, a zero dimension or `null` `ImageData` failed with GDI+'s opaque "Parameter is not valid" (or a `NullReferenceException`); it now throws `InvalidOperationException` saying why.
 - `TgaReader` silently accepted a truncated image ID, color map, extension area, developer field or postage stamp (only image data was length-checked); every variable-length section now fails with `TgaFormatException` when the file is shorter than its declared size.
 - `new TgaSoftwareVersion(string)` silently produced version `000` (and dropped the letter) when the first three characters were not digits; it now throws `FormatException`.
+- `TargaSharp.Drawing` palette codec: 15/16-bit color-map entries were written with R and B in each other's bit fields (palettes round-tripped with red and blue swapped), 32-bit entries returned alpha 255 exactly when alpha was requested, and both paths used host-endian `BitConverter` where the core uses explicit little-endian.
 
 ## [0.2.0]
 

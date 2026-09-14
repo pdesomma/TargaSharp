@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Buffers.Binary;
+using System.Drawing;
 
 namespace TargaSharp.Drawing
 {
@@ -46,17 +47,18 @@ namespace TargaSharp.Drawing
             {
                 case TgaColorMapEntrySize.A1R5G5B5:
                 case TgaColorMapEntrySize.X1R5G5B5:
-                    int r = (int)(color.R * To5Bit);
+                {
+                    // Spec layout ARRRRRGGGGGBBBBB (R in bits 10-14, B in bits 0-4), the mirror of ReadEntry.
+                    int r = (int)(color.R * To5Bit) << 10;
                     int g = (int)(color.G * To5Bit) << 5;
-                    int b = (int)(color.B * To5Bit) << 10;
-                    int a = 0;
+                    int b = (int)(color.B * To5Bit);
+                    // Source alpha's top bit (bit 7) becomes bit 15 of the packed value.
+                    int a = entrySize == TgaColorMapEntrySize.A1R5G5B5 ? (color.A & 0x80) << 8 : 0;
 
-                    if (entrySize == TgaColorMapEntrySize.A1R5G5B5)
-                        // Move the source alpha's top bit (bit 7) into bit 15 of the packed
-                        // A1R5G5B5 value, mirroring ReadEntry's "(packed & 0x8000) >> 15".
-                        a = (color.A & 0x80) << 8;
-
-                    return BitConverter.GetBytes(a | r | g | b);
+                    // Explicitly little-endian like TgaBinary in the core, not host-endian BitConverter.
+                    BinaryPrimitives.WriteUInt16LittleEndian(entry, (ushort)(a | r | g | b));
+                    return entry;
+                }
 
                 case TgaColorMapEntrySize.R8G8B8:
                     entry[0] = color.B;
@@ -92,7 +94,7 @@ namespace TargaSharp.Drawing
                 case TgaColorMapEntrySize.X1R5G5B5:
                 case TgaColorMapEntrySize.A1R5G5B5:
                     {
-                        ushort packed = BitConverter.ToUInt16(colorMapData, index * 2);
+                        ushort packed = BinaryPrimitives.ReadUInt16LittleEndian(colorMapData.AsSpan(index * 2));
                         int a = (useAlpha ? (packed & 0x8000) >> 15 : 1) * 255; // (0 or 1) * 255
                         int r = (int)(((packed & 0x7C00) >> 10) * To8Bit);
                         int g = (int)(((packed & 0x3E0) >> 5) * To8Bit);
@@ -111,8 +113,9 @@ namespace TargaSharp.Drawing
 
                 case TgaColorMapEntrySize.A8R8G8B8:
                     {
-                        int argb = BitConverter.ToInt32(colorMapData, index * 4);
-                        return Color.FromArgb(useAlpha ? argb | (0xFF << 24) : argb);
+                        int argb = BinaryPrimitives.ReadInt32LittleEndian(colorMapData.AsSpan(index * 4));
+                        // Same rule as the 16-bit branch: keep the stored alpha only when it is meaningful.
+                        return Color.FromArgb(useAlpha ? argb : argb | (0xFF << 24));
                     }
 
                 default:

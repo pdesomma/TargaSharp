@@ -81,6 +81,44 @@ public class TgaDrawingTests
     }
 
     [TestMethod]
+    public void FromBitmap_X1R5G5B5Palette_PacksChannelsInSpecOrderLittleEndian()
+    {
+        // Pure red must land in bits 10-14 (0x7C00), stored little-endian as [0x00, 0x7C]. The writer used to
+        // put red in bits 0-4 - the reader's blue - so palettes came back with R and B swapped.
+        using var bmp = new Bitmap(1, 1, PixelFormat.Format8bppIndexed);
+        ColorPalette palette = bmp.Palette;
+        for (int i = 0; i < palette.Entries.Length; i++) palette.Entries[i] = Color.FromArgb(255, 0, 0, 0);
+        palette.Entries[0] = Color.FromArgb(255, 255, 0, 0);
+        bmp.Palette = palette;
+
+        var tga = TgaDrawing.FromBitmap(bmp, colorMap2BytesEntry: true);
+
+        Assert.AreEqual(TgaColorMapEntrySize.X1R5G5B5, tga.Header.ColorMapSpec.ColorMapEntrySize);
+        Assert.AreEqual(0x00, tga.ImageArea.ColorMapData![0]);
+        Assert.AreEqual(0x7C, tga.ImageArea.ColorMapData[1]);
+
+        using Bitmap roundTripped = tga.ToBitmap();
+        Color entry = roundTripped.Palette.Entries[0];
+        Assert.AreEqual((255, 0, 0), (entry.R, entry.G, entry.B));
+    }
+
+    [TestMethod]
+    public void FromBitmap_A8R8G8B8PaletteWithTranslucentEntry_RoundTripsStoredAlphaWhenAlphaIsUsed()
+    {
+        // ReadEntry's 32-bit branch had the useAlpha test inverted: asking for alpha forced it to 255.
+        using var bmp = new Bitmap(1, 1, PixelFormat.Format8bppIndexed);
+        ColorPalette palette = bmp.Palette;
+        palette.Entries[0] = Color.FromArgb(0x80, 10, 20, 30);
+        bmp.Palette = palette;
+
+        var tga = TgaDrawing.FromBitmap(bmp);
+        Assert.AreEqual(TgaColorMapEntrySize.A8R8G8B8, tga.Header.ColorMapSpec.ColorMapEntrySize);
+
+        using Bitmap withAlpha = tga.ToBitmap(forceUseAlpha: true);
+        Assert.AreEqual(Color.FromArgb(0x80, 10, 20, 30), withAlpha.Palette.Entries[0]);
+    }
+
+    [TestMethod]
     public void FromBitmap_BitmapWithA1R5G5B5Palette_PreservesAlphaBitInColorMapData()
     {
         // Format8bppIndexed => IsColorMapped, and colorMap2BytesEntry: true + a palette that mixes
