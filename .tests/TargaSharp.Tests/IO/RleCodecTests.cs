@@ -297,4 +297,43 @@ public class RleCodecTests
     {
         Assert.ThrowsExactly<ArgumentNullException>(() => RleCodec.Decode(null!, bytesPerPixel: 1, expectedLength: 4));
     }
+
+    [TestMethod]
+    public void Decode_HandBuiltRunAndRawPackets_ProducesExpectedPixels()
+    {
+        // Run of 3 x (1,2) then raw (3,4),(5,6): decoder tested independently of the encoder.
+        byte[] packets = [0x82, 1, 2, 0x01, 3, 4, 5, 6];
+        using var reader = new BinaryReader(new MemoryStream(packets));
+
+        byte[] decoded = RleCodec.Decode(reader, bytesPerPixel: 2, expectedLength: 10);
+
+        CollectionAssert.AreEqual(new byte[] { 1, 2, 1, 2, 1, 2, 3, 4, 5, 6 }, decoded);
+    }
+
+    [TestMethod]
+    public void Decode_StreamEndsInsideRunPacketPixel_ThrowsEndOfStreamException()
+    {
+        // Run packet header followed by 1 of the 3 pixel bytes; used to throw IndexOutOfRangeException.
+        using var reader = new BinaryReader(new MemoryStream([0x81, 0x11]));
+
+        Assert.ThrowsExactly<EndOfStreamException>(() => RleCodec.Decode(reader, bytesPerPixel: 3, expectedLength: 6));
+    }
+
+    [TestMethod]
+    public void Decode_StreamEndsInsideRawPacket_ThrowsEndOfStreamException()
+    {
+        // Raw packet of 2 x 3-byte pixels followed by only 4 of the 6 payload bytes.
+        using var reader = new BinaryReader(new MemoryStream([0x01, 1, 2, 3, 4]));
+
+        Assert.ThrowsExactly<EndOfStreamException>(() => RleCodec.Decode(reader, bytesPerPixel: 3, expectedLength: 6));
+    }
+
+    [TestMethod]
+    public void Decode_PacketOverrunsExpectedLength_ThrowsTgaFormatException()
+    {
+        // Run of 4 pixels into a 2-pixel image.
+        using var reader = new BinaryReader(new MemoryStream([0x83, 1, 2, 3]));
+
+        Assert.ThrowsExactly<TgaFormatException>(() => RleCodec.Decode(reader, bytesPerPixel: 3, expectedLength: 6));
+    }
 }

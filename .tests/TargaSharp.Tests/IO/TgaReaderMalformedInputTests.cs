@@ -1,4 +1,4 @@
-using TargaSharp.IO;
+﻿using TargaSharp.IO;
 
 namespace TargaSharp.Tests.IO;
 
@@ -61,6 +61,24 @@ public class TgaReaderMalformedInputTests
         // 40000 x 40000 x 1 = 1.6 GB fits in int, so this is not the overflow case: the reader must
         // refuse to allocate it because the stream cannot possibly supply that many bytes.
         byte[] bytes = HeaderOnly(40000, 40000, TgaPixelDepth.Bpp8, TgaImageType.UncompressedGrayscale);
+
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+    }
+
+    [TestMethod]
+    public void Read_RleStreamEndsInsideRunPacket_ThrowsTgaFormatException()
+    {
+        // 2x1 24bpp RLE: run packet header then 1 of the 3 pixel bytes. Leaked IndexOutOfRangeException before.
+        byte[] bytes = [.. HeaderOnly(2, 1, TgaPixelDepth.Bpp24, TgaImageType.RleTrueColor), 0x81, 0x11];
+
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+    }
+
+    [TestMethod]
+    public void Read_RlePacketOverrunsImage_ThrowsTgaFormatException()
+    {
+        // 2x1 24bpp RLE: a run of 4 pixels into a 2-pixel image.
+        byte[] bytes = [.. HeaderOnly(2, 1, TgaPixelDepth.Bpp24, TgaImageType.RleTrueColor), 0x83, 1, 2, 3];
 
         Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
     }

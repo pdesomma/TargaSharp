@@ -120,6 +120,8 @@
         /// (<c>width * height * bytesPerPixel</c>).</param>
         /// <returns>Bytes array of exactly <paramref name="expectedLength"/> decoded bytes.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="reader"/> is null.</exception>
+        /// <exception cref="EndOfStreamException">The stream ends inside a packet.</exception>
+        /// <exception cref="TgaFormatException">A packet would write past <paramref name="expectedLength"/>.</exception>
         internal static byte[] Decode(BinaryReader reader, int bytesPerPixel, int expectedLength)
         {
             ArgumentNullException.ThrowIfNull(reader);
@@ -146,12 +148,15 @@
                 if (packetInfo >= 128) // bit7 = 1, RLE
                 {
                     chunk = new byte[packetCount * bytesPerPixel];
-                    byte[] rlePart = reader.ReadBytes(bytesPerPixel);
+                    byte[] rlePart = ReadPacketBytes(reader, bytesPerPixel);
                     for (int i = 0; i < chunk.Length; i++)
                         chunk[i] = rlePart[i % bytesPerPixel];
                 }
                 else // RAW format
-                    chunk = reader.ReadBytes(packetCount * bytesPerPixel);
+                    chunk = ReadPacketBytes(reader, packetCount * bytesPerPixel);
+
+                if (dataOffset + chunk.Length > result.Length)
+                    throw new TgaFormatException($"RLE packet of {packetCount} pixels at decoded offset {dataOffset} overruns the {expectedLength}-byte image data.");
 
                 Buffer.BlockCopy(chunk, 0, result, dataOffset, chunk.Length);
                 dataOffset += chunk.Length;
@@ -159,6 +164,23 @@
             while (dataOffset < expectedLength);
 
             return result;
+        }
+
+        /// <summary>
+        /// Reads the payload of one packet, failing loudly when the stream ends inside it. A short
+        /// <see cref="BinaryReader.ReadBytes"/> used to surface as <see cref="IndexOutOfRangeException"/>
+        /// (run packet) or a confusing error from a later read (raw packet).
+        /// </summary>
+        /// <param name="reader">Packet stream.</param>
+        /// <param name="count">Bytes the packet must supply.</param>
+        /// <returns>Exactly <paramref name="count"/> bytes.</returns>
+        /// <exception cref="EndOfStreamException">Fewer than <paramref name="count"/> bytes remain.</exception>
+        private static byte[] ReadPacketBytes(BinaryReader reader, int count)
+        {
+            byte[] bytes = reader.ReadBytes(count);
+            if (bytes.Length != count)
+                throw new EndOfStreamException($"RLE packet truncated: expected {count} bytes, got {bytes.Length}.");
+            return bytes;
         }
     }
 }
