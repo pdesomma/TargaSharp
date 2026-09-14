@@ -107,12 +107,9 @@
         }
 
         /// <summary>
-        /// Decodes TGA's per-scanline Run-Length Encoded packets back into raw pixel data.
-        /// <para>Mirrors the loop <see cref="TgaFile"/>'s loader used before the split: it reads packets
-        /// until <paramref name="expectedLength"/> bytes have been produced, via a do/while loop that
-        /// always reads at least one packet - so a caller must not invoke this with
-        /// <paramref name="expectedLength"/> &lt;= 0 unless the underlying reader still has a packet to
-        /// consume, or it will throw trying to read past the intended data.</para>
+        /// Decodes TGA's per-scanline Run-Length Encoded packets back into raw pixel data, reading
+        /// packets until exactly <paramref name="expectedLength"/> bytes have been produced. An
+        /// <paramref name="expectedLength"/> of 0 consumes nothing and returns an empty array.
         /// </summary>
         /// <param name="reader">Reader positioned at the start of the RLE packet stream.</param>
         /// <param name="bytesPerPixel">Number of bytes in one pixel.</param>
@@ -139,13 +136,13 @@
             byte[] result = new byte[expectedLength];
             int dataOffset = 0;
 
-            do
+            while (dataOffset < expectedLength)
             {
                 byte packetInfo = reader.ReadByte(); //1 type bit and 7 count bits. Len = Count + 1.
-                int packetCount = (packetInfo & 127) + 1;
+                int packetCount = (packetInfo & (MaxPacketPixels - 1)) + 1;
                 byte[] chunk;
 
-                if (packetInfo >= 128) // bit7 = 1, RLE
+                if ((packetInfo & RunLengthFlag) != 0)
                 {
                     chunk = new byte[packetCount * bytesPerPixel];
                     byte[] rlePart = ReadPacketBytes(reader, bytesPerPixel);
@@ -161,7 +158,6 @@
                 Buffer.BlockCopy(chunk, 0, result, dataOffset, chunk.Length);
                 dataOffset += chunk.Length;
             }
-            while (dataOffset < expectedLength);
 
             return result;
         }

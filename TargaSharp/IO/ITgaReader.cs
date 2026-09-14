@@ -8,8 +8,9 @@
         /// <summary>
         /// Reads a <see cref="TgaFile"/> from a stream.
         /// </summary>
-        /// <param name="stream">Stream positioned to read a full TGA file. Must support
-        /// <see cref="Stream.CanRead"/> and <see cref="Stream.CanSeek"/>.</param>
+        /// <param name="stream">Stream whose entire content is one TGA file; it is read from offset 0
+        /// regardless of its current position (file offsets in the footer are absolute) and left open.
+        /// Must support <see cref="Stream.CanRead"/> and <see cref="Stream.CanSeek"/>.</param>
         /// <returns>The parsed <see cref="TgaFile"/>.</returns>
         TgaFile Read(Stream stream);
 

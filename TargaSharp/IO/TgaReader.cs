@@ -43,7 +43,9 @@
             if (file.Header.IdLength > 0)
                 file.ImageArea.ImageId = new TgaString(ReadExactly(binaryReader, file.Header.IdLength, "Image ID"));
 
-            if (file.Header.ColorMapSpec.ColorMapLength > 0)
+            // Spec Field 7: the color map is present only when Field 2 says so; a stale non-zero
+            // ColorMapLength on a NoColorMap file must not shift the image data.
+            if (file.Header.ColorMapType != TgaColorMapType.NoColorMap && file.Header.ColorMapSpec.ColorMapLength > 0)
             {
                 int cmBytesPerPixel = file.Header.ColorMapSpec.ColorMapEntrySize.BytesPerPixel();
                 int lenBytes = file.Header.ColorMapSpec.ColorMapLength * cmBytesPerPixel;

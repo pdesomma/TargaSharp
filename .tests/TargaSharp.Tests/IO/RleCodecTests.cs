@@ -329,6 +329,52 @@ public class RleCodecTests
     }
 
     [TestMethod]
+    public void Decode_ExpectedLengthZero_ReadsNothingAndReturnsEmpty()
+    {
+        // The old do/while always consumed one packet, so a 0-pixel image ate the byte after it (or threw at EOF).
+        var stream = new MemoryStream([0x80, 0x00]);
+        using var reader = new BinaryReader(stream);
+
+        byte[] decoded = RleCodec.Decode(reader, bytesPerPixel: 1, expectedLength: 0);
+
+        Assert.AreEqual(0, decoded.Length);
+        Assert.AreEqual(0, stream.Position);
+    }
+
+    [TestMethod]
+    public void Decode_MaxSizeRunPacket_Produces128Pixels()
+    {
+        using var reader = new BinaryReader(new MemoryStream([0xFF, 7]));
+
+        byte[] decoded = RleCodec.Decode(reader, bytesPerPixel: 1, expectedLength: 128);
+
+        Assert.AreEqual(128, decoded.Length);
+        Assert.IsTrue(decoded.All(b => b == 7));
+    }
+
+    [TestMethod]
+    public void Decode_MaxSizeRawPacket_Produces128Pixels()
+    {
+        byte[] payload = Enumerable.Range(0, 128).Select(i => (byte)i).ToArray();
+        using var reader = new BinaryReader(new MemoryStream([0x7F, .. payload]));
+
+        byte[] decoded = RleCodec.Decode(reader, bytesPerPixel: 1, expectedLength: 128);
+
+        CollectionAssert.AreEqual(payload, decoded);
+    }
+
+    [TestMethod]
+    public void Decode_PacketCrossingRowBoundary_IsAcceptedLeniently()
+    {
+        // Spec forbids packets spanning scanlines, but real-world encoders do it; a 2x2 image from one 4-pixel run.
+        using var reader = new BinaryReader(new MemoryStream([0x83, 9]));
+
+        byte[] decoded = RleCodec.Decode(reader, bytesPerPixel: 1, expectedLength: 4);
+
+        CollectionAssert.AreEqual(new byte[] { 9, 9, 9, 9 }, decoded);
+    }
+
+    [TestMethod]
     public void Decode_PacketOverrunsExpectedLength_ThrowsTgaFormatException()
     {
         // Run of 4 pixels into a 2-pixel image.
