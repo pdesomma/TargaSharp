@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Breaking Changes
+- `TgaExtensionArea.ExtensionSize` is now a read-only derived value (`MinSize` + `OtherDataInExtensionArea.Length`) rather than an internally-set field; it no longer takes part in `Equals`/`GetHashCode`.
+- `new TgaPostageStampImage()` is 1x1 (the smallest size its setters allow) instead of an invalid 0x0.
+- `TgaDrawing.FromBitmap` throws `NotSupportedException` for a `Format32bppPArgb` bitmap with `newFormat: false`; only the extension area can record `PreMultipliedAlpha`, so the legacy file would read back as straight alpha.
+- `ToBitmap()` throws `NotSupportedException` for color-mapped images whose pixel depth is not 8 (GDI+ has no wider indexed format; they rendered as RGB555 garbage) and `InvalidOperationException` when `ColorMapData` is `null` or shorter than the header declares (was `NullReferenceException` / `IndexOutOfRangeException`).
+
+### Added
+- `TgaFile.DeveloperArea` has a public setter; consumers could not attach a developer area before.
+
+### Fixed
+- `TgaExtensionArea` standalone `ToBytes()`/byte constructor round trip: trailing `OtherDataInExtensionArea` was written but dropped on parse unless the internal size field had been set, and a stale size field on disk discarded the trailing bytes.
+- `new TgaTime(TimeSpan)` accepted a negative sub-hour span and produced wrapped minutes/seconds (`TimeSpan.FromMinutes(-30)` gave `Minutes = 65506`); it now throws `ArgumentOutOfRangeException`.
+- `TgaDeveloperArea.Copy()` and `TgaFile(TgaFile)` threw `NullReferenceException` on a `null` entry; `Copy` preserves it and `ToBytes` reports it by index with `InvalidOperationException`.
+- `TgaValidator` threw `NullReferenceException` for a `null` `DeveloperArea.Entries` list; it is now a `TgaValidationError`. `AlphaChannelBits` rules no longer fire for `NoImageData` files.
+- `RleCodec.Decode` with a 0-byte pixel read the stream to its end; it now rejects `bytesPerPixel <= 0`. `TgaReader` leaves a 0-byte image (unknown pixel depth) for the validator instead of decoding it.
+- `TgaLayoutPlanner` fails with `TgaValidationException` instead of silently wrapping `uint` offsets on a layout over 4 GB.
+- `ToBitmap()` leaked the GDI+ `Bitmap` when a later palette or copy step threw; palette slots outside the file's color map were GDI+'s halftone default instead of black.
+- `TgaFile.Save(Stream)` docs claimed the stream must be seekable; it need not be.
+- `TestWpfApp`: an exception in a click handler killed the process and the fixture scan failed when the working directory was not the bin folder.
+
 ## [0.3.0] - 2026-09-13
 
 ### Breaking Changes
