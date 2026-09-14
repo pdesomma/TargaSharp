@@ -228,4 +228,41 @@ public class TgaWriterTests
         /// <inheritdoc />
         public override bool CanSeek => false;
     }
+
+    [TestMethod]
+    public void Write_NoImageDataWithPostageStamp_ThrowsInsteadOfDroppingTheStamp()
+    {
+        // Used to validate, write, and read back with PostageStampImage == null.
+        var file = new TgaFile();
+        file.ToNewFormat();
+        file.ExtensionArea!.PostageStampImage = new TgaPostageStampImage(1, 1, []);
+
+        var ex = Assert.ThrowsExactly<TgaValidationException>(() => new TgaWriter().Write(file));
+
+        Assert.AreEqual("ExtensionArea.PostageStampImage", ex.Errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Write_DeveloperAreaWithoutFooter_ThrowsInsteadOfDroppingIt()
+    {
+        var file = new TgaFile(2, 2, newFormat: false);
+        file.DeveloperArea = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [1])]);
+
+        var ex = Assert.ThrowsExactly<TgaValidationException>(() => new TgaWriter().Write(file));
+
+        Assert.AreEqual("DeveloperArea", ex.Errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Write_NoImageDataWithoutPostageStamp_RoundTrips()
+    {
+        var file = new TgaFile();
+        file.ToNewFormat();
+
+        TgaFile read = new TgaReader().Read(new TgaWriter().Write(file));
+
+        Assert.AreEqual(TgaImageType.NoImageData, read.Header.ImageType);
+        Assert.IsNotNull(read.ExtensionArea);
+        Assert.IsNull(read.ExtensionArea.PostageStampImage);
+    }
 }

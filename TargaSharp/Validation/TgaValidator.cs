@@ -9,18 +9,6 @@
     public sealed class TgaValidator : ITgaValidator
     {
         /// <summary>
-        /// Maximum valid <see cref="TgaAttributeType"/> value; 5-127 are reserved and 128-255 are
-        /// unassigned (spec Field 24).
-        /// </summary>
-        private const byte MaxAttributesType = 4;
-
-        /// <summary>
-        /// Largest <see cref="TgaExtensionArea.OtherDataInExtensionArea"/> that still fits the
-        /// 2-byte Extension Size field together with the fixed <see cref="TgaExtensionArea.MinSize"/> bytes.
-        /// </summary>
-        private const int MaxOtherDataLength = ushort.MaxValue - TgaExtensionArea.MinSize;
-
-        /// <summary>
         /// Developer Area tag values &gt;= this are reserved for Truevision; 0-32767 are available
         /// for developer use (spec Field 9 / Developer Area Tag description).
         /// </summary>
@@ -47,6 +35,7 @@
             ValidateImageData(file, errors);
             ValidateImageId(file, errors);
 
+            ValidateDeveloperAreaRequiresFooter(file, errors);
             ValidateDeveloperArea(file, errors);
 
             ValidateDateTimeStamp(file, errors);
@@ -54,7 +43,6 @@
             ValidateGammaValue(file, errors);
             ValidateAttributesType(file, errors);
             ValidateAttributesTypeMatchesAlphaChannelBits(file, errors);
-            ValidateOtherDataInExtensionArea(file, errors);
             ValidateScanLineTable(file, errors);
             ValidateColorCorrectionTable(file, errors);
             ValidatePostageStampImage(file, errors);
@@ -295,6 +283,18 @@
         }
 
         /// <summary>
+        /// The developer directory is only reachable through a v2.0 footer's Developer Directory Offset,
+        /// so a <see cref="TgaFile.DeveloperArea"/> on a footer-less file would be silently dropped by the writer.
+        /// </summary>
+        /// <param name="file">File under validation.</param>
+        /// <param name="errors">Sink for rule violations.</param>
+        private static void ValidateDeveloperAreaRequiresFooter(TgaFile file, List<TgaValidationError> errors)
+        {
+            if (file.DeveloperArea is not null && file.Footer is null)
+                errors.Add(new TgaValidationError("DeveloperArea", "DeveloperArea requires a v2.0 footer; call ToNewFormat()."));
+        }
+
+        /// <summary>
         /// Spec Field 9 (Developer Area Tag): the directory holds at most 65535 entries, tags &gt;= 32768
         /// are reserved for Truevision, and no tag may appear twice in the directory. <see cref="TgaDeveloperArea.Entries"/> is a plain
         /// mutable list, so a <see langword="null"/> element is reported as an error rather than
@@ -305,11 +305,6 @@
         private static void ValidateDeveloperArea(TgaFile file, List<TgaValidationError> errors)
         {
             if (file.DeveloperArea is null) return;
-            if (file.DeveloperArea.Entries is null)
-            {
-                errors.Add(new TgaValidationError("DeveloperArea.Entries", "Entries must not be null."));
-                return;
-            }
 
             if (file.DeveloperArea.Count > ushort.MaxValue)
                 errors.Add(new TgaValidationError("DeveloperArea.Entries", $"Entries.Count ({file.DeveloperArea.Count}) exceeds the {ushort.MaxValue} tags the directory's Number of Tags field can hold."));
@@ -390,7 +385,7 @@
             var gammaValue = file.ExtensionArea?.GammaValue;
             if (gammaValue is null || gammaValue.IsUnspecified) return;
 
-            float value = gammaValue.Numerator / (float)gammaValue.Denominator;
+            float? value = gammaValue.Value;
             if (value > 10f)
                 errors.Add(new TgaValidationError("ExtensionArea.GammaValue", $"GammaValue must be 0.0-10.0 when specified (was {value})."));
         }
@@ -404,9 +399,9 @@
         {
             if (file.ExtensionArea is null) return;
 
-            byte attributesType = (byte)file.ExtensionArea.AttributesType;
-            if (attributesType > MaxAttributesType)
-                errors.Add(new TgaValidationError("ExtensionArea.AttributesType", $"AttributesType {attributesType} is reserved (5-127) or unassigned (128-255); valid values are 0-{MaxAttributesType}."));
+            TgaAttributeType attributesType = file.ExtensionArea.AttributesType;
+            if (!attributesType.IsKnown())
+                errors.Add(new TgaValidationError("ExtensionArea.AttributesType", $"AttributesType {(byte)attributesType} is reserved (5-127) or unassigned (128-255); valid values are 0-4."));
         }
 
         /// <summary>
@@ -422,22 +417,6 @@
             byte alphaBits = file.Header.ImageSpec.ImageDescriptor.AlphaChannelBits;
             if (file.ExtensionArea.AttributesType == TgaAttributeType.NoAlpha && alphaBits != 0)
                 errors.Add(new TgaValidationError("ExtensionArea.AttributesType", $"AttributesType is NoAlpha but the image descriptor declares {alphaBits} attribute bits per pixel."));
-        }
-
-        /// <summary>
-        /// Spec Field 10: Extension Size is a 2-byte field covering the fixed 495 bytes plus any
-        /// trailing data, so <see cref="TgaExtensionArea.OtherDataInExtensionArea"/> cannot exceed
-        /// 65535 - 495 bytes without the size wrapping.
-        /// </summary>
-        /// <param name="file">File under validation.</param>
-        /// <param name="errors">Sink for rule violations.</param>
-        private static void ValidateOtherDataInExtensionArea(TgaFile file, List<TgaValidationError> errors)
-        {
-            var otherData = file.ExtensionArea?.OtherDataInExtensionArea;
-            if (otherData is null) return;
-
-            if (otherData.Length > MaxOtherDataLength)
-                errors.Add(new TgaValidationError("ExtensionArea.OtherDataInExtensionArea", $"OtherDataInExtensionArea.Length ({otherData.Length}) exceeds the {MaxOtherDataLength} bytes the Extension Size field can represent."));
         }
 
         /// <summary>
@@ -472,6 +451,8 @@
         /// <summary>
         /// Spec Field 26: when present, a 1-64 pixel uncompressed image stored in the same pixel
         /// depth as the main image, so its data length must equal Width * Height * bytes-per-pixel.
+        /// A <see cref="TgaImageType.NoImageData"/> file has no pixel depth to size a stamp against
+        /// (and the reader drops one), so it must not carry a stamp at all.
         /// </summary>
         /// <param name="file">File under validation.</param>
         /// <param name="errors">Sink for rule violations.</param>
@@ -480,7 +461,13 @@
             var postageStampImage = file.ExtensionArea?.PostageStampImage;
             if (postageStampImage is null) return;
 
-            int expected = postageStampImage.Width * postageStampImage.Height * file.Header.ImageSpec.PixelDepth.BytesPerPixel();
+            if (file.Header.ImageType == TgaImageType.NoImageData)
+            {
+                errors.Add(new TgaValidationError("ExtensionArea.PostageStampImage", "PostageStampImage must be null when ImageType is NoImageData."));
+                return;
+            }
+
+            int expected = postageStampImage.DataLength(file.Header.ImageSpec.PixelDepth);
             if (postageStampImage.Data.Length != expected)
                 errors.Add(new TgaValidationError("ExtensionArea.PostageStampImage.Data", $"Data.Length must be {expected} (Width * Height * bytes-per-pixel) but was {postageStampImage.Data.Length}."));
         }

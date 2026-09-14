@@ -116,6 +116,145 @@ public class TgaReaderMalformedInputTests
     }
 
     [TestMethod]
+    public void Read_ExtensionAreaOffsetInsideHeader_ThrowsNamingTheField()
+    {
+        // Offset 1 lands on the header, whose bytes read as an extension size of 512 >= 495: the reader
+        // used to fabricate an extension area out of header and pixel bytes.
+        var file = new TgaFile(2, 2);
+        byte[] bytes = file.ToBytes();
+        TgaBinary.WriteUInt32(bytes, bytes.Length - TgaFooter.Size, 1); // ExtensionAreaOffset
+
+        var ex = Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+
+        StringAssert.Contains(ex.Message, "ExtensionAreaOffset");
+    }
+
+    [TestMethod]
+    public void Read_DeveloperDirectoryOffsetInsideImageData_ThrowsNamingTheField()
+    {
+        var file = new TgaFile(2, 2);
+        byte[] bytes = file.ToBytes();
+        TgaBinary.WriteUInt32(bytes, bytes.Length - TgaFooter.Size + 4, TgaHeader.Size + 1); // DeveloperDirectoryOffset
+
+        var ex = Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+
+        StringAssert.Contains(ex.Message, "DeveloperDirectoryOffset");
+    }
+
+    [TestMethod]
+    public void Read_FooterOffsetPastFooterStart_ThrowsTgaFormatException()
+    {
+        // One byte into the footer itself is already too far for an extension area to start.
+        var file = new TgaFile(2, 2);
+        byte[] bytes = file.ToBytes();
+        TgaBinary.WriteUInt32(bytes, bytes.Length - TgaFooter.Size, (uint)(bytes.Length - TgaFooter.Size + 1));
+
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+    }
+
+    [TestMethod]
+    [DataRow(482, "ColorCorrectionTableOffset")]
+    [DataRow(486, "PostageStampOffset")]
+    [DataRow(490, "ScanLineOffset")]
+    public void Read_ExtensionTableOffsetInsideHeader_ThrowsNamingTheField(int fieldOffset, string field)
+    {
+        TgaFile file = CreateFileWithEverySection();
+        file.ExtensionArea!.ScanLineTable = new uint[file.Height];
+        file.ExtensionArea.ColorCorrectionTable = new ushort[TgaExtensionArea.ColorCorrectionTableLength];
+        byte[] bytes = file.ToBytes();
+        TgaBinary.WriteUInt32(bytes, (int)file.Footer!.ExtensionAreaOffset + fieldOffset, 2);
+
+        var ex = Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+
+        StringAssert.Contains(ex.Message, field);
+    }
+
+    [TestMethod]
+    public void Read_DeveloperFieldOffsetInsideHeader_ThrowsTgaFormatException()
+    {
+        byte[] bytes = WithDeveloperEntry(tag: 5, offset: 2, size: 4);
+
+        var ex = Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+
+        StringAssert.Contains(ex.Message, "Developer field 5");
+    }
+
+    [TestMethod]
+    public void Read_EmptyDeveloperFieldAtOffsetZero_IsAccepted()
+    {
+        // A zero-length field reads nothing, so its (meaningless) offset is not range-checked.
+        byte[] bytes = WithDeveloperEntry(tag: 5, offset: 0, size: 0);
+
+        TgaFile read = new TgaReader().Read(bytes);
+
+        Assert.AreEqual(0, read.DeveloperArea!.Entries[0].FieldSize);
+    }
+
+    [TestMethod]
+    public void Read_ExtensionSizeBelowMinimum_SkipsExtensionAreaAndKeepsFooter()
+    {
+        TgaFile file = CreateFileWithEverySection();
+        byte[] bytes = file.ToBytes();
+        TgaBinary.WriteUInt16(bytes, (int)file.Footer!.ExtensionAreaOffset, TgaExtensionArea.MinSize - 1);
+
+        TgaFile read = new TgaReader().Read(bytes);
+
+        Assert.IsNull(read.ExtensionArea);
+        Assert.IsNotNull(read.Footer);
+    }
+
+    [TestMethod]
+    public void Read_DeveloperDirectoryWithZeroTags_LoadsEmptyDeveloperArea()
+    {
+        byte[] valid = new TgaFile(1, 1).ToBytes();
+        uint directoryOffset = (uint)(valid.Length - TgaFooter.Size);
+        byte[] bytes = [.. valid.Take((int)directoryOffset), 0, 0, .. new TgaFooter(0, directoryOffset).ToBytes()];
+
+        TgaFile read = new TgaReader().Read(bytes);
+
+        Assert.IsNotNull(read.DeveloperArea);
+        Assert.AreEqual(0, read.DeveloperArea.Count);
+    }
+
+    [TestMethod]
+    public void Read_DeveloperDirectoryTruncatedMidEntry_ThrowsTgaFormatException()
+    {
+        // The directory holds one 10-byte entry before the footer but declares two: the second would be footer bytes.
+        byte[] bytes = WithDeveloperEntry(tag: 5, offset: 0, size: 0);
+        int directoryOffset = bytes.Length - TgaFooter.Size - sizeof(ushort) - TgaDeveloperEntry.Size;
+        TgaBinary.WriteUInt16(bytes, directoryOffset, 2);
+
+        var ex = Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+
+        StringAssert.Contains(ex.Message, "Developer directory");
+    }
+
+    [TestMethod]
+    public void Read_TruncatedColorCorrectionTable_ThrowsTgaFormatException()
+    {
+        TgaFile file = CreateFileWithEverySection();
+        file.ExtensionArea!.ColorCorrectionTable = new ushort[TgaExtensionArea.ColorCorrectionTableLength];
+        byte[] bytes = file.ToBytes();
+        // Point the table at the last 2 bytes before the footer so only one of its 1024 shorts can be read.
+        TgaBinary.WriteUInt32(bytes, (int)file.Footer!.ExtensionAreaOffset + 482, (uint)(bytes.Length - TgaFooter.Size - 2));
+
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+    }
+
+    [TestMethod]
+    public void Read_PostageStampOnColorMappedFile_LoadsStampAtPaletteIndexDepth()
+    {
+        // 8bpp color-mapped: the stamp is stored as palette indices, one byte per pixel.
+        TgaFile file = CreateFileWithEverySection();
+        byte[] bytes = file.ToBytes();
+
+        TgaFile read = new TgaReader().Read(bytes);
+
+        Assert.AreEqual(file.ExtensionArea!.PostageStampImage, read.ExtensionArea!.PostageStampImage);
+        Assert.AreEqual(read.ExtensionArea.PostageStampImage!.Width * read.ExtensionArea.PostageStampImage.Height, read.ExtensionArea.PostageStampImage.Data.Length);
+    }
+
+    [TestMethod]
     public void Read_TruncatedScanLineTable_ThrowsTgaFormatException()
     {
         TgaFile file = CreateFileWithEverySection();

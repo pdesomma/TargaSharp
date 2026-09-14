@@ -453,23 +453,11 @@ public class TgaValidatorTests
     }
 
     [TestMethod]
-    public void Validate_OtherDataTooLargeForExtensionSize_ReturnsSingleError()
-    {
-        // 495 + 65041 wraps the ushort Extension Size; used to surface as an obscure layout failure.
-        var file = CreateValidBaseline();
-        file.ExtensionArea!.OtherDataInExtensionArea = new byte[ushort.MaxValue - TgaExtensionArea.MinSize + 1];
-
-        var errors = Validator.Validate(file);
-
-        Assert.HasCount(1, errors);
-        Assert.AreEqual("ExtensionArea.OtherDataInExtensionArea", errors[0].Path);
-    }
-
-    [TestMethod]
     public void Validate_OtherDataAtMaxLength_ReturnsNoError()
     {
+        // The setter rejects anything longer, so the validator has no rule of its own for this field.
         var file = CreateValidBaseline();
-        file.ExtensionArea!.OtherDataInExtensionArea = new byte[ushort.MaxValue - TgaExtensionArea.MinSize];
+        file.ExtensionArea!.OtherDataInExtensionArea = new byte[TgaExtensionArea.MaxOtherDataLength];
 
         Assert.AreEqual(0, Validator.Validate(file).Count);
     }
@@ -608,6 +596,40 @@ public class TgaValidatorTests
     }
 
     [TestMethod]
+    public void Validate_DeveloperAreaWithoutFooter_ReturnsSingleError()
+    {
+        // Save used to silently drop the developer area of a v1.0 file.
+        var file = new TgaFile(4, 4, newFormat: false);
+        file.DeveloperArea = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [1])]);
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("DeveloperArea", errors[0].Path);
+        StringAssert.Contains(errors[0].Message, "ToNewFormat");
+    }
+
+    [TestMethod]
+    public void Validate_EmptyDeveloperAreaWithoutFooter_ReturnsSingleError()
+    {
+        var file = new TgaFile(4, 4, newFormat: false);
+        file.DeveloperArea = new TgaDeveloperArea();
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("DeveloperArea", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_NoDeveloperAreaWithoutFooter_ReturnsNoError()
+    {
+        var file = new TgaFile(4, 4, newFormat: false);
+
+        Assert.AreEqual(0, Validator.Validate(file).Count);
+    }
+
+    [TestMethod]
     public void Validate_DeveloperAreaWithDistinctDeveloperTags_ReturnsNoError()
     {
         var file = CreateValidBaseline();
@@ -627,19 +649,6 @@ public class TgaValidatorTests
 
         var errors = Validator.Validate(file);
 
-        Assert.AreEqual("DeveloperArea.Entries", errors[0].Path);
-    }
-
-    [TestMethod]
-    public void Validate_NullDeveloperEntriesList_ReturnsSingleError()
-    {
-        // Used to throw NullReferenceException from TgaDeveloperArea.Count.
-        var file = CreateValidBaseline();
-        file.DeveloperArea = new TgaDeveloperArea { Entries = null! };
-
-        var errors = Validator.Validate(file);
-
-        Assert.HasCount(1, errors);
         Assert.AreEqual("DeveloperArea.Entries", errors[0].Path);
     }
 
@@ -760,7 +769,8 @@ public class TgaValidatorTests
     public void Validate_JobTimeMinutesOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtensionArea!.JobTime = new TgaTime { Hours = 5, Minutes = 60, Seconds = 10 };
+        // The setters reject > 59; only the lenient byte ctor (the reader path) can produce this.
+        file.ExtensionArea!.JobTime = new TgaTime([5, 0, 60, 0, 10, 0]);
 
         var errors = Validator.Validate(file);
 
@@ -772,7 +782,8 @@ public class TgaValidatorTests
     public void Validate_JobTimeSecondsOutOfRange_ReturnsSingleError()
     {
         var file = CreateValidBaseline();
-        file.ExtensionArea!.JobTime = new TgaTime { Hours = 5, Minutes = 10, Seconds = 60 };
+        // The setters reject > 59; only the lenient byte ctor (the reader path) can produce this.
+        file.ExtensionArea!.JobTime = new TgaTime([5, 0, 10, 0, 60, 0]);
 
         var errors = Validator.Validate(file);
 
@@ -797,6 +808,24 @@ public class TgaValidatorTests
     }
 
     [TestMethod]
+    public void Validate_GammaValueAtUpperBound_ReturnsNoError()
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.GammaValue = new TgaFraction(100, 10); // 10.0
+
+        Assert.AreEqual(0, Validator.Validate(file).Count);
+    }
+
+    [TestMethod]
+    public void Validate_GammaValueUnspecified_ReturnsNoError()
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.GammaValue = new TgaFraction(5, 0);
+
+        Assert.AreEqual(0, Validator.Validate(file).Count);
+    }
+
+    [TestMethod]
     public void Validate_GammaValueInRange_ReturnsNoError()
     {
         var file = CreateValidBaseline();
@@ -812,15 +841,27 @@ public class TgaValidatorTests
     #region AttributesType
 
     [TestMethod]
-    public void Validate_AttributesTypeUnassigned_ReturnsSingleError()
+    [DataRow(5)]
+    [DataRow(127)]
+    [DataRow(200)]
+    public void Validate_AttributesTypeReservedOrUnassigned_ReturnsSingleError(int value)
     {
         var file = CreateValidBaseline();
-        file.ExtensionArea!.AttributesType = (TgaAttributeType)200;
+        file.ExtensionArea!.AttributesType = (TgaAttributeType)value;
 
         var errors = Validator.Validate(file);
 
         Assert.HasCount(1, errors);
         Assert.AreEqual("ExtensionArea.AttributesType", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_AttributesTypeAtKnownUpperBound_ReturnsNoError()
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.AttributesType = (TgaAttributeType)4;
+
+        Assert.AreEqual(0, Validator.Validate(file).Count);
     }
 
     #endregion
@@ -872,6 +913,29 @@ public class TgaValidatorTests
 
         Assert.HasCount(1, errors);
         Assert.AreEqual("ExtensionArea.PostageStampImage.Data", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_NoImageDataWithPostageStamp_ReturnsSingleError()
+    {
+        // The reader drops a stamp on a NoImageData file, so writing one silently lost it.
+        var file = new TgaFile();
+        file.ToNewFormat();
+        file.ExtensionArea!.PostageStampImage = new TgaPostageStampImage(1, 1, []);
+
+        var errors = Validator.Validate(file);
+
+        Assert.HasCount(1, errors);
+        Assert.AreEqual("ExtensionArea.PostageStampImage", errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Validate_PostageStampImageDataMatchingLength_ReturnsNoError()
+    {
+        var file = CreateValidBaseline();
+        file.ExtensionArea!.PostageStampImage = new TgaPostageStampImage(2, 2, new byte[2 * 2 * 3]);
+
+        Assert.AreEqual(0, Validator.Validate(file).Count);
     }
 
     [TestMethod]

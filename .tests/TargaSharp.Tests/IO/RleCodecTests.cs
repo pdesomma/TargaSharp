@@ -172,6 +172,16 @@ public class RleCodecTests
     }
 
     [TestMethod]
+    public void Encode_ImageSizeOverflowsInt_ThrowsArgumentOutOfRangeException()
+    {
+        // 32768 x 32768 x 4 wraps to 0 in int arithmetic, so an empty array used to pass the length check.
+        var ex = Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => RleCodec.Encode([], bytesPerPixel: 4, width: 32768, height: 32768));
+
+        Assert.AreEqual("imageData", ex.ParamName);
+        StringAssert.Contains(ex.Message, "4294967296");
+    }
+
+    [TestMethod]
     public void Encode_ZeroBytesPerPixel_ThrowsArgumentOutOfRangeException()
     {
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => RleCodec.Encode([], bytesPerPixel: 0, width: 2, height: 2));

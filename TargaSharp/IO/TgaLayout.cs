@@ -38,6 +38,10 @@ namespace TargaSharp.IO
 
     /// <summary>
     /// Computes a <see cref="TgaFile"/>'s on-disk layout for <see cref="TgaWriter"/>.
+    /// <para>The planner repeats some structural checks <see cref="TgaValidator"/> already makes (duplicate
+    /// developer tags, table lengths, stamp size). That is deliberate defense-in-depth: <see cref="ITgaValidator"/>
+    /// is injectable into <see cref="TgaWriter"/>, so a lenient or custom validator must not let the planner
+    /// emit a file whose offsets and sizes disagree. Do not deduplicate either side.</para>
     /// </summary>
     internal interface ITgaLayoutPlanner
     {
@@ -192,14 +196,18 @@ namespace TargaSharp.IO
         /// <param name="add">Section sink.</param>
         private static void PlanDeveloperArea(TgaFile file, Func<string, uint, Func<byte[]>, uint> add)
         {
-            List<TgaDeveloperEntry> entries = file.DeveloperArea?.Entries
+            IList<TgaDeveloperEntry> source = file.DeveloperArea?.Entries ?? [];
+
+            // Report a duplicate by the caller's index, before sorting reorders the entries.
+            var seenTags = new HashSet<ushort>();
+            for (int i = 0; i < source.Count; i++)
+                if (source[i] is { } entry && !seenTags.Add(entry.Tag))
+                    throw Fail($"DeveloperArea.Entries[{i}].Tag", $"duplicate tag {entry.Tag}.");
+
+            List<TgaDeveloperEntry> entries = source
                 .Where(e => e is not null)
                 .OrderBy(e => e.Tag)
-                .ToList() ?? [];
-
-            for (int i = 0; i < entries.Count - 1; i++)
-                if (entries[i].Tag == entries[i + 1].Tag)
-                    throw Fail($"DeveloperArea.Entries[{i + 1}].Tag", $"duplicate tag {entries[i].Tag}.");
+                .ToList();
 
             if (entries.Count == 0)
             {
@@ -234,10 +242,6 @@ namespace TargaSharp.IO
                 return;
             }
 
-            int otherDataLength = ext.OtherDataInExtensionArea?.Length ?? 0;
-            if (otherDataLength > ushort.MaxValue - TgaExtensionArea.MinSize)
-                throw Fail("ExtensionArea.OtherDataInExtensionArea", $"length {otherDataLength} exceeds the {ushort.MaxValue - TgaExtensionArea.MinSize} bytes the Extension Size field can hold.");
-
             // A caller-supplied timestamp is preserved; only an unset one is stamped with "now".
             if (ext.DateTimeStamp.IsUnset)
                 ext.DateTimeStamp = new TgaDateTime(DateTime.UtcNow);
@@ -259,8 +263,11 @@ namespace TargaSharp.IO
             else
             {
                 TgaPostageStampImage stamp = ext.PostageStampImage;
-                int expected = stamp.Width * stamp.Height * file.Header.ImageSpec.PixelDepth.BytesPerPixel();
-                if (file.Header.ImageType != TgaImageType.NoImageData && stamp.Data.Length != expected)
+                // A stamp needs a pixel depth to size against; the reader drops one on a NoImageData file anyway.
+                if (file.Header.ImageType == TgaImageType.NoImageData)
+                    throw Fail("ExtensionArea.PostageStampImage", "a NoImageData file cannot carry a postage stamp.");
+                int expected = stamp.DataLength(file.Header.ImageSpec.PixelDepth);
+                if (stamp.Data.Length != expected)
                     throw Fail("ExtensionArea.PostageStampImage.Data", $"expected {expected} bytes, found {stamp.Data.Length}.");
 
                 ext.PostageStampOffset = add("ExtensionArea.PostageStampImage", TgaPostageStampImage.HeaderSize + (uint)stamp.Data.Length, stamp.ToBytes);
