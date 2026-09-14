@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net48;net6.0;net8.0;net10.0</TargetFrameworks>
     <SupportedOSPlatform>windows</SupportedOSPlatform>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Version>0.2.0</Version>
@@ -15,8 +15,13 @@
     <PackageTags>tga;targa</PackageTags>
     <PackageReleaseNotes>0.2.0: records, validation, typed exceptions, TargaSharp.Drawing split, naming cleanup. Breaking changes from 0.1.0.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release'">true</GeneratePackageOnBuild>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="System.Drawing" />
+    <!-- Internal polyfills are per-assembly; share the core's sources rather than a second copy. -->
+    <Compile Include="..\TargaSharp\Polyfills\*.cs" Link="Polyfills\%(Filename)%(Extension)" />
+  </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
     <PackageReference Include="System.Drawing.Common" Version="8.0.10" />

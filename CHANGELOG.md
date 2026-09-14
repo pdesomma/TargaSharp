@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `TgaFile.UpdatePostageStampImage()` throws `InvalidOperationException` for a zero dimension or an `ImageData` length that disagrees with the header instead of a raw `ArgumentException`/garbage stamp.
 
 ### Added
+- `net48` target for `TargaSharp` and `TargaSharp.Drawing` (internal polyfills; `System.Memory` dependency on .NET Framework).
+- `TgaFile.ToOldFormat()`: drops the footer, extension area and developer area so `Save` writes a plain TGA 1.0 file; inverse of `ToNewFormat()`.
 - `TgaHeader.ImageDataLength` and `TgaHeader.ColorMapDataLength`: the byte lengths the header declares for Fields 8 and 7, now the single definition used by the reader, writer and validator.
 - `TgaValidator` rules: non-zero width/height for image types with pixel data (previously passed validation and failed inside `Save`), unknown `ColorMapType` values, `AttributesType = NoAlpha` with non-zero descriptor attribute bits (spec Field 24), `OtherDataInExtensionArea` too large for the 2-byte Extension Size, more than 65535 developer entries, and a 0x0 postage stamp.
 - `TgaValidator` rules: `PixelDepth` must suit the `ImageType` (true-color 16/24/32, color-mapped and grayscale 8/16); `AuthorName`/`JobNameOrId`/`SoftwareId` must be 41 bytes with a NUL terminator (any other length shifted every following extension-area field and failed inside `Save` with an unnamed error); `DateTimeStamp.Day` is checked against the month's length; `SoftwareVersion.VersionLetter` must be an ASCII letter (a non-ASCII letter passed and was written as `'?'`).

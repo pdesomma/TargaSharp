@@ -11,7 +11,9 @@ namespace TargaSharp.Drawing.Tests;
 /// <see cref="TgaFileDrawingExtensions"/> <see cref="Bitmap"/> bridge.
 /// </summary>
 [TestClass]
+#if !NETFRAMEWORK
 [SupportedOSPlatform("windows")]
+#endif
 public class TgaDrawingTests
 {
     [TestMethod]

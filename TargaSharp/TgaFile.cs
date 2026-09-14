@@ -226,6 +226,19 @@ namespace TargaSharp
         }
 
         /// <summary>
+        /// Convert TGA Image to the original (pre-2.0) format: drops the <see cref="Footer"/>,
+        /// <see cref="ExtensionArea"/> and <see cref="DeveloperArea"/> so <see cref="Save(string)"/>
+        /// writes only the header, image ID, color map and image data. Inverse of <see cref="ToNewFormat"/>;
+        /// the dropped areas are not recoverable from this instance.
+        /// </summary>
+        public void ToOldFormat()
+        {
+            Footer = null;
+            ExtensionArea = null;
+            DeveloperArea = null;
+        }
+
+        /// <summary>
         /// Update Postage Stamp Image or set it.
         /// </summary>
         /// <exception cref="InvalidOperationException"><see cref="TgaImageArea.ImageData"/> is <see langword="null"/>, a dimension is 0,

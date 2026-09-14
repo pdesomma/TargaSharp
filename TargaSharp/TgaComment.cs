@@ -86,7 +86,7 @@ namespace TargaSharp
 
                 // ToBytes fills with BlankSpaceChar then NUL-terminates at byte 81, so a space-filled slot has no
                 // NUL in its first 80 bytes; infer ' ' from that so ToBytes reproduces the input (and Equals holds).
-                if (nulIndex < 0 && slot.EndsWith(' '))
+                if (nulIndex < 0 && slot.EndsWith(" ", StringComparison.Ordinal))
                     _blankSpaceChar = ' ';
             }
         }

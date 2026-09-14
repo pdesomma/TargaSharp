@@ -84,7 +84,7 @@ public class TgaReaderMalformedInputTests
         var file = new TgaFile(2, 1, TgaPixelDepth.Bpp24, TgaImageType.RleTrueColor, newFormat: false);
         byte[] bytes = file.ToBytes();
         TgaBinary.WriteUInt16(bytes, 14, 0); // ImageHeight
-        byte[] headerOnly = bytes[..TgaHeader.Size];
+        byte[] headerOnly = bytes.Take(TgaHeader.Size).ToArray();
 
         TgaFile read = new TgaReader().Read(headerOnly);
 
@@ -143,7 +143,7 @@ public class TgaReaderMalformedInputTests
     public void Read_FileCutInsideImageId_ThrowsTgaFormatException()
     {
         byte[] bytes = CreateFileWithEverySection().ToBytes();
-        byte[] truncated = bytes[..(TgaHeader.Size + 3)];
+        byte[] truncated = bytes.Take(TgaHeader.Size + 3).ToArray();
 
         Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(truncated));
     }
@@ -153,7 +153,7 @@ public class TgaReaderMalformedInputTests
     {
         // Used to load with a silently shortened ColorMapData, failing much later in ToBitmap or Save.
         byte[] bytes = CreateFileWithEverySection().ToBytes();
-        byte[] truncated = bytes[..(TgaHeader.Size + 10 + 5)];
+        byte[] truncated = bytes.Take(TgaHeader.Size + 10 + 5).ToArray();
 
         Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(truncated));
     }
@@ -178,7 +178,7 @@ public class TgaReaderMalformedInputTests
         byte[] bytes = file.ToBytes();
         uint extOffset = file.Footer!.ExtensionAreaOffset;
         TgaBinary.WriteUInt16(bytes, (int)extOffset, (ushort)(TgaExtensionArea.MinSize + 200));
-        byte[] cut = bytes[..(int)(extOffset + TgaExtensionArea.MinSize + 10)];
+        byte[] cut = bytes.Take((int)(extOffset + TgaExtensionArea.MinSize + 10)).ToArray();
 
         Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read([.. cut, .. file.Footer.ToBytes()]));
     }

@@ -106,7 +106,7 @@ public class TgaReaderTests
     public void Read_TruncatedStream_ThrowsTgaFormatException()
     {
         byte[] bytes = new TgaWriter().Write(CreateSmall24BppFile());
-        byte[] truncated = bytes[..(TgaHeader.Size + 3)];
+        byte[] truncated = bytes.Take(TgaHeader.Size + 3).ToArray();
 
         var ex = Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(truncated));
 
