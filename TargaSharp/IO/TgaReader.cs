@@ -41,13 +41,13 @@
             file.Header = new TgaHeader(binaryReader.ReadBytes(TgaHeader.Size));
 
             if (file.Header.IdLength > 0)
-                file.ImageArea.ImageId = new TgaString(binaryReader.ReadBytes(file.Header.IdLength));
+                file.ImageArea.ImageId = new TgaString(ReadExactly(binaryReader, file.Header.IdLength, "Image ID"));
 
             if (file.Header.ColorMapSpec.ColorMapLength > 0)
             {
                 int cmBytesPerPixel = file.Header.ColorMapSpec.ColorMapEntrySize.BytesPerPixel();
                 int lenBytes = file.Header.ColorMapSpec.ColorMapLength * cmBytesPerPixel;
-                file.ImageArea.ColorMapData = binaryReader.ReadBytes(lenBytes);
+                file.ImageArea.ColorMapData = ReadExactly(binaryReader, lenBytes, "Color map");
             }
 
             // Read Image Data
@@ -115,7 +115,7 @@
                     if (extAreaSize >= TgaExtensionArea.MinSize)
                     {
                         stream.Seek(extAreaOffset, SeekOrigin.Begin);
-                        file.ExtensionArea = new TgaExtensionArea(binaryReader.ReadBytes(extAreaSize));
+                        file.ExtensionArea = new TgaExtensionArea(ReadExactly(binaryReader, extAreaSize, "Extension area"));
 
                         if (file.ExtensionArea.ScanLineOffset > 0)
                         {
@@ -133,7 +133,7 @@
                             int imgDataSize = w * h * bytesPerPixel;
                             // Lenient read: a stamp outside the spec's 1..64 range is skipped rather than failing the whole file.
                             if (imgDataSize > 0 && w <= TgaPostageStampImage.MaxSize && h <= TgaPostageStampImage.MaxSize)
-                                file.ExtensionArea.PostageStampImage = new TgaPostageStampImage(w, h, binaryReader.ReadBytes(imgDataSize));
+                                file.ExtensionArea.PostageStampImage = new TgaPostageStampImage(w, h, ReadExactly(binaryReader, imgDataSize, "Postage stamp"));
                         }
 
                         if (file.ExtensionArea.ColorCorrectionTableOffset > 0)
