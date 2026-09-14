@@ -87,4 +87,31 @@ public class TgaHeaderTests
             TgaHeader.Size,
             () => new TgaHeader());
     }
+
+    [TestMethod]
+    public void ToBytes_PopulatedFields_WritesEachFieldAtSpecOffset()
+    {
+        var header = new TgaHeader
+        {
+            IdLength = 7,
+            ColorMapType = TgaColorMapType.ColorMap,
+            ImageType = TgaImageType.RleTrueColor,
+            ColorMapSpec = new TgaColorMapSpec { FirstEntryIndex = 0x0102, ColorMapLength = 0x0304, ColorMapEntrySize = TgaColorMapEntrySize.A8R8G8B8 },
+            ImageSpec = new TgaImageSpec(0x1112, 0x1314, 0x1516, 0x1718, TgaPixelDepth.Bpp32, new TgaImageDescriptor { AlphaChannelBits = 8, ImageOrigin = TgaImageOrigin.TopLeft }),
+        };
+
+        byte[] bytes = header.ToBytes();
+
+        Assert.AreEqual(TgaHeader.Size, bytes.Length);
+        Assert.AreEqual(7, bytes[0]);
+        Assert.AreEqual((byte)TgaColorMapType.ColorMap, bytes[1]);
+        Assert.AreEqual((byte)TgaImageType.RleTrueColor, bytes[2]);
+        CollectionAssert.AreEqual(header.ColorMapSpec.ToBytes(), bytes.AsSpan(3, TgaColorMapSpec.Size).ToArray());
+        CollectionAssert.AreEqual(header.ImageSpec.ToBytes(), bytes.AsSpan(8, TgaImageSpec.Size).ToArray());
+        // Raw spot checks: ColorMapSpec.FirstEntryIndex low byte at 3, entry size at 7; ImageSpec.XOrigin low byte at 8, depth at 16.
+        Assert.AreEqual(0x02, bytes[3]);
+        Assert.AreEqual(32, bytes[7]);
+        Assert.AreEqual(0x12, bytes[8]);
+        Assert.AreEqual(32, bytes[16]);
+    }
 }

@@ -36,11 +36,12 @@ namespace TargaSharp
         /// </summary>
         /// <param name="bytes">Bytes array (byte[26]).</param>
         /// <exception cref="ArgumentNullException"><paramref name="bytes"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="bytes"/>.Length != <see cref="Size"/>.</exception>
         /// <exception cref="FormatException"><paramref name="bytes"/> is not a valid TGA v2.0 footer
-        /// (wrong length, signature, reserved character or binary-zero terminator).</exception>
+        /// (wrong signature, reserved character or binary-zero terminator).</exception>
         public TgaFooter(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(bytes);
+            TgaBinary.RequireLength(bytes, Size);
 
             if (!TryParse(bytes, out TgaFooter? footer))
                 throw new FormatException("Bytes do not represent a valid TGA v2.0 footer.");

@@ -41,9 +41,7 @@
         /// <param name="bytes">Array of bytes(byte[4]).</param>
         public TgaFraction(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            TgaBinary.RequireLength(bytes, Size);
             Numerator = TgaBinary.ReadUInt16(bytes, 0);
             Denominator = TgaBinary.ReadUInt16(bytes, 2);
         }
@@ -70,7 +68,7 @@
         /// <see cref="IsUnspecified"/> is true (<see cref="Denominator"/> is 0). Used for both the
         /// pixel aspect ratio and the gamma value fields.
         /// </summary>
-        public float? Value => IsUnspecified ? null : Numerator == Denominator ? 1f : Numerator / (float)Denominator;
+        public float? Value => IsUnspecified ? null : Numerator / (float)Denominator;
 
 
         /// <summary>

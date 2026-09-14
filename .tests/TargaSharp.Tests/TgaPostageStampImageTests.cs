@@ -106,4 +106,59 @@ public class TgaPostageStampImageTests
         Assert.AreEqual((byte)1, image.Height);
         Assert.AreEqual(image, new TgaPostageStampImage(image.ToBytes()));
     }
+
+    [TestMethod]
+    public void DataSetter_Null_ThrowsArgumentNullException()
+    {
+        var stamp = new TgaPostageStampImage();
+
+        Assert.ThrowsExactly<ArgumentNullException>(() => stamp.Data = null!);
+    }
+
+    [TestMethod]
+    public void DataSetter_NonNull_IsStored()
+    {
+        var stamp = new TgaPostageStampImage();
+        byte[] data = [1, 2, 3];
+
+        stamp.Data = data;
+
+        Assert.AreSame(data, stamp.Data);
+    }
+
+    [TestMethod]
+    public void Ctor_Bytes_WidthZero_ThrowsArgumentOutOfRangeExceptionNamingBytes()
+    {
+        var ex = Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaPostageStampImage([0, 1]));
+
+        Assert.AreEqual("bytes", ex.ParamName);
+    }
+
+    [TestMethod]
+    public void Ctor_Bytes_HeightAboveMax_ThrowsArgumentOutOfRangeExceptionNamingBytes()
+    {
+        var ex = Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaPostageStampImage([1, TgaPostageStampImage.MaxSize + 1]));
+
+        Assert.AreEqual("bytes", ex.ParamName);
+    }
+
+    [TestMethod]
+    [DataRow(TgaPixelDepth.Bpp8, 2, 3, 6)]
+    [DataRow(TgaPixelDepth.Bpp16, 2, 3, 12)]
+    [DataRow(TgaPixelDepth.Bpp24, 4, 4, 48)]
+    [DataRow(TgaPixelDepth.Bpp32, 64, 64, 16384)]
+    public void DataLength_SizeAndDepth_ReturnsWidthTimesHeightTimesBytesPerPixel(TgaPixelDepth depth, int width, int height, int expected)
+    {
+        var stamp = new TgaPostageStampImage((byte)width, (byte)height, []);
+
+        Assert.AreEqual(expected, stamp.DataLength(depth));
+    }
+
+    [TestMethod]
+    public void DataLength_PixelDepthOther_ReturnsZero()
+    {
+        var stamp = new TgaPostageStampImage(2, 2, []);
+
+        Assert.AreEqual(0, stamp.DataLength(TgaPixelDepth.Other));
+    }
 }

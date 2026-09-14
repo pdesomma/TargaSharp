@@ -170,4 +170,23 @@ public class TgaCommentTests
         Assert.AreEqual((byte)0, bytes[2]);
         Assert.AreEqual((byte)0, bytes[80]);
     }
+
+    [TestMethod]
+    public void BlankSpaceCharSetter_Space_IsAccepted()
+    {
+        var comment = new TgaComment("A");
+
+        comment.BlankSpaceChar = ' ';
+
+        Assert.AreEqual(' ', comment.BlankSpaceChar);
+        Assert.AreEqual((byte)' ', comment.ToBytes()[1]);
+    }
+
+    [TestMethod]
+    public void BlankSpaceCharSetter_OtherChar_ThrowsArgumentOutOfRangeException()
+    {
+        var comment = new TgaComment("A");
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => comment.BlankSpaceChar = '-');
+    }
 }

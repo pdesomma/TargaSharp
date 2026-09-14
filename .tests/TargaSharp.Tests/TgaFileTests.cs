@@ -605,4 +605,58 @@ public class TgaFileTests
 
         Assert.AreNotEqual(0xFF, tga.DeveloperArea!.Entries[0].Data[0]);
     }
+
+    [TestMethod]
+    public void Ctor_UnknownImageType_ThrowsArgumentExceptionNamingImgType()
+    {
+        var ex = Assert.ThrowsExactly<ArgumentException>(() => new TgaFile(4, 4, TgaPixelDepth.Bpp24, (TgaImageType)200));
+
+        Assert.AreEqual("imgType", ex.ParamName);
+    }
+
+    [TestMethod]
+    public void Ctor_NewFormatWithAlphaBits_SetsUsefulAlphaAndTimestamp()
+    {
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp32, TgaImageType.UncompressedTrueColor, 8);
+
+        Assert.IsNotNull(tga.Footer);
+        Assert.AreEqual(TgaAttributeType.UsefulAlpha, tga.ExtensionArea!.AttributesType);
+        Assert.IsFalse(tga.ExtensionArea.DateTimeStamp.IsUnset);
+    }
+
+    [TestMethod]
+    public void Ctor_NewFormatWithoutAlphaBits_SetsNoAlpha()
+    {
+        var tga = new TgaFile(2, 2);
+
+        Assert.AreEqual(TgaAttributeType.NoAlpha, tga.ExtensionArea!.AttributesType);
+    }
+
+    [TestMethod]
+    [DataRow(1, 100, 4, 64)]
+    [DataRow(100, 1, 64, 4)]
+    [DataRow(2, 2, 4, 4)]
+    public void UpdatePostageStampImage_ExtremeAspectOrTinyImage_ClampsStampToAtLeast4(int width, int height, int expectedWidth, int expectedHeight)
+    {
+        var tga = new TgaFile((ushort)width, (ushort)height, TgaPixelDepth.Bpp8, TgaImageType.UncompressedGrayscale);
+
+        tga.UpdatePostageStampImage();
+
+        TgaPostageStampImage stamp = tga.ExtensionArea!.PostageStampImage!;
+        Assert.AreEqual((byte)expectedWidth, stamp.Width);
+        Assert.AreEqual((byte)expectedHeight, stamp.Height);
+        Assert.AreEqual(stamp.DataLength(TgaPixelDepth.Bpp8), stamp.Data.Length);
+    }
+
+    [TestMethod]
+    public void UpdatePostageStampImage_2x2Image_UpscalesToNearest4x4()
+    {
+        var tga = new TgaFile(2, 2, TgaPixelDepth.Bpp8, TgaImageType.UncompressedGrayscale);
+        tga.ImageArea.ImageData = [1, 2, 3, 4];
+
+        tga.UpdatePostageStampImage();
+
+        byte[] expected = [1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4];
+        CollectionAssert.AreEqual(expected, tga.ExtensionArea!.PostageStampImage!.Data);
+    }
 }

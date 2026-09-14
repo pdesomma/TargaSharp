@@ -99,11 +99,13 @@ public class TgaFooterTests
     }
 
     [TestMethod]
-    public void Ctor_WrongLength_ThrowsFormatException()
+    public void Ctor_WrongLength_ThrowsArgumentOutOfRangeExceptionNamingBytes()
     {
         byte[] bytes = new byte[TgaFooter.Size - 1];
 
-        Assert.ThrowsExactly<FormatException>(() => new TgaFooter(bytes));
+        var ex = Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new TgaFooter(bytes));
+
+        Assert.AreEqual("bytes", ex.ParamName);
     }
 
     [TestMethod]

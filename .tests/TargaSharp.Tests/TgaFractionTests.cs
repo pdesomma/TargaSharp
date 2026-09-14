@@ -62,4 +62,12 @@ public class TgaFractionTests
         Assert.AreEqual(4f / 3f, fraction.Value);
         Assert.IsFalse(fraction.IsUnspecified);
     }
+
+    [TestMethod]
+    public void Value_EqualNonZeroNumeratorAndDenominator_ReturnsOne()
+    {
+        var fraction = new TgaFraction(7, 7);
+
+        Assert.AreEqual(1f, fraction.Value);
+    }
 }

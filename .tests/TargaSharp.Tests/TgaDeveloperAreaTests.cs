@@ -30,14 +30,6 @@ public class TgaDeveloperAreaTests
     }
 
     [TestMethod]
-    public void ToBytes_NullEntries_ThrowsInvalidOperationException()
-    {
-        var area = new TgaDeveloperArea { Entries = null! };
-
-        Assert.ThrowsExactly<InvalidOperationException>(() => area.ToBytes());
-    }
-
-    [TestMethod]
     public void Copy_MutatedCopy_DoesNotAffectOriginal()
     {
         var area = new TgaDeveloperArea([new TgaDeveloperEntry(1, 0, [1, 2, 3])]);

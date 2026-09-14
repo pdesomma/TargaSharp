@@ -39,19 +39,16 @@
         public int Count => Entries.Count;
 
         /// <summary>
-        /// Developer Data - Field 9 (variable):
+        /// Developer Data - Field 9 (variable). Never <see langword="null"/>; a <see langword="null"/> element is a caller error the validator reports.
         /// </summary>
-        public List<TgaDeveloperEntry> Entries { get; set; } = new List<TgaDeveloperEntry>();
-
-
-
+        public List<TgaDeveloperEntry> Entries { get; } = new List<TgaDeveloperEntry>();
 
         /// <summary>
         /// Make full copy of <see cref="TgaDeveloperArea"/>. Named <c>Copy</c> rather than <c>Clone</c>
         /// because records reserve the member name <c>Clone</c> for the compiler-synthesized copy constructor.
         /// </summary>
         /// <returns>Full independent copy of <see cref="TgaDeveloperArea"/>.</returns>
-        public TgaDeveloperArea Copy() => this with { Entries = new List<TgaDeveloperEntry>(Entries.Select(x => x?.Copy()!)) };
+        public TgaDeveloperArea Copy() => new(new List<TgaDeveloperEntry>(Entries.Select(x => x?.Copy()!)));
 
         /// <inheritdoc />
         object ICloneable.Clone() => Copy();
@@ -60,7 +57,7 @@
         public bool Equals(TgaDeveloperArea? other)
         {
             if (other is null) return false;
-            return ReferenceEquals(Entries, other.Entries) || (Entries is not null && other.Entries is not null && Entries.SequenceEqual(other.Entries));
+            return ReferenceEquals(Entries, other.Entries) || Entries.SequenceEqual(other.Entries);
         }
 
         /// <summary>
@@ -72,9 +69,8 @@
             unchecked
             {
                 int hash = 27;
-                if (Entries != null)
-                    for (int i = 0; i < Entries.Count; i++)
-                        hash = (13 * hash) + (Entries[i]?.GetHashCode() ?? 0);
+                for (int i = 0; i < Entries.Count; i++)
+                    hash = (13 * hash) + (Entries[i]?.GetHashCode() ?? 0);
                 return hash;
             }
         }
@@ -84,11 +80,10 @@
         /// </summary>
         /// <returns>Byte array, Len = (NUMBER_OF_TAGS_IN_THE_DIRECTORY * 10) + 2 bytes in size.
         /// The "+ 2" includes the 2 bytes for the number of tags in the directory.</returns>
-        /// <exception cref="InvalidOperationException"><see cref="Entries"/> is <see langword="null"/>, contains a <see langword="null"/> entry,
+        /// <exception cref="InvalidOperationException"><see cref="Entries"/> contains a <see langword="null"/> entry,
         /// or has more than <see cref="ushort.MaxValue"/> items, which is more than the TGA spec's Number of Tags field (a USHORT) can represent.</exception>
         public byte[] ToBytes()
         {
-            if (Entries is null) throw new InvalidOperationException($"{nameof(Entries)} is null.");
             if (Entries.Count > ushort.MaxValue)
                 throw new InvalidOperationException($"{nameof(Entries)}.Count ({Entries.Count}) exceeds the TGA spec limit of {ushort.MaxValue} tags in the Developer Directory.");
 

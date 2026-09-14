@@ -2,7 +2,8 @@
 {
     /// <summary>
     /// A date/time stamp stored in the TGA extension area, expressed as separate month, day,
-    /// year, hour, minute and second fields.
+    /// year, hour, minute and second fields. Fields are stored as read or set without range
+    /// checking; enforcing the spec ranges is <see cref="Validation.TgaValidator"/>'s job.
     /// </summary>
     public sealed record TgaDateTime : ICloneable
     {
@@ -57,9 +58,7 @@
         /// <param name="bytes">Array of bytes(byte[12]).</param>
         public TgaDateTime(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            TgaBinary.RequireLength(bytes, Size);
             Month = TgaBinary.ReadUInt16(bytes, 0);
             Day = TgaBinary.ReadUInt16(bytes, 2);
             Year = TgaBinary.ReadUInt16(bytes, 4);

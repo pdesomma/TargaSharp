@@ -74,9 +74,7 @@ namespace TargaSharp
         /// </remarks>
         public TgaComment(byte[] bytes)
         {
-            ArgumentNullException.ThrowIfNull(bytes);
-            if (bytes.Length != Size)
-                throw new ArgumentOutOfRangeException(nameof(bytes), bytes.Length, $"Length must be {Size}.");
+            TgaBinary.RequireLength(bytes, Size);
 
             for (int i = 0; i < LineCount; i++)
             {
@@ -110,12 +108,19 @@ namespace TargaSharp
         public IReadOnlyList<string> Lines => _lines;
 
         /// <summary>
-        /// Gets or sets the char used to fill blank space after a line's text and before its NUL terminator.
+        /// Gets or sets the char used to fill blank space after a line's text and before its NUL
+        /// terminator: '\0' or ' ', the two paddings the spec allows and the byte constructor recognises.
         /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when set to anything other than '\0' or ' '.</exception>
         public char BlankSpaceChar
         {
             get => _blankSpaceChar;
-            set => _blankSpaceChar = value;
+            set
+            {
+                if (value is not (TgaString.DefaultBlankSpaceChar or ' '))
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "BlankSpaceChar must be '\\0' or ' ' (the only paddings TGA readers recognise).");
+                _blankSpaceChar = value;
+            }
         }
 
         /// <summary>

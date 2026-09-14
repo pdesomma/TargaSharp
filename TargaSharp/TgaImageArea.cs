@@ -1,7 +1,7 @@
 ﻿namespace TargaSharp
 {
     /// <summary>
-    /// Image Or ColorMap Area
+    /// Image and Color Map Area: the image ID, color map data and pixel data (fields 6-8).
     /// </summary>
     public sealed record TgaImageArea : ICloneable
     {
