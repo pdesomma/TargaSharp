@@ -69,10 +69,12 @@ public class TgaLayoutPlannerTests
         Assert.AreEqual(At("ExtensionArea.ScanLineTable"), file.ExtensionArea!.ScanLineOffset);
         Assert.AreEqual(At("ExtensionArea.PostageStampImage"), file.ExtensionArea.PostageStampOffset);
         Assert.AreEqual(At("ExtensionArea.ColorCorrectionTable"), file.ExtensionArea.ColorCorrectionTableOffset);
-        // Entries are sorted by tag during planning, so [0] is tag 3 and [1] is tag 7.
-        Assert.AreEqual(At("DeveloperArea.Entries[0].Data"), file.DeveloperArea![0].Offset);
-        Assert.AreEqual(At("DeveloperArea.Entries[1].Data"), file.DeveloperArea[1].Offset);
-        Assert.AreEqual((ushort)3, file.DeveloperArea[0].Tag);
+        // Sections are laid out in tag order (3 then 7) while the caller's list keeps its own order (7 then 3).
+        TgaDeveloperEntry tag3 = file.DeveloperArea!.Entries.Single(e => e.Tag == 3);
+        TgaDeveloperEntry tag7 = file.DeveloperArea.Entries.Single(e => e.Tag == 7);
+        Assert.AreEqual(At("DeveloperArea.Entries[0].Data"), tag3.Offset);
+        Assert.AreEqual(At("DeveloperArea.Entries[1].Data"), tag7.Offset);
+        Assert.AreEqual((ushort)7, file.DeveloperArea[0].Tag);
     }
 
     [TestMethod]
@@ -139,7 +141,7 @@ public class TgaLayoutPlannerTests
     }
 
     [TestMethod]
-    public void Plan_EmptyDeveloperEntries_AreDroppedAndDirectoryOffsetIsZero()
+    public void Plan_EmptyDeveloperEntries_AreLeftOutOfFileButKeptOnCallerList()
     {
         var file = new TgaFile(2, 2);
         file.ImageArea.ImageData = new byte[12];
@@ -148,9 +150,34 @@ public class TgaLayoutPlannerTests
 
         TgaLayout layout = new TgaLayoutPlanner().Plan(file);
 
-        Assert.AreEqual(0, file.DeveloperArea.Count);
+        Assert.AreEqual(1, file.DeveloperArea.Count, "planning must not delete the caller's entry");
         Assert.AreEqual(0u, file.Footer!.DeveloperDirectoryOffset);
         Assert.IsFalse(layout.Sections.Any(s => s.Name.StartsWith("DeveloperArea", StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
+    public void Plan_UnsortedDeveloperEntriesWithAnEmptyOne_WritesTagOrderedDirectoryWithoutMutatingCallerList()
+    {
+        var file = new TgaFile(2, 2);
+        file.ImageArea.ImageData = new byte[12];
+        file.DeveloperArea = new TgaDeveloperArea([
+            new TgaDeveloperEntry(7, 0, [1]),
+            new TgaDeveloperEntry(3, 0, []),
+            new TgaDeveloperEntry(5, 0, [2]),
+        ]);
+
+        TgaLayout layout = new TgaLayoutPlanner().Plan(file);
+
+        // Caller's list: same three entries, same order (ToBytes() used to leave it as [5, 7]).
+        CollectionAssert.AreEqual(new ushort[] { 7, 3, 5 }, file.DeveloperArea.Entries.Select(e => e.Tag).ToArray());
+
+        // File: only the two non-empty entries, tag-ordered, and the directory lists them in that order.
+        TgaSection directory = layout.Sections.Single(s => s.Name == "DeveloperArea.Directory");
+        Assert.AreEqual(2, TgaBinary.ReadUInt16(directory.Bytes, 0));
+        Assert.AreEqual(5, TgaBinary.ReadUInt16(directory.Bytes, 2));
+        Assert.AreEqual(7, TgaBinary.ReadUInt16(directory.Bytes, 2 + TgaDeveloperEntry.Size));
+        Assert.AreEqual(file.DeveloperArea.Entries[2].Offset, TgaBinary.ReadUInt32(directory.Bytes, 4));
+        Assert.AreEqual(file.DeveloperArea.Entries[0].Offset, TgaBinary.ReadUInt32(directory.Bytes, 4 + TgaDeveloperEntry.Size));
     }
 
     [TestMethod]

@@ -171,40 +171,39 @@ namespace TargaSharp.IO
 
         /// <summary>
         /// Plans the developer fields followed by the developer directory, and records the directory offset in the footer.
-        /// Empty entries are dropped and the remainder sorted by tag, as the spec requires a tag-ordered directory.
+        /// Empty entries are left out of the file and the remainder written in tag order, as the spec requires a
+        /// tag-ordered directory - but on a private copy: the caller's <see cref="TgaDeveloperArea.Entries"/> list
+        /// is never reordered or shortened by writing. Only each written entry's derived <see cref="TgaDeveloperEntry.Offset"/> is assigned.
         /// </summary>
         /// <param name="file">File being planned.</param>
         /// <param name="add">Section sink.</param>
         private static void PlanDeveloperArea(TgaFile file, Func<string, uint, Func<byte[]>, uint> add)
         {
-            TgaDeveloperArea? area = file.DeveloperArea;
-            if (area is null || area.Count == 0)
-            {
-                file.Footer!.DeveloperDirectoryOffset = 0;
-                return;
-            }
+            List<TgaDeveloperEntry> entries = file.DeveloperArea?.Entries
+                .Where(e => e is not null && e.FieldSize > 0)
+                .OrderBy(e => e.Tag)
+                .ToList() ?? [];
 
-            area.Entries.RemoveAll(e => e is null || e.FieldSize <= 0);
-            area.Entries.Sort((a, b) => a.Tag.CompareTo(b.Tag));
-            for (int i = 0; i < area.Count - 1; i++)
-                if (area[i].Tag == area[i + 1].Tag)
-                    throw Fail($"DeveloperArea.Entries[{i + 1}].Tag", $"duplicate tag {area[i].Tag}.");
+            for (int i = 0; i < entries.Count - 1; i++)
+                if (entries[i].Tag == entries[i + 1].Tag)
+                    throw Fail($"DeveloperArea.Entries[{i + 1}].Tag", $"duplicate tag {entries[i].Tag}.");
 
-            if (area.Count == 0)
+            if (entries.Count == 0)
             {
                 file.Footer!.DeveloperDirectoryOffset = 0;
                 return;
             }
 
             // Field payloads precede the directory; each entry's Offset is where its payload lands.
-            for (int i = 0; i < area.Count; i++)
+            for (int i = 0; i < entries.Count; i++)
             {
-                TgaDeveloperEntry entry = area[i];
+                TgaDeveloperEntry entry = entries[i];
                 entry.Offset = add($"DeveloperArea.Entries[{i}].Data", (uint)entry.FieldSize, () => entry.Data);
             }
 
-            uint directorySize = sizeof(ushort) + (uint)(area.Count * TgaDeveloperEntry.Size);
-            file.Footer!.DeveloperDirectoryOffset = add("DeveloperArea.Directory", directorySize, area.ToBytes);
+            var directory = new TgaDeveloperArea(entries);
+            uint directorySize = sizeof(ushort) + (uint)(entries.Count * TgaDeveloperEntry.Size);
+            file.Footer!.DeveloperDirectoryOffset = add("DeveloperArea.Directory", directorySize, directory.ToBytes);
         }
 
         /// <summary>
