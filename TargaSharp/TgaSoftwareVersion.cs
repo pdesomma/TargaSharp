@@ -22,17 +22,25 @@ namespace TargaSharp
         public TgaSoftwareVersion() { }
 
         /// <summary>
-        /// Make <see cref="TgaSoftwareVersion"/> from string.
+        /// Make <see cref="TgaSoftwareVersion"/> from its <see cref="ToString"/> form: three decimal digits
+        /// (the version number x 100, e.g. "117" for 1.17) optionally followed by one version letter, e.g. "123d".
         /// </summary>
         /// <param name="str">Input string, example: "123d".</param>
+        /// <exception cref="ArgumentNullException"><paramref name="str"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="str"/> is not 3 or 4 characters long.</exception>
+        /// <exception cref="FormatException">The first three characters are not decimal digits.</exception>
         public TgaSoftwareVersion(string str)
         {
-            if (str == null) throw new ArgumentNullException();
-            if (str.Length < 3 || str.Length > 4) throw new ArgumentOutOfRangeException(nameof(str.Length) + " must be equal 3 or 4!");
+            ArgumentNullException.ThrowIfNull(str);
+            if (str.Length < 3 || str.Length > 4)
+                throw new ArgumentOutOfRangeException(nameof(str), str.Length, "Length must be 3 or 4 (three digits and an optional version letter).");
 
-            bool ok = ushort.TryParse(str.Substring(0, 3), out var verNum);
-            VersionNumber = verNum;
-            if (ok && str.Length == 4) VersionLetter = str[3];
+            // A failed parse used to be swallowed, silently turning "1.0a" into version 000 with no letter.
+            if (!ushort.TryParse(str.AsSpan(0, 3), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out ushort versionNumber))
+                throw new FormatException($"\"{str}\" must start with three decimal digits, e.g. \"117\" or \"117b\".");
+
+            VersionNumber = versionNumber;
+            if (str.Length == 4) VersionLetter = str[3];
         }
 
         /// <summary>
