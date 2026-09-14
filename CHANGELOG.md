@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `TgaDrawing.FromBitmap` crashed the process (fatal CLR error) on 1bpp/4bpp indexed bitmaps and produced invalid files for 48/64bpp; those formats now throw `NotSupportedException` up front.
 - `Width * Height * bytes-per-pixel` overflowed `int` in `TgaReader` and `TgaValidator` (32768x32768x32bpp wrapped to 0, so a header with no pixel bytes loaded and validated clean); now sized in `long`.
 - `TgaReader` allocated header-declared sizes (image data, RLE output, developer fields) before checking them against the stream, so a few hundred bytes could force a multi-GB allocation and `OutOfMemoryException`; declared sizes are now checked against the remaining stream first and rejected with `TgaFormatException`.
+- An RLE stream that ended inside a run packet leaked `IndexOutOfRangeException` from the reader; truncated and overrunning RLE packets now raise `TgaFormatException`.
 
 ## [0.2.0]
 
