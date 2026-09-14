@@ -130,26 +130,40 @@ public class TgaLayoutPlannerTests
     }
 
     [TestMethod]
-    public void Plan_DuplicateDeveloperTags_ThrowsTgaValidationException()
+    public void Plan_DuplicateDeveloperTags_ThrowsNamingTheCallersIndex()
     {
+        // Tags [7, 3, 7]: the duplicate is the caller's index 2, not its position after tag-sorting.
         TgaFile file = CreateFullFile();
         file.DeveloperArea!.Entries.Add(new TgaDeveloperEntry(7, 0, [1]));
 
         var ex = Assert.ThrowsExactly<TgaValidationException>(() => new TgaLayoutPlanner().Plan(file));
 
-        StringAssert.Contains(ex.Errors[0].Path, "DeveloperArea");
+        Assert.AreEqual("DeveloperArea.Entries[2].Tag", ex.Errors[0].Path);
     }
 
     [TestMethod]
-    public void Plan_OtherDataTooLargeForExtensionSize_ThrowsNamingTheField()
+    public void Plan_DuplicateDeveloperTagsUnsorted_ReportsFirstRepeatByOriginalIndex()
     {
+        // Tags [9, 9, 1] used to report Entries[2] (the sorted position); the second 9 is Entries[1].
         var file = new TgaFile(2, 2);
         file.ImageArea.ImageData = new byte[12];
-        file.ExtensionArea!.OtherDataInExtensionArea = new byte[ushort.MaxValue - TgaExtensionArea.MinSize + 1];
+        file.DeveloperArea = new TgaDeveloperArea([new TgaDeveloperEntry(9, 0, [1]), new TgaDeveloperEntry(9, 0, [2]), new TgaDeveloperEntry(1, 0, [3])]);
 
-        var e = Assert.ThrowsExactly<TgaValidationException>(() => new TgaLayoutPlanner().Plan(file));
+        var ex = Assert.ThrowsExactly<TgaValidationException>(() => new TgaLayoutPlanner().Plan(file));
 
-        Assert.AreEqual("ExtensionArea.OtherDataInExtensionArea", e.Errors[0].Path);
+        Assert.AreEqual("DeveloperArea.Entries[1].Tag", ex.Errors[0].Path);
+    }
+
+    [TestMethod]
+    public void Plan_NoImageDataWithPostageStamp_ThrowsNamingTheStamp()
+    {
+        var file = new TgaFile();
+        file.ToNewFormat();
+        file.ExtensionArea!.PostageStampImage = new TgaPostageStampImage(1, 1, []);
+
+        var ex = Assert.ThrowsExactly<TgaValidationException>(() => new TgaLayoutPlanner().Plan(file));
+
+        Assert.AreEqual("ExtensionArea.PostageStampImage", ex.Errors[0].Path);
     }
 
     [TestMethod]

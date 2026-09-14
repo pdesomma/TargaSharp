@@ -41,9 +41,11 @@
             if (height <= 0)
                 throw new ArgumentOutOfRangeException(nameof(height), height, "Must be > 0.");
 
+            // width * height * bpp overflows int (32768 x 32768 x 4 wraps to 0), so size in long.
+            long expectedLength = (long)width * height * bytesPerPixel;
+            if (expectedLength != imageData.Length)
+                throw new ArgumentOutOfRangeException(nameof(imageData), imageData.Length, $"Length must be {expectedLength} ({width} x {height} x {bytesPerPixel}).");
             int scanLineSize = width * bytesPerPixel;
-            if (scanLineSize * height != imageData.Length)
-                throw new ArgumentOutOfRangeException(nameof(imageData), imageData.Length, $"Length must be {scanLineSize * height} ({width} x {height} x {bytesPerPixel}).");
 
             // Worst case (no runs at all) is one header byte per 128 pixels on top of the raw data.
             var encoded = new List<byte>(imageData.Length + (width + MaxPacketPixels - 1) / MaxPacketPixels * height);
@@ -170,12 +172,12 @@
                 if ((packetInfo & RunLengthFlag) != 0)
                 {
                     chunk = new byte[packetCount * bytesPerPixel];
-                    byte[] rlePart = ReadPacketBytes(reader, bytesPerPixel);
+                    byte[] rlePart = reader.ReadExactly(bytesPerPixel, "RLE run packet");
                     for (int i = 0; i < chunk.Length; i++)
                         chunk[i] = rlePart[i % bytesPerPixel];
                 }
                 else // RAW format
-                    chunk = ReadPacketBytes(reader, packetCount * bytesPerPixel);
+                    chunk = reader.ReadExactly(packetCount * bytesPerPixel, "RLE raw packet");
 
                 if (dataOffset + chunk.Length > result.Length)
                     throw new TgaFormatException($"RLE packet of {packetCount} pixels at decoded offset {dataOffset} overruns the {expectedLength}-byte image data.");
@@ -185,23 +187,6 @@
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// Reads the payload of one packet, failing loudly when the stream ends inside it. A short
-        /// <see cref="BinaryReader.ReadBytes"/> used to surface as <see cref="IndexOutOfRangeException"/>
-        /// (run packet) or a confusing error from a later read (raw packet).
-        /// </summary>
-        /// <param name="reader">Packet stream.</param>
-        /// <param name="count">Bytes the packet must supply.</param>
-        /// <returns>Exactly <paramref name="count"/> bytes.</returns>
-        /// <exception cref="EndOfStreamException">Fewer than <paramref name="count"/> bytes remain.</exception>
-        private static byte[] ReadPacketBytes(BinaryReader reader, int count)
-        {
-            byte[] bytes = reader.ReadBytes(count);
-            if (bytes.Length != count)
-                throw new EndOfStreamException($"RLE packet truncated: expected {count} bytes, got {bytes.Length}.");
-            return bytes;
         }
     }
 }
