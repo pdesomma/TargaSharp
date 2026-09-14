@@ -227,7 +227,7 @@
 
             if (file.Header.ColorMapType == TgaColorMapType.ColorMap)
             {
-                int expected = file.Header.ColorMapSpec.ColorMapLength * file.Header.ColorMapSpec.ColorMapEntrySize.BytesPerPixel();
+                int expected = file.Header.ColorMapDataLength;
                 int actual = colorMapData?.Length ?? 0;
                 if (actual != expected)
                     errors.Add(new TgaValidationError("ImageArea.ColorMapData", $"ColorMapData.Length must be {expected} (ColorMapLength * bytes-per-entry) but was {actual}."));
@@ -246,10 +246,7 @@
         /// <param name="errors">Sink for rule violations.</param>
         private static void ValidateImageData(TgaFile file, List<TgaValidationError> errors)
         {
-            // ushort * ushort * 4 exceeds int.MaxValue (32768 x 32768 x 32bpp wraps to exactly 0), so size in long.
-            long expected = file.Header.ImageType == TgaImageType.NoImageData
-                ? 0
-                : (long)file.Header.ImageSpec.ImageWidth * file.Header.ImageSpec.ImageHeight * file.Header.ImageSpec.PixelDepth.BytesPerPixel();
+            long expected = file.Header.ImageDataLength;
             long actual = file.ImageArea.ImageData?.Length ?? 0;
 
             if (actual != expected)

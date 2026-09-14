@@ -97,6 +97,55 @@ public class TgaExtensionAreaTests
     }
 
     [TestMethod]
+    public void ToBytes_ThenCtor_PopulatedFieldsRoundTripAndCompareEqual()
+    {
+        var original = new TgaExtensionArea
+        {
+            AuthorName = new TgaString("author", TgaExtensionArea.NameFieldLength, true),
+            AuthorComments = new TgaComment("line one", "line two"),
+            DateTimeStamp = new TgaDateTime(5, 6, 2024, 7, 8, 9),
+            JobNameOrId = new TgaString("job", TgaExtensionArea.NameFieldLength, true),
+            JobTime = new TgaTime(1, 2, 3),
+            SoftwareId = new TgaString("soft", TgaExtensionArea.NameFieldLength, true),
+            SoftwareVersion = new TgaSoftwareVersion(123, 'b'),
+            KeyColor = new TgaColorKey(1, 2, 3, 4),
+            PixelAspectRatio = new TgaFraction(4, 3),
+            GammaValue = new TgaFraction(22, 10),
+            AttributesType = TgaAttributeType.PreMultipliedAlpha,
+            OtherDataInExtensionArea = [7, 8, 9],
+        };
+        original.ExtensionSize = (ushort)(TgaExtensionArea.MinSize + 3);
+
+        var parsed = new TgaExtensionArea(original.ToBytes());
+
+        Assert.AreEqual(original, parsed);
+        Assert.AreEqual("author", parsed.AuthorName.OriginalString);
+        Assert.AreEqual("line two", parsed.AuthorComments.Lines[1]);
+        CollectionAssert.AreEqual(new byte[] { 7, 8, 9 }, parsed.OtherDataInExtensionArea);
+    }
+
+    [TestMethod]
+    public void Copy_MutatedTablesAndStamp_DoNotAffectOriginal()
+    {
+        var original = new TgaExtensionArea
+        {
+            ScanLineTable = [1, 2],
+            ColorCorrectionTable = new ushort[TgaExtensionArea.ColorCorrectionTableLength],
+            PostageStampImage = new TgaPostageStampImage(1, 1, [5]),
+        };
+
+        TgaExtensionArea copy = original.Copy();
+        copy.ScanLineTable![0] = 9;
+        copy.ColorCorrectionTable![0] = 9;
+        copy.PostageStampImage!.Data[0] = 9;
+
+        Assert.AreEqual(1u, original.ScanLineTable![0]);
+        Assert.AreEqual((ushort)0, original.ColorCorrectionTable![0]);
+        Assert.AreEqual((byte)5, original.PostageStampImage!.Data[0]);
+        Assert.AreNotEqual(original, copy);
+    }
+
+    [TestMethod]
     public void Ctor_ByteContract_Holds()
     {
         // OtherDataInExtensionArea is variable-length trailing data beyond the fixed 495-byte body,
