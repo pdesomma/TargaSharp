@@ -46,6 +46,64 @@ public class TgaReaderMalformedInputTests
         return ms.ToArray();
     }
 
+    /// <summary>
+    /// A valid 2x2 24bpp v2.0 file with a color map, an image ID and a postage stamp, so every
+    /// variable-length section the reader parses is present.
+    /// </summary>
+    private static TgaFile CreateFileWithEverySection()
+    {
+        var file = new TgaFile(2, 2, TgaPixelDepth.Bpp8, TgaImageType.UncompressedColorMapped);
+        file.Header.ColorMapSpec.ColorMapLength = 4;
+        file.ImageArea.ColorMapData = new byte[4 * 3];
+        file.ImageArea.ImageId = new TgaString("identifier", 10);
+        file.UpdatePostageStampImage();
+        return file;
+    }
+
+    [TestMethod]
+    public void Read_FileCutInsideImageId_ThrowsTgaFormatException()
+    {
+        byte[] bytes = CreateFileWithEverySection().ToBytes();
+        byte[] truncated = bytes[..(TgaHeader.Size + 3)];
+
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(truncated));
+    }
+
+    [TestMethod]
+    public void Read_FileCutInsideColorMap_ThrowsTgaFormatException()
+    {
+        // Used to load with a silently shortened ColorMapData, failing much later in ToBitmap or Save.
+        byte[] bytes = CreateFileWithEverySection().ToBytes();
+        byte[] truncated = bytes[..(TgaHeader.Size + 10 + 5)];
+
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(truncated));
+    }
+
+    [TestMethod]
+    public void Read_DeveloperFieldRunningPastEndOfFile_ThrowsTgaFormatException()
+    {
+        // Directory entry of 10 bytes whose offset leaves only the footer's last 4 bytes; used to load a
+        // silently 4-byte entry.
+        int valid = new TgaFile(1, 1).ToBytes().Length;
+        int total = valid + sizeof(ushort) + TgaDeveloperEntry.Size; // WithDeveloperEntry appends one directory
+        byte[] bytes = WithDeveloperEntry(tag: 5, offset: (uint)(total - 4), size: 10);
+
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read(bytes));
+    }
+
+    [TestMethod]
+    public void Read_ExtensionSizeLargerThanBytesRemaining_ThrowsTgaFormatException()
+    {
+        // Declare 495 + 200 bytes of extension area when far fewer remain before end of file.
+        TgaFile file = CreateFileWithEverySection();
+        byte[] bytes = file.ToBytes();
+        uint extOffset = file.Footer!.ExtensionAreaOffset;
+        TgaBinary.WriteUInt16(bytes, (int)extOffset, (ushort)(TgaExtensionArea.MinSize + 200));
+        byte[] cut = bytes[..(int)(extOffset + TgaExtensionArea.MinSize + 10)];
+
+        Assert.ThrowsExactly<TgaFormatException>(() => new TgaReader().Read([.. cut, .. file.Footer.ToBytes()]));
+    }
+
     [TestMethod]
     public void Read_DeveloperEntryDeclaringNearIntMaxSize_ThrowsTgaFormatExceptionWithoutAllocating()
     {
