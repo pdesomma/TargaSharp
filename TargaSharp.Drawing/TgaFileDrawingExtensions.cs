@@ -14,12 +14,16 @@ namespace TargaSharp.Drawing
         /// </summary>
         /// <param name="tga">Source <see cref="TgaFile"/>.</param>
         /// <param name="forceUseAlpha">Force use alpha channel.</param>
-        /// <returns>The image as a <see cref="Bitmap"/>.</returns>
+        /// <returns>The image as a <see cref="Bitmap"/>. When the extension area carries a non-zero
+        /// <see cref="TgaExtensionArea.KeyColor"/> the key is applied with <see cref="Bitmap.MakeTransparent(Color)"/>,
+        /// which converts the result to <see cref="PixelFormat.Format32bppArgb"/> regardless of the file's depth.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="tga"/> is <see langword="null"/>.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="tga"/> has no image: its
         /// <see cref="TgaHeader.ImageType"/> is <see cref="TgaImageType.NoImageData"/>, its width or height
-        /// is 0, or <see cref="TgaImageArea.ImageData"/> is <see langword="null"/> or not Width * Height * bytes-per-pixel long.</exception>
-        /// <exception cref="NotSupportedException">The pixel depth or color map entry size has no GDI+ equivalent.</exception>
+        /// is 0, or <see cref="TgaImageArea.ImageData"/> is <see langword="null"/> or not Width * Height * bytes-per-pixel long;
+        /// or it is color-mapped and <see cref="TgaImageArea.ColorMapData"/> is shorter than the header declares.</exception>
+        /// <exception cref="NotSupportedException">The pixel depth or color map entry size has no GDI+ equivalent
+        /// (GDI+ has no indexed format wider than 8 bits, so 16-bit color-mapped images are not supported).</exception>
         public static Bitmap ToBitmap(this TgaFile tga, bool forceUseAlpha = false)
         {
             ArgumentNullException.ThrowIfNull(tga);
@@ -70,8 +74,8 @@ namespace TargaSharp.Drawing
         /// <param name="height">Height in pixels of <paramref name="pixels"/>.</param>
         /// <param name="pixels">Unpadded row-major pixel bytes, exactly <paramref name="width"/> * <paramref name="height"/> * bytes-per-pixel long.</param>
         /// <returns>The new <see cref="Bitmap"/>; the caller owns it.</returns>
-        /// <exception cref="InvalidOperationException"><paramref name="pixels"/> is not the expected length.</exception>
-        /// <exception cref="NotSupportedException">The pixel depth or color map entry size has no GDI+ equivalent.</exception>
+        /// <exception cref="InvalidOperationException"><paramref name="pixels"/> is not the expected length, or the color map data is missing/short.</exception>
+        /// <exception cref="NotSupportedException">The pixel depth or color map entry size has no GDI+ equivalent, or a color-mapped image is not 8bpp.</exception>
         private static Bitmap ToBitmapCore(TgaFile tga, bool forceUseAlpha, int width, int height, byte[] pixels)
         {
             int bytesPerPixel = tga.Header.ImageSpec.PixelDepth.BytesPerPixel();
@@ -83,52 +87,71 @@ namespace TargaSharp.Drawing
 
             // Only the three "no / ignorable alpha" attribute types veto alpha; unknown values are treated as alpha like the spec's defaults.
             bool attributesAllowAlpha = tga.ExtensionArea is null || tga.ExtensionArea.AttributesType is not (TgaAttributeType.NoAlpha or TgaAttributeType.UndefinedAlphaCanBeIgnored or TgaAttributeType.UndefinedAlphaButShouldBeRetained);
-            bool useAlpha = (tga.Header.ImageSpec.ImageDescriptor.AlphaChannelBits > 0 && attributesAllowAlpha) | forceUseAlpha;
+            bool useAlpha = (tga.Header.ImageSpec.ImageDescriptor.AlphaChannelBits > 0 && attributesAllowAlpha) || forceUseAlpha;
             bool isGrayImage = tga.Header.ImageType.IsGrayscale();
             bool isColorMapped = tga.Header.ColorMapType == TgaColorMapType.ColorMap && tga.Header.ImageType.IsColorMapped();
 
-            PixelFormat pixFormat = ResolvePixelFormat(tga, useAlpha, isGrayImage);
-            var bmp = new Bitmap(width, height, pixFormat);
-
             if (isColorMapped)
             {
-                // Palette alpha lives in the entry size, not the descriptor's attribute bits.
-                bool paletteAlpha = (tga.Header.ColorMapSpec.ColorMapEntrySize is TgaColorMapEntrySize.A1R5G5B5 or TgaColorMapEntrySize.A8R8G8B8 && attributesAllowAlpha) | forceUseAlpha;
-                ApplyColorMap(tga, bmp, paletteAlpha);
+                // GDI+ has no indexed format wider than 8 bits; a 16-bit index used to be rendered as RGB555 garbage.
+                if (tga.Header.ImageSpec.PixelDepth != TgaPixelDepth.Bpp8)
+                    throw new NotSupportedException($"Color-mapped images with {(byte)tga.Header.ImageSpec.PixelDepth}bpp indices have no {nameof(PixelFormat)} equivalent; only 8bpp is supported.");
+                // ReadEntry indexes ColorMapData unchecked; a short or null palette used to NRE / IndexOutOfRange.
+                int expectedPalette = tga.Header.ColorMapDataLength;
+                if (tga.ImageArea.ColorMapData is null || tga.ImageArea.ColorMapData.Length < expectedPalette)
+                    throw new InvalidOperationException($"{nameof(TgaFile)}.{nameof(TgaFile.ImageArea)}.{nameof(TgaImageArea.ColorMapData)} is {tga.ImageArea.ColorMapData?.Length.ToString() ?? "null"} bytes but the header declares {expectedPalette}.");
             }
-            else if (pixFormat == PixelFormat.Format8bppIndexed)
+
+            PixelFormat pixFormat = ResolvePixelFormat(tga, useAlpha, isGrayImage);
+            var bmp = new Bitmap(width, height, pixFormat);
+            try
             {
-                // 8bpp grayscale (or 8bpp true-color, which has no palette of its own): identity gray ramp.
-                ColorPalette grayPalette = bmp.Palette;
-                for (int i = 0; i < grayPalette.Entries.Length; i++)
-                    grayPalette.Entries[i] = Color.FromArgb(i, i, i);
-                bmp.Palette = grayPalette;
+                if (isColorMapped)
+                {
+                    // Palette alpha lives in the entry size, not the descriptor's attribute bits.
+                    bool paletteAlpha = (tga.Header.ColorMapSpec.ColorMapEntrySize is TgaColorMapEntrySize.A1R5G5B5 or TgaColorMapEntrySize.A8R8G8B8 && attributesAllowAlpha) || forceUseAlpha;
+                    ApplyColorMap(tga, bmp, paletteAlpha);
+                }
+                else if (pixFormat == PixelFormat.Format8bppIndexed)
+                {
+                    // 8bpp grayscale (or 8bpp true-color, which has no palette of its own): identity gray ramp.
+                    ColorPalette grayPalette = bmp.Palette;
+                    for (int i = 0; i < grayPalette.Entries.Length; i++)
+                        grayPalette.Entries[i] = Color.FromArgb(i, i, i);
+                    bmp.Palette = grayPalette;
+                }
+
+                CopyRows(pixels, bmp, strideBytes, pixFormat == PixelFormat.Format16bppGrayScale);
+
+                // GDI+ has no key-color notion for Format16bppGrayScale (MakeTransparent throws a generic GDI+ error).
+                if (tga.ExtensionArea != null && tga.ExtensionArea.KeyColor.ToInt() != 0 && pixFormat != PixelFormat.Format16bppGrayScale)
+                    bmp.MakeTransparent(tga.ExtensionArea.KeyColor.ToColor());
+
+                // TGA rows are stored from the origin corner; GDI+ is always top-left.
+                switch (tga.Header.ImageSpec.ImageDescriptor.ImageOrigin)
+                {
+                    case TgaImageOrigin.BottomLeft:
+                        bmp.RotateFlip(RotateFlipType.RotateNoneFlipY);
+                        break;
+                    case TgaImageOrigin.BottomRight:
+                        bmp.RotateFlip(RotateFlipType.RotateNoneFlipXY);
+                        break;
+                    case TgaImageOrigin.TopRight:
+                        bmp.RotateFlip(RotateFlipType.RotateNoneFlipX);
+                        break;
+                    case TgaImageOrigin.TopLeft:
+                    default:
+                        break;
+                }
+
+                return bmp;
             }
-
-            CopyRows(pixels, bmp, strideBytes, pixFormat == PixelFormat.Format16bppGrayScale);
-
-            // GDI+ has no key-color notion for Format16bppGrayScale (MakeTransparent throws a generic GDI+ error).
-            if (tga.ExtensionArea != null && tga.ExtensionArea.KeyColor.ToInt() != 0 && pixFormat != PixelFormat.Format16bppGrayScale)
-                bmp.MakeTransparent(tga.ExtensionArea.KeyColor.ToColor());
-
-            // TGA rows are stored from the origin corner; GDI+ is always top-left.
-            switch (tga.Header.ImageSpec.ImageDescriptor.ImageOrigin)
+            catch
             {
-                case TgaImageOrigin.BottomLeft:
-                    bmp.RotateFlip(RotateFlipType.RotateNoneFlipY);
-                    break;
-                case TgaImageOrigin.BottomRight:
-                    bmp.RotateFlip(RotateFlipType.RotateNoneFlipXY);
-                    break;
-                case TgaImageOrigin.TopRight:
-                    bmp.RotateFlip(RotateFlipType.RotateNoneFlipX);
-                    break;
-                case TgaImageOrigin.TopLeft:
-                default:
-                    break;
+                // The bitmap is unmanaged GDI+ memory; a throwing palette/copy step used to leak it.
+                bmp.Dispose();
+                throw;
             }
-
-            return bmp;
         }
 
         /// <summary>
@@ -183,6 +206,8 @@ namespace TargaSharp.Drawing
             TgaColorMapSpec spec = tga.Header.ColorMapSpec;
             int first = spec.FirstEntryIndex;
             int entryCount = Math.Min(spec.ColorMapLength, Math.Max(colors.Length - first, 0));
+            // Slots the file's map does not cover used to keep GDI+'s default halftone colors.
+            for (int i = 0; i < colors.Length; i++) colors[i] = Color.Black;
 
             for (int i = 0; i < entryCount; i++)
             {
