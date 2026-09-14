@@ -412,4 +412,21 @@ public class RleCodecTests
 
         Assert.ThrowsExactly<TgaFormatException>(() => RleCodec.Decode(reader, bytesPerPixel: 3, expectedLength: 6));
     }
+
+    [TestMethod]
+    public void Decode_ZeroBytesPerPixel_ThrowsArgumentOutOfRangeException()
+    {
+        // A 0-byte pixel never advances the output; Decode used to read the stream to its end.
+        using var reader = new BinaryReader(new MemoryStream([0x00, 1, 0x00, 2]));
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => RleCodec.Decode(reader, bytesPerPixel: 0, expectedLength: 4));
+    }
+
+    [TestMethod]
+    public void Decode_NegativeExpectedLength_ThrowsArgumentOutOfRangeException()
+    {
+        using var reader = new BinaryReader(new MemoryStream([0x00, 1]));
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => RleCodec.Decode(reader, bytesPerPixel: 1, expectedLength: -1));
+    }
 }

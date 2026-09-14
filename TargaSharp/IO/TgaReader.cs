@@ -36,7 +36,7 @@
             var file = new TgaFile();
 
             stream.Seek(0, SeekOrigin.Begin);
-            var binaryReader = new BinaryReader(stream);
+            using var binaryReader = new BinaryReader(stream, System.Text.Encoding.UTF8, leaveOpen: true);
 
             file.Header = new TgaHeader(binaryReader.ReadBytes(TgaHeader.Size));
 
@@ -58,9 +58,11 @@
                     throw new EndOfStreamException($"Image data of {imageDataSizeLong} bytes ({file.Width}x{file.Height}x{bytesPerPixel}) exceeds the supported size.");
                 int imageDataSize = (int)imageDataSizeLong;
 
-                file.ImageArea.ImageData = file.Header.ImageType.IsRunLengthEncoded()
-                    ? RleCodec.Decode(binaryReader, bytesPerPixel, imageDataSize)
-                    : ReadExactly(binaryReader, imageDataSize, "Image data");
+                // A 0-byte image (zero dimension or an unknown pixel depth) is left for the validator to report.
+                file.ImageArea.ImageData = imageDataSize == 0 ? []
+                    : file.Header.ImageType.IsRunLengthEncoded()
+                        ? RleCodec.Decode(binaryReader, bytesPerPixel, imageDataSize)
+                        : ReadExactly(binaryReader, imageDataSize, "Image data");
             }
 
             // Try parse Footer (a v1.0 file may legitimately be shorter than a footer)
@@ -79,7 +81,7 @@
                 {
                     stream.Seek(devDirOffset, SeekOrigin.Begin);
                     file.DeveloperArea = new TgaDeveloperArea();
-                    uint numberOfTags = binaryReader.ReadUInt16();
+                    ushort numberOfTags = binaryReader.ReadUInt16();
 
                     ushort[] tags = new ushort[numberOfTags];
                     uint[] tagOffsets = new uint[numberOfTags];
