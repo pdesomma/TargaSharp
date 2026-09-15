@@ -21,19 +21,19 @@ namespace TargaSharp
 
         /// <summary>
         /// Gets or sets the optional developer area, or <see langword="null"/> when the file has none.
-        /// It is only written for new-format files (see <see cref="ToNewFormat"/>); <see cref="ToOldFormat"/> discards it.
+        /// It is only written for new-format files (see <see cref="ToNewFormat()"/>); <see cref="ToOldFormat"/> discards it.
         /// </summary>
         public TgaDeveloperArea? DeveloperArea { get; set; } = null;
 
         /// <summary>
         /// Gets the optional TGA 2.0 extension area, or <see langword="null"/> when the file has none.
-        /// Created by <see cref="ToNewFormat"/>, dropped by <see cref="ToOldFormat"/>.
+        /// Created by <see cref="ToNewFormat()"/>, dropped by <see cref="ToOldFormat"/>.
         /// </summary>
         public TgaExtensionArea? ExtensionArea { get; internal set; } = null;
 
         /// <summary>
         /// Gets the optional TGA 2.0 footer, or <see langword="null"/> when the file is in the original (pre-2.0) format.
-        /// Created by <see cref="ToNewFormat"/>, dropped by <see cref="ToOldFormat"/>.
+        /// Created by <see cref="ToNewFormat()"/>, dropped by <see cref="ToOldFormat"/>.
         /// </summary>
         public TgaFooter? Footer { get; internal set; } = null;
 
@@ -206,9 +206,23 @@ namespace TargaSharp
         /// <summary>
         /// Convert TGA Image to new XFile format (v2.0).
         /// </summary>
-        public void ToNewFormat()
+        public void ToNewFormat() => ToNewFormat(true);
+
+        /// <summary>
+        /// Convert TGA Image to new XFile format (v2.0), with or without an extension area.
+        /// Without one the file ends in the bare 26-byte footer, both offsets 0; an existing
+        /// <see cref="ExtensionArea"/> is dropped so the footer stays consistent.
+        /// </summary>
+        /// <param name="withExtensionArea">Create the <see cref="ExtensionArea"/> when missing; false drops it.</param>
+        public void ToNewFormat(bool withExtensionArea)
         {
             Footer ??= new TgaFooter();
+
+            if (!withExtensionArea)
+            {
+                ExtensionArea = null;
+                return;
+            }
 
             if (ExtensionArea is null)
             {
@@ -225,7 +239,7 @@ namespace TargaSharp
         /// <summary>
         /// Convert TGA Image to the original (pre-2.0) format: drops the <see cref="Footer"/>,
         /// <see cref="ExtensionArea"/> and <see cref="DeveloperArea"/> so <see cref="Save(string)"/>
-        /// writes only the header, image ID, color map and image data. Inverse of <see cref="ToNewFormat"/>;
+        /// writes only the header, image ID, color map and image data. Inverse of <see cref="ToNewFormat()"/>;
         /// the dropped areas are not recoverable from this instance.
         /// </summary>
         public void ToOldFormat()
