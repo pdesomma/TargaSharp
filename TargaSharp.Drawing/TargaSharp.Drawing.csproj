@@ -6,7 +6,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Title>TargaSharp.Drawing</Title>
     <Authors>Patrick DeSomma</Authors>
     <Description>System.Drawing (GDI+) bridge for TargaSharp: Bitmap ↔ TGA conversion.</Description>
